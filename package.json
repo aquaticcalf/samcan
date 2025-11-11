@@ -1,0 +1,14 @@
+{
+  "name": "samcan",
+  "version": "0.0.1-placeholder",
+  "description": "canvas",
+  "license": "MIT",
+  "author": "aquaticcalf",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aquaticcalf/samcan.git"
+  },
+  "scripts": {
+    "dev": "bun index.ts"
+  }
+}
