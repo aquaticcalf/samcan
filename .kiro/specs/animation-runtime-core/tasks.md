@@ -31,7 +31,7 @@
     - Implement visibility and opacity properties
     - _Requirements: 2.5, 6.3_
   
-  - [ ] 3.2 Implement specialized node types
+  - [x] 3.2 Implement specialized node types
     - Create ShapeNode with path and paint properties
     - Create ImageNode for bitmap rendering
     - Create GroupNode for containers
