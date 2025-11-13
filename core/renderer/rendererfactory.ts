@@ -1,4 +1,5 @@
 import { Canvas2DRenderer } from "./canvas2drenderer"
+import { WebGLRenderer } from "./webglrenderer"
 import type { Renderer, RendererBackend } from "./renderer"
 
 /**
@@ -193,12 +194,14 @@ export class RendererFactory {
     }
 
     /**
-     * Create a WebGL renderer (placeholder for future implementation)
+     * Create a WebGL renderer
      */
     private static async _createWebGLRenderer(
-        _canvas: HTMLCanvasElement,
+        canvas: HTMLCanvasElement,
     ): Promise<Renderer> {
-        throw new Error("WebGL renderer not yet implemented")
+        const renderer = new WebGLRenderer()
+        await renderer.initialize(canvas)
+        return renderer
     }
 
     /**
