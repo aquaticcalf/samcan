@@ -1,5 +1,5 @@
-import { Rectangle } from "./rectangle"
-import { Vector2 } from "./vector2"
+import { Rectangle } from "../rectangle"
+import { Vector2 } from "../vector2"
 
 /**
  * Path command types for vector graphics
