@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Set up core math and utility types
+- [x] 1. Set up core math and utility types
   - Create Vector2, Rectangle, Color, and Matrix classes with essential operations
   - Implement matrix multiplication, inversion, and point transformation
   - Add utility functions for common math operations (lerp, clamp, etc.)
