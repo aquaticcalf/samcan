@@ -71,14 +71,14 @@
     - Implement transform and state management
     - _Requirements: 2.1, 2.3, 2.4_
 
-- [ ] 5. Build timing and clock system
+- [x] 5. Build timing and clock system
   - [x] 5.1 Implement Clock class with high-precision timing
     - Use performance.now() for accurate time tracking
     - Calculate delta time between frames
     - Track elapsed time since start
     - _Requirements: 1.3, 8.1_
   
-  - [ ] 5.2 Create Scheduler for frame callbacks
+  - [x] 5.2 Create Scheduler for frame callbacks
     - Use requestAnimationFrame for frame scheduling
     - Track FPS and provide performance metrics
     - Support multiple scheduled callbacks
