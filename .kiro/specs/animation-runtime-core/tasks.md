@@ -25,7 +25,7 @@
     - _Requirements: 6.4_
 
 - [ ] 3. Build scene graph foundation
-  - [ ] 3.1 Create base SceneNode class with hierarchy management
+  - [x] 3.1 Create base SceneNode class with hierarchy management
     - Implement parent-child relationships (addChild, removeChild)
     - Add transform property and world transform calculation
     - Implement visibility and opacity properties
