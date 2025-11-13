@@ -72,7 +72,7 @@
     - _Requirements: 2.1, 2.3, 2.4_
 
 - [ ] 5. Build timing and clock system
-  - [ ] 5.1 Implement Clock class with high-precision timing
+  - [x] 5.1 Implement Clock class with high-precision timing
     - Use performance.now() for accurate time tracking
     - Calculate delta time between frames
     - Track elapsed time since start
