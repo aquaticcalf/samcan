@@ -7,3 +7,4 @@ export type {
 } from "./renderer"
 
 export { Canvas2DRenderer } from "./canvas2drenderer"
+export { RendererFactory, RendererInitializationError } from "./rendererfactory"
