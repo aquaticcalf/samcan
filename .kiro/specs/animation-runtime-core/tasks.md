@@ -7,7 +7,7 @@
   - _Requirements: 1.1, 6.1, 6.3_
 
 - [ ] 2. Implement path system and vector graphics primitives
-  - [ ] 2.1 Create Path class with command storage and basic operations
+  - [x] 2.1 Create Path class with command storage and basic operations
     - Implement moveTo, lineTo, curveTo, and close methods
     - Add path command serialization and deserialization
     - Implement getBounds() for bounding box calculation
