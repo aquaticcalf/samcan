@@ -5,4 +5,4 @@ interface Command<T = string> {
     undo: () => void
 }
 
-export default Command
+export type { Command }

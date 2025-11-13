@@ -10,9 +10,11 @@
     },
     "scripts": {
         "dev": "bun index.ts",
-        "fix": "bunx biome format --write"
+        "tsc": "tsc --noEmit",
+        "fix": "biome format --write"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.3.5"
+        "@biomejs/biome": "^2.3.5",
+        "typescript": "^5.9.3"
     }
 }
