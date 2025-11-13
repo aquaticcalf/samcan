@@ -1,4 +1,5 @@
 import { Matrix } from "../math/matrix"
+import { Vector2 } from "../math/vector2"
 import { Transform } from "./transform"
 
 /**
@@ -236,5 +237,43 @@ export class SceneNode {
             ancestor = ancestor._parent
         }
         return depth
+    }
+
+    /**
+     * Test if a point (in world coordinates) hits this node
+     * Base implementation returns false - subclasses should override
+     */
+    hitTest(worldPoint: Vector2): boolean {
+        // Base implementation - no hit testing
+        return false
+    }
+
+    /**
+     * Test if a point (in world coordinates) hits this node or any of its children
+     * Returns the deepest node that was hit, or null if no hit
+     */
+    hitTestRecursive(worldPoint: Vector2): SceneNode | null {
+        // Skip if not visible
+        if (!this.getWorldVisible()) {
+            return null
+        }
+
+        // Test children first (front to back, reverse order)
+        for (let i = this._children.length - 1; i >= 0; i--) {
+            const child = this._children[i]
+            if (!child) continue
+
+            const hit = child.hitTestRecursive(worldPoint)
+            if (hit !== null) {
+                return hit
+            }
+        }
+
+        // Test this node
+        if (this.hitTest(worldPoint)) {
+            return this
+        }
+
+        return null
     }
 }

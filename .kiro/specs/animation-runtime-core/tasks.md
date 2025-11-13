@@ -24,7 +24,7 @@
     - Use existing library (like paper.js algorithms) or implement basic versions
     - _Requirements: 6.4_
 
-- [ ] 3. Build scene graph foundation
+- [x] 3. Build scene graph foundation
   - [x] 3.1 Create base SceneNode class with hierarchy management
     - Implement parent-child relationships (addChild, removeChild)
     - Add transform property and world transform calculation
@@ -38,7 +38,7 @@
     - Create Artboard as root container
     - _Requirements: 2.3, 2.4, 6.1_
   
-  - [ ] 3.3 Add hit testing support
+  - [x] 3.3 Add hit testing support
     - Implement point-in-path testing for shapes
     - Add bounding box hit testing for images
     - Support hierarchical hit testing through scene graph
