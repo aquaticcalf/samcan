@@ -91,12 +91,12 @@
     - Implement evaluate() to update all tracks at given time
     - _Requirements: 3.1, 3.3_
   
-  - [ ] 6.2 Implement AnimationTrack for property animation
-    - Target specific SceneNode properties
-    - Store and manage keyframes
-    - Evaluate interpolated value at given time
-    - Apply evaluated value to target property
-    - _Requirements: 3.1, 3.2, 3.5_
+   - [x] 6.2 Implement AnimationTrack for property animation
+     - Target specific SceneNode properties
+     - Store and manage keyframes
+     - Evaluate interpolated value at given time
+     - Apply evaluated value to target property
+     - _Requirements: 3.1, 3.2, 3.5_
   
   - [ ] 6.3 Create Keyframe class and interpolation system
     - Store time, value, and interpolation type
