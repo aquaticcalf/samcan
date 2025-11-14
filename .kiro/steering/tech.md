@@ -51,3 +51,11 @@ bun fix
 - Use private fields with underscore prefix (e.g., `_parent`)
 - Implement dirty flag patterns for performance optimization
 - Whenever in doubt, use the fetch mcp to search the internet
+
+## Code Quality Standards
+
+- **No TODOs**: Implement features completely or create proper issues/specs instead of leaving TODO comments
+- **No TypeScript skips**: Never use `@ts-ignore`, `@ts-expect-error`, or `@ts-nocheck`. Fix type issues properly
+- **No linter skips**: Avoid `biome-ignore` comments. If absolutely necessary, provide detailed justification and fix ASAP
+- **Proper typing**: Use TypeScript's type system fully. Avoid `any` type - use `unknown` with type guards instead
+- **Complete implementations**: Don't commit placeholder code or partial implementations

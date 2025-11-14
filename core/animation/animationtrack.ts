@@ -118,11 +118,21 @@ export class AnimationTrack {
                 value = fromKeyframe.value
                 break
             case "linear":
-            case "cubic":
-            case "bezier":
-                // For now, all use linear interpolation
-                // TODO: Implement proper cubic and bezier interpolation
                 value = this.interpolateLinear(
+                    fromKeyframe.value,
+                    toKeyframe.value,
+                    t,
+                )
+                break
+            case "cubic":
+                value = this.interpolateCubic(
+                    fromKeyframe.value,
+                    toKeyframe.value,
+                    t,
+                )
+                break
+            case "bezier":
+                value = this.interpolateBezier(
                     fromKeyframe.value,
                     toKeyframe.value,
                     t,
@@ -150,20 +160,50 @@ export class AnimationTrack {
     }
 
     /**
+     * Cubic interpolation between two values (ease-in-out)
+     */
+    private interpolateCubic(from: unknown, to: unknown, t: number): unknown {
+        // Handle numbers with cubic easing
+        if (typeof from === "number" && typeof to === "number") {
+            // Cubic ease-in-out: smooth acceleration and deceleration
+            const easedT =
+                t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+            return from + (to - from) * easedT
+        }
+
+        // For non-numeric types, use step interpolation
+        return t < 0.5 ? from : to
+    }
+
+    /**
+     * Bezier interpolation between two values (smooth curve)
+     */
+    private interpolateBezier(from: unknown, to: unknown, t: number): unknown {
+        // Handle numbers with bezier easing
+        if (typeof from === "number" && typeof to === "number") {
+            // Bezier curve approximation (0.42, 0, 0.58, 1)
+            const easedT = t * t * (3 - 2 * t)
+            return from + (to - from) * easedT
+        }
+
+        // For non-numeric types, use step interpolation
+        return t < 0.5 ? from : to
+    }
+
+    /**
      * Apply a value to the target property
      */
     private applyValue(value: unknown): void {
         // Parse property path (e.g., 'opacity' or 'transform.position.x')
         const parts = this._property.split(".")
 
-        // Navigate to the target object
-        // biome-ignore lint/suspicious/noExplicitAny: Dynamic property access requires any
-        let target: any = this._target
+        // Navigate to the target object using Record type for type safety
+        let target = this._target as unknown as Record<string, unknown>
 
         for (let i = 0; i < parts.length - 1; i++) {
             const part = parts[i]
             if (part && target[part] !== undefined) {
-                target = target[part]
+                target = target[part] as Record<string, unknown>
             } else {
                 // Property path doesn't exist
                 return
