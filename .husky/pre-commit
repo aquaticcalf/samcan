@@ -1,3 +1,4 @@
 bun tsc
 bun fix
 bun loc
+git add .
