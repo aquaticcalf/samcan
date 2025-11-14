@@ -225,7 +225,7 @@
     - Support asset bundling for export
     - _Requirements: 10.4_
 
-- [ ] 11. Enhance command system for editor support
+- [x] 11. Enhance command system for editor support
   - [x] 11.1 Extend Command interface with metadata
     - Add command description and categorization
     - Implement canUndo flag for non-undoable commands
@@ -239,7 +239,7 @@
     - Add configurable history size limit
     - _Requirements: 5.2, 5.3, 5.4, 5.5_
   
-  - [ ] 11.3 Implement core editor commands
+  - [x] 11.3 Implement core editor commands
     - Create AddNodeCommand for adding scene nodes
     - Create DeleteNodeCommand for removing nodes
     - Create ModifyPropertyCommand for property changes
