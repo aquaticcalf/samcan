@@ -1,14 +1,10 @@
 {
-  "mcpServers": {
-    "fetch": {
-      "command": "bunx",
-      "args": [
-        "mcp-fetch-server"
-      ],
-      "disabled": false,
-      "autoApprove": [
-        "fetch_markdown"
-      ]
+    "mcpServers": {
+        "fetch": {
+            "command": "bunx",
+            "args": ["mcp-fetch-server"],
+            "disabled": false,
+            "autoApprove": ["fetch_markdown"]
+        }
     }
-  }
 }
