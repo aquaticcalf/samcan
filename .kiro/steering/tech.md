@@ -37,10 +37,10 @@
 bun dev
 
 # Type checking (no emit)
-bun run tsc
+bun tsc # no need to add --noEmit
 
 # Format code
-bun run fix
+bun fix
 ```
 
 ## Project Conventions
@@ -50,3 +50,4 @@ bun run fix
 - Include JSDoc comments for public APIs
 - Use private fields with underscore prefix (e.g., `_parent`)
 - Implement dirty flag patterns for performance optimization
+- Whenever in doubt, use the fetch mcp to search the internet
