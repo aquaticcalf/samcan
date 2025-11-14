@@ -179,7 +179,7 @@
     - Generate JSON output
     - _Requirements: 7.1, 7.2_
   
-  - [ ] 9.3 Implement deserializer for import
+  - [x] 9.3 Implement deserializer for import
     - Parse and validate JSON file format
     - Reconstruct scene graph from NodeData
     - Rebuild timeline and animation tracks

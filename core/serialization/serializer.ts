@@ -1,6 +1,7 @@
 import { Color } from "../math/color"
 import { Vector2 } from "../math/vector2"
 import { Matrix } from "../math/matrix"
+import { Rectangle } from "../math/rectangle"
 import { Transform } from "../scene/transform"
 import { Paint } from "../math/paint"
 import { Path } from "../math/path"
@@ -14,8 +15,16 @@ import { AnimationTrack } from "../animation/animationtrack"
 import { Keyframe } from "../animation/keyframe"
 import { AnimationState } from "../animation/animationstate"
 import { StateMachine } from "../animation/statemachine"
-import { StateTransition } from "../animation/statetransition"
+import {
+    StateTransition,
+    EventCondition,
+    BooleanCondition,
+    NumberCondition,
+    TimeCondition,
+    type TransitionCondition,
+} from "../animation/statetransition"
 import { Easing } from "../animation/easing"
+import type { BlendMode } from "../math/paint"
 import type {
     ColorData,
     Vector2Data,
@@ -508,5 +517,468 @@ export class Serializer {
         }
 
         return undefined
+    }
+
+    /**
+     * Deserialize a SamcanFile from JSON string
+     */
+    fromJSON(json: string): SamcanFile {
+        const data = JSON.parse(json) as SamcanFile
+        return this.validateSamcanFile(data)
+    }
+
+    /**
+     * Validate a SamcanFile structure
+     */
+    validateSamcanFile(data: unknown): SamcanFile {
+        if (typeof data !== "object" || data === null) {
+            throw new Error("Invalid samcan file: not an object")
+        }
+
+        const file = data as Record<string, unknown>
+
+        if (typeof file.version !== "string") {
+            throw new Error("Invalid samcan file: missing or invalid version")
+        }
+
+        if (typeof file.metadata !== "object" || file.metadata === null) {
+            throw new Error("Invalid samcan file: missing or invalid metadata")
+        }
+
+        if (!Array.isArray(file.artboards)) {
+            throw new Error("Invalid samcan file: missing or invalid artboards")
+        }
+
+        if (!Array.isArray(file.assets)) {
+            throw new Error("Invalid samcan file: missing or invalid assets")
+        }
+
+        return data as SamcanFile
+    }
+
+    /**
+     * Deserialize a SamcanFile to runtime objects
+     */
+    deserializeSamcanFile(data: SamcanFile): {
+        artboards: Artboard[]
+        stateMachines: Map<string, StateMachine>
+    } {
+        const artboards = data.artboards.map((artboardData) =>
+            this.deserializeArtboard(artboardData),
+        )
+
+        const stateMachines = new Map<string, StateMachine>()
+        if (data.stateMachines) {
+            for (const smData of data.stateMachines) {
+                const sm = this.deserializeStateMachine(smData, artboards)
+                stateMachines.set(smData.id, sm)
+            }
+        }
+
+        return { artboards, stateMachines }
+    }
+
+    /**
+     * Deserialize an Artboard from ArtboardData
+     */
+    deserializeArtboard(data: ArtboardData): Artboard {
+        // Create artboard
+        const backgroundColor = this.deserializeColor(data.backgroundColor)
+        const artboard = new Artboard(data.width, data.height, backgroundColor)
+
+        // Build node ID map for this artboard
+        const nodeMap = new Map<string, SceneNode>()
+        nodeMap.set(data.id, artboard)
+
+        // Deserialize all nodes
+        for (const nodeData of data.nodes) {
+            const node = this.deserializeNode(nodeData, nodeMap)
+            artboard.addChild(node)
+        }
+
+        // Deserialize timeline if present
+        if (data.timeline && data.timeline.tracks.length > 0) {
+            const timeline = this.deserializeTimeline(data.timeline, nodeMap)
+            // Store timeline on artboard (would need to add this property to Artboard class)
+            // For now, we'll just create it but not attach it
+        }
+
+        return artboard
+    }
+
+    /**
+     * Deserialize a SceneNode from NodeData
+     */
+    deserializeNode(
+        data: NodeData,
+        nodeMap: Map<string, SceneNode>,
+    ): SceneNode {
+        // Deserialize transform
+        const transform = this.deserializeTransform(data.transform)
+
+        // Create node based on type
+        let node: SceneNode
+
+        switch (data.type) {
+            case "artboard":
+                throw new Error(
+                    "Artboard nodes should not be nested in node data",
+                )
+
+            case "group":
+                node = new GroupNode(transform)
+                break
+
+            case "shape":
+                if (!data.shape) {
+                    throw new Error("Shape node missing shape data")
+                }
+                node = this.deserializeShapeNode(data.shape, transform)
+                break
+
+            case "image":
+                if (!data.image) {
+                    throw new Error("Image node missing image data")
+                }
+                node = this.deserializeImageNode(data.image, transform)
+                break
+
+            case "text":
+                // Text nodes not yet implemented, create as group
+                node = new GroupNode(transform)
+                break
+
+            default:
+                throw new Error(`Unknown node type: ${data.type}`)
+        }
+
+        // Set common properties
+        node.visible = data.visible
+        node.opacity = data.opacity
+
+        // Add to node map
+        nodeMap.set(data.id, node)
+
+        // Deserialize children
+        if (data.children) {
+            for (const childData of data.children) {
+                const child = this.deserializeNode(childData, nodeMap)
+                node.addChild(child)
+            }
+        }
+
+        return node
+    }
+
+    /**
+     * Deserialize a ShapeNode from ShapeData
+     */
+    deserializeShapeNode(data: ShapeData, transform: Transform): ShapeNode {
+        const path = Path.fromJSON(data.path)
+        const node = new ShapeNode(path, transform)
+
+        if (data.fill) {
+            node.fill = this.deserializePaint(data.fill)
+        }
+
+        if (data.stroke) {
+            node.stroke = this.deserializePaint(data.stroke)
+        }
+
+        node.strokeWidth = data.strokeWidth
+
+        return node
+    }
+
+    /**
+     * Deserialize an ImageNode from ImageData
+     */
+    deserializeImageNode(data: ImageData, transform: Transform): ImageNode {
+        const node = new ImageNode(data.assetId, transform)
+
+        if (data.sourceRect) {
+            node.sourceRect = new Rectangle(
+                data.sourceRect.x,
+                data.sourceRect.y,
+                data.sourceRect.width,
+                data.sourceRect.height,
+            )
+        }
+
+        return node
+    }
+
+    /**
+     * Deserialize a Timeline from TimelineData
+     */
+    deserializeTimeline(
+        data: TimelineData,
+        nodeMap: Map<string, SceneNode>,
+    ): Timeline {
+        const timeline = new Timeline(data.duration, data.fps)
+
+        for (const trackData of data.tracks) {
+            const track = this.deserializeAnimationTrack(trackData, nodeMap)
+            timeline.addTrack(track)
+        }
+
+        return timeline
+    }
+
+    /**
+     * Deserialize an AnimationTrack from AnimationTrackData
+     */
+    deserializeAnimationTrack(
+        data: AnimationTrackData,
+        nodeMap: Map<string, SceneNode>,
+    ): AnimationTrack {
+        const target = nodeMap.get(data.targetNodeId)
+        if (!target) {
+            throw new Error(
+                `Target node not found for track: ${data.targetNodeId}`,
+            )
+        }
+
+        const track = new AnimationTrack(target, data.property)
+
+        for (const keyframeData of data.keyframes) {
+            const keyframe = this.deserializeKeyframe(keyframeData)
+            track.addKeyframe(keyframe)
+        }
+
+        return track
+    }
+
+    /**
+     * Deserialize a Keyframe from KeyframeData
+     */
+    deserializeKeyframe(data: KeyframeData): Keyframe {
+        let easing: ((t: number) => number) | undefined
+
+        // Resolve easing function by name
+        if (data.easingName) {
+            const easingFn = (Easing as Record<string, (t: number) => number>)[
+                data.easingName
+            ]
+            if (easingFn) {
+                easing = easingFn
+            }
+        }
+
+        return new Keyframe(data.time, data.value, data.interpolation, easing)
+    }
+
+    /**
+     * Deserialize a StateMachine from StateMachineData
+     */
+    deserializeStateMachine(
+        data: StateMachineData,
+        artboards: Artboard[],
+    ): StateMachine {
+        const stateMachine = new StateMachine()
+
+        // Build a node map from all artboards for timeline deserialization
+        const nodeMap = new Map<string, SceneNode>()
+        for (const artboard of artboards) {
+            this._buildNodeMap(artboard, nodeMap)
+        }
+
+        // Deserialize states
+        for (const stateData of data.states) {
+            const state = this.deserializeAnimationState(stateData, nodeMap)
+            stateMachine.addState(state)
+        }
+
+        // Deserialize transitions
+        for (const transitionData of data.transitions) {
+            const transition = this.deserializeStateTransition(transitionData)
+            stateMachine.addTransition(transition)
+        }
+
+        // Set initial state if specified
+        if (data.initialStateId) {
+            stateMachine.changeState(data.initialStateId)
+        }
+
+        return stateMachine
+    }
+
+    /**
+     * Deserialize an AnimationState from AnimationStateData
+     */
+    deserializeAnimationState(
+        data: AnimationStateData,
+        nodeMap: Map<string, SceneNode>,
+    ): AnimationState {
+        const timeline = this.deserializeTimeline(data.timeline, nodeMap)
+        return new AnimationState(
+            data.id,
+            data.name,
+            timeline,
+            data.speed,
+            data.loop,
+        )
+    }
+
+    /**
+     * Deserialize a StateTransition from StateTransitionData
+     */
+    deserializeStateTransition(data: StateTransitionData): StateTransition {
+        const conditions = data.conditions.map((condData) =>
+            this.deserializeTransitionCondition(condData),
+        )
+
+        return new StateTransition(
+            data.from,
+            data.to,
+            conditions,
+            data.duration,
+            data.priority,
+        )
+    }
+
+    /**
+     * Deserialize a TransitionCondition from TransitionConditionData
+     */
+    deserializeTransitionCondition(
+        data: TransitionConditionData,
+    ): TransitionCondition {
+        switch (data.type) {
+            case "event":
+                if (!data.eventName) {
+                    throw new Error("Event condition missing eventName")
+                }
+                return new EventCondition(data.eventName)
+
+            case "boolean":
+                if (!data.inputName || data.expectedValue === undefined) {
+                    throw new Error(
+                        "Boolean condition missing inputName or expectedValue",
+                    )
+                }
+                return new BooleanCondition(data.inputName, data.expectedValue)
+
+            case "number":
+                if (
+                    !data.inputName ||
+                    !data.operator ||
+                    data.threshold === undefined
+                ) {
+                    throw new Error(
+                        "Number condition missing inputName, operator, or threshold",
+                    )
+                }
+                return new NumberCondition(
+                    data.inputName,
+                    data.operator,
+                    data.threshold,
+                )
+
+            case "time":
+                if (data.duration === undefined) {
+                    throw new Error("Time condition missing duration")
+                }
+                return new TimeCondition(data.duration)
+
+            default:
+                throw new Error(`Unknown condition type: ${data.type}`)
+        }
+    }
+
+    /**
+     * Deserialize a Color from ColorData
+     */
+    deserializeColor(data: ColorData): Color {
+        return new Color(data.r, data.g, data.b, data.a)
+    }
+
+    /**
+     * Deserialize a Vector2 from Vector2Data
+     */
+    deserializeVector2(data: Vector2Data): Vector2 {
+        return new Vector2(data.x, data.y)
+    }
+
+    /**
+     * Deserialize a Matrix from MatrixData
+     */
+    deserializeMatrix(data: MatrixData): Matrix {
+        return new Matrix(data.a, data.b, data.c, data.d, data.tx, data.ty)
+    }
+
+    /**
+     * Deserialize a Transform from TransformData
+     */
+    deserializeTransform(data: TransformData): Transform {
+        return new Transform(
+            this.deserializeVector2(data.position),
+            data.rotation,
+            this.deserializeVector2(data.scale),
+            this.deserializeVector2(data.pivot),
+        )
+    }
+
+    /**
+     * Deserialize a Paint from PaintData
+     */
+    deserializePaint(data: PaintData): Paint {
+        if (data.type === "solid" && data.color) {
+            const color = this.deserializeColor(data.color)
+            return Paint.solid(color, data.blendMode)
+        }
+
+        if (data.type === "gradient" && data.gradient) {
+            return this._deserializeGradientPaint(data.gradient, data.blendMode)
+        }
+
+        throw new Error(`Invalid paint data: ${data.type}`)
+    }
+
+    /**
+     * Deserialize a gradient paint
+     */
+    private _deserializeGradientPaint(
+        data: GradientData,
+        blendMode: BlendMode,
+    ): Paint {
+        const stops = data.stops.map((stopData) => ({
+            offset: stopData.offset,
+            color: this.deserializeColor(stopData.color),
+        }))
+
+        if (data.type === "linear") {
+            return Paint.linearGradient(
+                this.deserializeVector2(data.start),
+                this.deserializeVector2(data.end),
+                stops,
+                blendMode,
+            )
+        }
+
+        // data.type === "radial"
+        return Paint.radialGradient(
+            this.deserializeVector2(data.center),
+            data.radius,
+            stops,
+            data.focal ? this.deserializeVector2(data.focal) : undefined,
+            blendMode,
+        )
+    }
+
+    /**
+     * Build a node map from a scene graph
+     */
+    private _buildNodeMap(
+        node: SceneNode,
+        nodeMap: Map<string, SceneNode>,
+    ): void {
+        // Generate an ID for this node if we're rebuilding the map
+        // In a real implementation, nodes would have persistent IDs
+        const id = `node_${nodeMap.size}`
+        nodeMap.set(id, node)
+
+        for (const child of node.children) {
+            this._buildNodeMap(child, nodeMap)
+        }
     }
 }
