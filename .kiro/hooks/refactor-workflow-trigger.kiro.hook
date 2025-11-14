@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Refactor Workflow Trigger",
+  "description": "When a markdown file is created or modified in .kiro/refactor/, automatically create a folder structure, move the file, read its contents, and generate a tasks.md file with a kiro-style todo list based on the refactor requirements",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".kiro/refactor/*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new or modified refactor specification has been detected at {{filePath}}.\n\nPlease perform the following workflow:\n\n1. Read the refactor markdown file to understand the refactoring requirements\n2. Extract the refactor name from the filename (without .md extension)\n3. Create a new folder at .kiro/refactor/[refactor-name]/ if it doesn't exist\n4. Move the markdown file into that folder (rename to .kiro/refactor/[refactor-name]/[refactor-name].md)\n5. Analyze the refactor requirements and break them down into actionable tasks\n6. Create a tasks.md file in the same folder with a kiro-style task list that includes:\n   - Clear, actionable task items\n   - Logical ordering and dependencies\n   - Acceptance criteria where appropriate\n   - Any technical considerations or notes\n\nThe tasks.md should follow kiro conventions with checkboxes and clear descriptions. Treat this as a mini-spec workflow within the refactor folder itself."
+  }
+}
