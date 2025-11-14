@@ -1,4 +1,10 @@
 import type { Artboard } from "../scene/nodes/artboard"
+import type { ImageAsset, Renderer } from "../renderer/renderer"
+import type { SceneNode } from "../scene/node"
+import type { Path } from "../math/path"
+import type { Paint } from "../math/paint"
+import type { Rectangle } from "../math/rectangle"
+import { Matrix } from "../math/matrix"
 import { Clock } from "../timing/clock"
 import { Scheduler } from "../timing/scheduler"
 import { Timeline } from "./timeline"
@@ -46,6 +52,7 @@ export type RuntimeEvent = keyof RuntimeEvents
 export class AnimationRuntime {
     private _artboard: Artboard | null = null
     private _timeline: Timeline | null = null
+    private _renderer: Renderer | null = null
     private _clock: Clock
     private _scheduler: Scheduler
     private _state: PlaybackState = "idle"
@@ -55,7 +62,8 @@ export class AnimationRuntime {
     private _direction: number = 1 // 1 for forward, -1 for reverse (used in pingpong)
     private _events: EventEmitter<RuntimeEvents>
 
-    constructor() {
+    constructor(renderer?: Renderer) {
+        this._renderer = renderer ?? null
         this._clock = new Clock()
         this._scheduler = new Scheduler()
         this._events = new EventEmitter<RuntimeEvents>()
@@ -177,6 +185,22 @@ export class AnimationRuntime {
      */
     get loopMode(): LoopMode {
         return this._loopMode
+    }
+
+    /**
+     * Get the renderer instance
+     * Returns null if no renderer is set
+     */
+    get renderer(): Renderer | null {
+        return this._renderer
+    }
+
+    /**
+     * Set the renderer instance
+     * @param renderer The renderer to use for rendering the scene graph
+     */
+    setRenderer(renderer: Renderer): void {
+        this._renderer = renderer
     }
 
     /**
@@ -389,6 +413,7 @@ export class AnimationRuntime {
                     Math.min(duration, this._currentTime),
                 )
                 this._timeline.evaluate(this._currentTime)
+                this._renderFrame()
                 this._stopPlayback()
                 this._emitPlaybackComplete()
                 return
@@ -417,6 +442,9 @@ export class AnimationRuntime {
 
         // Evaluate timeline at current time
         this._timeline.evaluate(this._currentTime)
+
+        // Render the scene graph
+        this._renderFrame()
     }
 
     /**
@@ -432,5 +460,188 @@ export class AnimationRuntime {
     private _emitPlaybackComplete(): void {
         this._events.emit("complete", undefined)
         this._events.emit("stateChange", this._state)
+    }
+
+    /**
+     * Render the current frame using the renderer
+     * Renders the artboard and its scene graph
+     */
+    private _renderFrame(): void {
+        if (!this._renderer || !this._artboard) {
+            return
+        }
+
+        // Begin frame
+        this._renderer.beginFrame()
+
+        // Clear with artboard background color
+        this._renderer.clear(this._artboard.backgroundColor)
+
+        // Render the scene graph
+        this._renderNode(this._artboard)
+
+        // End frame
+        this._renderer.endFrame()
+    }
+
+    /**
+     * Recursively render a node and its children
+     * @param node The node to render
+     */
+    private _renderNode(node: SceneNode): void {
+        if (!this._renderer) {
+            return
+        }
+
+        // Skip if not visible
+        if (!node.visible) {
+            return
+        }
+
+        // Save renderer state
+        this._renderer.save()
+
+        // Apply world transform
+        const worldTransform = node.getWorldTransform()
+        this._renderer.transform(worldTransform)
+
+        // Apply opacity
+        const worldOpacity = node.getWorldOpacity()
+        this._renderer.setOpacity(worldOpacity)
+
+        // Render the node based on its type
+        this._renderNodeContent(node)
+
+        // Render children
+        for (const child of node.children) {
+            this._renderNode(child)
+        }
+
+        // Restore renderer state
+        this._renderer.restore()
+    }
+
+    /**
+     * Render the content of a specific node type
+     * @param node The node to render
+     */
+    private _renderNodeContent(node: SceneNode): void {
+        if (!this._renderer) {
+            return
+        }
+
+        // ShapeNode: has path, fill, and stroke properties
+        if (this._isShapeNode(node)) {
+            this._renderShapeNode(node)
+            return
+        }
+
+        // ImageNode: has imageData property
+        if (this._isImageNode(node)) {
+            this._renderImageNode(node)
+            return
+        }
+
+        // Artboard and GroupNode don't render content, only their children
+    }
+
+    /**
+     * Type guard to check if a node is a ShapeNode
+     * @param node The node to check
+     */
+    private _isShapeNode(node: SceneNode): node is SceneNode & {
+        path: Path
+        fill: Paint | null
+        stroke: Paint | null
+        strokeWidth: number
+    } {
+        return (
+            "path" in node &&
+            "fill" in node &&
+            "stroke" in node &&
+            "strokeWidth" in node
+        )
+    }
+
+    /**
+     * Type guard to check if a node is an ImageNode
+     * @param node The node to check
+     */
+    private _isImageNode(node: SceneNode): node is SceneNode & {
+        imageData: ImageData | HTMLImageElement | string
+        sourceRect: Rectangle | null
+    } {
+        return "imageData" in node && "sourceRect" in node
+    }
+
+    /**
+     * Render a ShapeNode
+     * @param node The ShapeNode to render
+     */
+    private _renderShapeNode(
+        node: SceneNode & {
+            path: Path
+            fill: Paint | null
+            stroke: Paint | null
+            strokeWidth: number
+        },
+    ): void {
+        if (!this._renderer) {
+            return
+        }
+
+        // Render fill
+        if (node.fill) {
+            this._renderer.drawPath(node.path, node.fill)
+        }
+
+        // Render stroke
+        if (node.stroke && node.strokeWidth > 0) {
+            this._renderer.drawStroke(node.path, node.stroke, node.strokeWidth)
+        }
+    }
+
+    /**
+     * Render an ImageNode
+     * @param node The ImageNode to render
+     */
+    private _renderImageNode(
+        node: SceneNode & {
+            imageData: ImageData | HTMLImageElement | string
+            sourceRect: Rectangle | null
+        },
+    ): void {
+        if (!this._renderer) {
+            return
+        }
+
+        // Only render if we have loaded image data
+        const imageData = node.imageData
+        if (
+            typeof imageData === "string" ||
+            (!(imageData instanceof HTMLImageElement) &&
+                !(imageData instanceof ImageData))
+        ) {
+            return
+        }
+
+        // Create ImageAsset wrapper
+        const imageAsset: ImageAsset = {
+            width:
+                imageData instanceof HTMLImageElement
+                    ? imageData.naturalWidth
+                    : imageData.width,
+            height:
+                imageData instanceof HTMLImageElement
+                    ? imageData.naturalHeight
+                    : imageData.height,
+            data:
+                imageData instanceof HTMLImageElement
+                    ? imageData
+                    : (imageData as unknown as ImageBitmap),
+        }
+
+        // Draw image with identity transform (node transform already applied)
+        this._renderer.drawImage(imageAsset, Matrix.identity())
     }
 }

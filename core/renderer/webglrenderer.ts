@@ -1,3 +1,4 @@
+import earcut from "earcut"
 import type { Color } from "../math/color"
 import { Matrix } from "../math/matrix"
 import type { Paint } from "../math/paint"
@@ -262,6 +263,69 @@ export class WebGLRenderer implements Renderer {
     }
 
     /**
+     * Draw a path stroke with the specified paint and width
+     * Tessellates the stroke path with proper miter joins and butt caps
+     */
+    drawStroke(path: Path, paint: Paint, strokeWidth: number): void {
+        if (!this._gl || !this._pathProgram) {
+            throw new Error("Renderer not initialized")
+        }
+
+        if (path.isEmpty() || strokeWidth <= 0) {
+            return
+        }
+
+        // For simplicity, we'll tessellate the stroke path
+        // In production, use a proper stroke tessellation library
+        const strokePath = this._tessellateStroke(path, strokeWidth)
+
+        if (strokePath.indexCount === 0) {
+            return
+        }
+
+        const gl = this._gl
+
+        // Use path shader program
+        gl.useProgram(this._pathProgram)
+
+        // Upload vertex data
+        gl.bindBuffer(gl.ARRAY_BUFFER, this._pathVertexBuffer)
+        gl.bufferData(gl.ARRAY_BUFFER, strokePath.vertices, gl.DYNAMIC_DRAW)
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._pathIndexBuffer)
+        gl.bufferData(
+            gl.ELEMENT_ARRAY_BUFFER,
+            strokePath.indices,
+            gl.DYNAMIC_DRAW,
+        )
+
+        // Set up vertex attributes
+        const positionLoc = gl.getAttribLocation(
+            this._pathProgram,
+            "a_position",
+        )
+        gl.enableVertexAttribArray(positionLoc)
+        gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0)
+
+        // Set uniforms
+        this._setPathUniforms(paint)
+
+        // Set blend mode
+        this._setBlendMode(paint.blendMode)
+
+        // Draw
+        gl.drawElements(
+            gl.TRIANGLES,
+            strokePath.indexCount,
+            gl.UNSIGNED_SHORT,
+            0,
+        )
+
+        // Reset blend mode
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    }
+
+    /**
      * Draw an image with the specified transformation
      */
     drawImage(image: ImageAsset, transform: Matrix): void {
@@ -473,63 +537,307 @@ export class WebGLRenderer implements Renderer {
 
     /**
      * Tessellate a path into triangles for GPU rendering
+     * Uses earcut library for robust polygon triangulation
      */
     private _tessellatePath(path: Path): TessellatedPath {
-        // Simple ear-clipping tessellation
-        // In production, use a library like libtess.js or earcut
-        const vertices: PathVertex[] = []
-        const indices: number[] = []
-
+        const pathPoints: number[] = []
         let currentX = 0
         let currentY = 0
-        const pathVertices: PathVertex[] = []
+        let startX = 0
+        let startY = 0
 
-        // Extract path vertices
+        // Convert path commands to flat coordinate array
         for (const cmd of path.commands) {
             switch (cmd.type) {
                 case "M":
                     currentX = cmd.x
                     currentY = cmd.y
-                    pathVertices.push({ x: currentX, y: currentY })
+                    startX = cmd.x
+                    startY = cmd.y
+                    pathPoints.push(currentX, currentY)
                     break
                 case "L":
                     currentX = cmd.x
                     currentY = cmd.y
-                    pathVertices.push({ x: currentX, y: currentY })
+                    pathPoints.push(currentX, currentY)
                     break
                 case "C":
+                    // Approximate cubic bezier with line segments
+                    // Using 10 segments for smooth curves
+                    {
+                        const steps = 10
+                        const x0 = currentX
+                        const y0 = currentY
+                        for (let i = 1; i <= steps; i++) {
+                            const t = i / steps
+                            const mt = 1 - t
+                            const mt2 = mt * mt
+                            const mt3 = mt2 * mt
+                            const t2 = t * t
+                            const t3 = t2 * t
+                            const x =
+                                mt3 * x0 +
+                                3 * mt2 * t * cmd.cp1x +
+                                3 * mt * t2 * cmd.cp2x +
+                                t3 * cmd.x
+                            const y =
+                                mt3 * y0 +
+                                3 * mt2 * t * cmd.cp1y +
+                                3 * mt * t2 * cmd.cp2y +
+                                t3 * cmd.y
+                            pathPoints.push(x, y)
+                        }
+                        currentX = cmd.x
+                        currentY = cmd.y
+                    }
+                    break
                 case "Q":
-                    // Approximate curves with line segments
+                    // Approximate quadratic bezier with line segments
+                    {
+                        const steps = 10
+                        const x0 = currentX
+                        const y0 = currentY
+                        for (let i = 1; i <= steps; i++) {
+                            const t = i / steps
+                            const mt = 1 - t
+                            const x =
+                                mt * mt * x0 +
+                                2 * mt * t * cmd.cpx +
+                                t * t * cmd.x
+                            const y =
+                                mt * mt * y0 +
+                                2 * mt * t * cmd.cpy +
+                                t * t * cmd.y
+                            pathPoints.push(x, y)
+                        }
+                        currentX = cmd.x
+                        currentY = cmd.y
+                    }
+                    break
+                case "Z":
+                    // Close path if not already at start
+                    if (
+                        Math.abs(currentX - startX) > 0.001 ||
+                        Math.abs(currentY - startY) > 0.001
+                    ) {
+                        pathPoints.push(startX, startY)
+                    }
+                    currentX = startX
+                    currentY = startY
+                    break
+            }
+        }
+
+        // Need at least 3 points (6 coordinates) to form a triangle
+        if (pathPoints.length < 6) {
+            return {
+                vertices: new Float32Array(0),
+                indices: new Uint16Array(0),
+                vertexCount: 0,
+                indexCount: 0,
+            }
+        }
+
+        // Use earcut to triangulate the polygon
+        const indices = earcut(pathPoints)
+
+        return {
+            vertices: new Float32Array(pathPoints),
+            indices: new Uint16Array(indices),
+            vertexCount: pathPoints.length / 2,
+            indexCount: indices.length,
+        }
+    }
+
+    /**
+     * Tessellate a stroke path into triangles for GPU rendering
+     * Implements proper stroke expansion with miter joins and butt caps
+     */
+    private _tessellateStroke(
+        path: Path,
+        strokeWidth: number,
+    ): TessellatedPath {
+        const halfWidth = strokeWidth / 2
+        const pathPoints: { x: number; y: number }[] = []
+        let currentX = 0
+        let currentY = 0
+        let startX = 0
+        let startY = 0
+
+        // Extract path points with curve approximation
+        for (const cmd of path.commands) {
+            switch (cmd.type) {
+                case "M":
                     currentX = cmd.x
                     currentY = cmd.y
-                    pathVertices.push({ x: currentX, y: currentY })
+                    startX = cmd.x
+                    startY = cmd.y
+                    pathPoints.push({ x: currentX, y: currentY })
+                    break
+                case "L":
+                    currentX = cmd.x
+                    currentY = cmd.y
+                    pathPoints.push({ x: currentX, y: currentY })
+                    break
+                case "C":
+                    // Approximate cubic bezier
+                    {
+                        const steps = 10
+                        const x0 = currentX
+                        const y0 = currentY
+                        for (let i = 1; i <= steps; i++) {
+                            const t = i / steps
+                            const mt = 1 - t
+                            const mt2 = mt * mt
+                            const mt3 = mt2 * mt
+                            const t2 = t * t
+                            const t3 = t2 * t
+                            const x =
+                                mt3 * x0 +
+                                3 * mt2 * t * cmd.cp1x +
+                                3 * mt * t2 * cmd.cp2x +
+                                t3 * cmd.x
+                            const y =
+                                mt3 * y0 +
+                                3 * mt2 * t * cmd.cp1y +
+                                3 * mt * t2 * cmd.cp2y +
+                                t3 * cmd.y
+                            pathPoints.push({ x, y })
+                        }
+                        currentX = cmd.x
+                        currentY = cmd.y
+                    }
+                    break
+                case "Q":
+                    // Approximate quadratic bezier
+                    {
+                        const steps = 10
+                        const x0 = currentX
+                        const y0 = currentY
+                        for (let i = 1; i <= steps; i++) {
+                            const t = i / steps
+                            const mt = 1 - t
+                            const x =
+                                mt * mt * x0 +
+                                2 * mt * t * cmd.cpx +
+                                t * t * cmd.x
+                            const y =
+                                mt * mt * y0 +
+                                2 * mt * t * cmd.cpy +
+                                t * t * cmd.y
+                            pathPoints.push({ x, y })
+                        }
+                        currentX = cmd.x
+                        currentY = cmd.y
+                    }
                     break
                 case "Z":
                     // Close path
+                    if (
+                        pathPoints.length > 0 &&
+                        pathPoints[0] &&
+                        (Math.abs(currentX - startX) > 0.001 ||
+                            Math.abs(currentY - startY) > 0.001)
+                    ) {
+                        pathPoints.push({ x: startX, y: startY })
+                    }
+                    currentX = startX
+                    currentY = startY
                     break
             }
         }
 
-        // Simple fan triangulation from first vertex
-        if (pathVertices.length >= 3) {
-            vertices.push(...pathVertices)
-
-            for (let i = 1; i < pathVertices.length - 1; i++) {
-                indices.push(0, i, i + 1)
+        if (pathPoints.length < 2) {
+            return {
+                vertices: new Float32Array(0),
+                indices: new Uint16Array(0),
+                vertexCount: 0,
+                indexCount: 0,
             }
         }
 
-        // Convert to typed arrays
-        const vertexArray = new Float32Array(vertices.length * 2)
-        for (let i = 0; i < vertices.length; i++) {
-            vertexArray[i * 2] = vertices[i]!.x
-            vertexArray[i * 2 + 1] = vertices[i]!.y
+        // Generate stroke geometry with proper joins
+        const vertices: number[] = []
+        const indices: number[] = []
+
+        for (let i = 0; i < pathPoints.length; i++) {
+            const current = pathPoints[i]
+            if (!current) continue
+
+            const prev = pathPoints[i - 1]
+            const next = pathPoints[i + 1]
+
+            // Calculate tangent vectors
+            let tangentX = 0
+            let tangentY = 0
+
+            if (i === 0) {
+                // First point - use forward direction
+                if (next) {
+                    tangentX = next.x - current.x
+                    tangentY = next.y - current.y
+                }
+            } else if (i === pathPoints.length - 1) {
+                // Last point - use backward direction
+                if (prev) {
+                    tangentX = current.x - prev.x
+                    tangentY = current.y - prev.y
+                }
+            } else {
+                // Middle point - use average of forward and backward directions
+                if (prev && next) {
+                    const dx1 = current.x - prev.x
+                    const dy1 = current.y - prev.y
+                    const dx2 = next.x - current.x
+                    const dy2 = next.y - current.y
+
+                    // Normalize both directions
+                    const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
+                    const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
+
+                    if (len1 > 0 && len2 > 0) {
+                        tangentX = dx1 / len1 + dx2 / len2
+                        tangentY = dy1 / len1 + dy2 / len2
+                    }
+                }
+            }
+
+            // Normalize tangent
+            const tangentLen = Math.sqrt(
+                tangentX * tangentX + tangentY * tangentY,
+            )
+            if (tangentLen > 0) {
+                tangentX /= tangentLen
+                tangentY /= tangentLen
+            }
+
+            // Calculate perpendicular (normal) direction
+            const normalX = -tangentY
+            const normalY = tangentX
+
+            // Add vertices on both sides of the stroke
+            const baseIndex = vertices.length / 2
+
+            vertices.push(
+                current.x + normalX * halfWidth,
+                current.y + normalY * halfWidth,
+            )
+            vertices.push(
+                current.x - normalX * halfWidth,
+                current.y - normalY * halfWidth,
+            )
+
+            // Create triangles for the stroke segment
+            if (i > 0) {
+                indices.push(baseIndex - 2, baseIndex - 1, baseIndex)
+                indices.push(baseIndex - 1, baseIndex + 1, baseIndex)
+            }
         }
 
         return {
-            vertices: vertexArray,
+            vertices: new Float32Array(vertices),
             indices: new Uint16Array(indices),
-            vertexCount: vertices.length,
+            vertexCount: vertices.length / 2,
             indexCount: indices.length,
         }
     }

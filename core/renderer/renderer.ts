@@ -93,6 +93,14 @@ export interface Renderer {
     drawPath(path: Path, paint: Paint): void
 
     /**
+     * Draw a path stroke with the specified paint and width
+     * @param path - The path to stroke
+     * @param paint - The paint to use for stroking
+     * @param strokeWidth - The width of the stroke
+     */
+    drawStroke(path: Path, paint: Paint, strokeWidth: number): void
+
+    /**
      * Draw an image with the specified transformation
      * @param image - The image asset to draw
      * @param transform - Transformation matrix to apply

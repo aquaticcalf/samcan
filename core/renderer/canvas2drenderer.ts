@@ -156,6 +156,56 @@ export class Canvas2DRenderer implements Renderer {
     }
 
     /**
+     * Draw a path stroke with the specified paint and width
+     */
+    drawStroke(path: Path, paint: Paint, strokeWidth: number): void {
+        if (!this._ctx) {
+            throw new Error("Renderer not initialized")
+        }
+
+        if (path.isEmpty() || strokeWidth <= 0) {
+            return
+        }
+
+        const ctx = this._ctx
+
+        // Build the path
+        ctx.beginPath()
+        for (const cmd of path.commands) {
+            switch (cmd.type) {
+                case "M":
+                    ctx.moveTo(cmd.x, cmd.y)
+                    break
+                case "L":
+                    ctx.lineTo(cmd.x, cmd.y)
+                    break
+                case "C":
+                    ctx.bezierCurveTo(
+                        cmd.cp1x,
+                        cmd.cp1y,
+                        cmd.cp2x,
+                        cmd.cp2y,
+                        cmd.x,
+                        cmd.y,
+                    )
+                    break
+                case "Q":
+                    ctx.quadraticCurveTo(cmd.cpx, cmd.cpy, cmd.x, cmd.y)
+                    break
+                case "Z":
+                    ctx.closePath()
+                    break
+            }
+        }
+
+        // Set stroke width
+        ctx.lineWidth = strokeWidth
+
+        // Apply stroke paint
+        this._applyStrokePaint(paint)
+    }
+
+    /**
      * Draw an image with the specified transformation
      */
     drawImage(image: ImageAsset, transform: Matrix): void {
@@ -280,6 +330,36 @@ export class Canvas2DRenderer implements Renderer {
             const gradient = this._createGradient(paint.gradient)
             ctx.fillStyle = gradient
             ctx.fill()
+        }
+
+        // Reset blend mode to normal
+        ctx.globalCompositeOperation = "source-over"
+    }
+
+    /**
+     * Apply paint to the current path as a stroke
+     */
+    private _applyStrokePaint(paint: Paint): void {
+        if (!this._ctx) {
+            return
+        }
+
+        const ctx = this._ctx
+
+        // Set blend mode
+        ctx.globalCompositeOperation = this._getCompositeOperation(
+            paint.blendMode,
+        )
+
+        if (paint.type === "solid" && paint.color) {
+            // Solid color stroke
+            ctx.strokeStyle = paint.color.toRGBA()
+            ctx.stroke()
+        } else if (paint.type === "gradient" && paint.gradient) {
+            // Gradient stroke
+            const gradient = this._createGradient(paint.gradient)
+            ctx.strokeStyle = gradient
+            ctx.stroke()
         }
 
         // Reset blend mode to normal

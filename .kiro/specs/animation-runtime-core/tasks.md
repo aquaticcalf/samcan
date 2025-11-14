@@ -112,7 +112,7 @@
     - Add interpolator registry for extensibility
     - _Requirements: 3.2, 3.4_
 
-- [ ] 7. Create core animation runtime engine
+- [x] 7. Create core animation runtime engine
   - [x] 7.1 Implement AnimationRuntime class with lifecycle management
     - Add load() and unload() methods for animation data
     - Implement playback state management
@@ -132,7 +132,7 @@
     - Support event listener registration and removal
     - _Requirements: 1.5_
   
-  - [ ] 7.4 Connect runtime to timeline and renderer
+  - [x] 7.4 Connect runtime to timeline and renderer
     - Update timeline on each frame based on delta time
     - Render scene graph using active renderer
     - Handle loop completion and callbacks
