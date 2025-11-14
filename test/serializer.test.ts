@@ -1026,3 +1026,367 @@ describe("Serializer - State Machine Deserialization", () => {
         expect(deserialized.currentState?.id).toBe("state1")
     })
 })
+
+describe("Serializer - Compression", () => {
+    it("should compress and decompress a string", async () => {
+        const serializer = new Serializer()
+        const original = "Hello, World! This is a test string for compression."
+
+        const compressed = await serializer.compress(original)
+        expect(compressed).toBeInstanceOf(Uint8Array)
+        expect(compressed.length).toBeGreaterThan(0)
+
+        const decompressed = await serializer.decompress(compressed)
+        expect(decompressed).toBe(original)
+    })
+
+    it("should compress and decompress JSON data", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const path = new Path()
+        path.moveTo(0, 0)
+        path.lineTo(100, 100)
+        const shape = new ShapeNode(path)
+        shape.fill = Paint.solid(Color.red())
+        artboard.addChild(shape)
+
+        const file = serializer.serializeSamcanFile([artboard])
+        const json = serializer.toJSON(file, false)
+
+        const compressed = await serializer.compress(json)
+        const decompressed = await serializer.decompress(compressed)
+
+        expect(decompressed).toBe(json)
+        const parsed = JSON.parse(decompressed)
+        expect(parsed.version).toBe("1.0.0")
+        expect(parsed.artboards.length).toBe(1)
+    })
+
+    it("should compress data to smaller size", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(1920, 1080, Color.white())
+
+        for (let i = 0; i < 50; i++) {
+            const path = new Path()
+            path.moveTo(i * 10, i * 10)
+            path.lineTo(i * 10 + 100, i * 10)
+            path.lineTo(i * 10 + 100, i * 10 + 100)
+            path.lineTo(i * 10, i * 10 + 100)
+            path.close()
+
+            const shape = new ShapeNode(path)
+            shape.fill = Paint.solid(Color.fromRGB(i * 5, 100, 200))
+            artboard.addChild(shape)
+        }
+
+        const file = serializer.serializeSamcanFile([artboard])
+        const json = serializer.toJSON(file, false)
+        const compressed = await serializer.compress(json)
+
+        expect(compressed.length).toBeLessThan(json.length)
+    })
+
+    it("should serialize and compress a SamcanFile", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const file = serializer.serializeSamcanFile([artboard])
+
+        const compressed = await serializer.toCompressedJSON(file)
+
+        expect(compressed).toBeInstanceOf(Uint8Array)
+        expect(compressed.length).toBeGreaterThan(0)
+    })
+
+    it("should decompress and deserialize a SamcanFile", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const path = new Path()
+        path.moveTo(0, 0)
+        path.lineTo(100, 0)
+        path.lineTo(100, 100)
+        path.close()
+        const shape = new ShapeNode(path)
+        shape.fill = Paint.solid(Color.blue())
+        artboard.addChild(shape)
+
+        const file = serializer.serializeSamcanFile([artboard])
+        const compressed = await serializer.toCompressedJSON(file)
+
+        const decompressed = await serializer.fromCompressedJSON(compressed)
+
+        expect(decompressed.version).toBe("1.0.0")
+        expect(decompressed.artboards.length).toBe(1)
+        expect(decompressed.artboards[0]?.width).toBe(800)
+        expect(decompressed.artboards[0]?.height).toBe(600)
+    })
+
+    it("should round-trip compress and decompress", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(1920, 1080, Color.fromRGB(64, 128, 192))
+
+        const group = new GroupNode()
+        group.transform.position = new Vector2(200, 300)
+        group.transform.rotation = Math.PI / 3
+
+        const path = new Path()
+        path.moveTo(0, 0)
+        path.lineTo(150, 0)
+        path.lineTo(150, 150)
+        path.lineTo(0, 150)
+        path.close()
+
+        const shape = new ShapeNode(path)
+        shape.fill = Paint.linearGradient(
+            new Vector2(0, 0),
+            new Vector2(150, 150),
+            [
+                { offset: 0, color: Color.red() },
+                { offset: 1, color: Color.fromRGB(255, 255, 0) },
+            ],
+        )
+        shape.stroke = Paint.solid(Color.black())
+        shape.strokeWidth = 5
+
+        group.addChild(shape)
+        artboard.addChild(group)
+
+        const originalFile = serializer.serializeSamcanFile([artboard], {
+            name: "Compression Test",
+            author: "Test Suite",
+        })
+
+        const compressed = await serializer.toCompressedJSON(originalFile)
+        const decompressedFile = await serializer.fromCompressedJSON(compressed)
+
+        expect(decompressedFile.metadata.name).toBe("Compression Test")
+        expect(decompressedFile.metadata.author).toBe("Test Suite")
+        expect(decompressedFile.artboards.length).toBe(1)
+
+        const result = serializer.deserializeSamcanFile(decompressedFile)
+        expect(result.artboards.length).toBe(1)
+        expect(result.artboards[0]?.width).toBe(1920)
+        expect(result.artboards[0]?.height).toBe(1080)
+        expect(result.artboards[0]?.children.length).toBe(1)
+
+        const deserializedGroup = result.artboards[0]?.children[0] as GroupNode
+        expect(deserializedGroup.transform.position.x).toBe(200)
+        expect(deserializedGroup.transform.position.y).toBe(300)
+        expect(deserializedGroup.children.length).toBe(1)
+
+        const deserializedShape = deserializedGroup.children[0] as ShapeNode
+        expect(deserializedShape.strokeWidth).toBe(5)
+        expect(deserializedShape.fill?.type).toBe("gradient")
+    })
+
+    it("should load JSON incrementally", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const file = serializer.serializeSamcanFile([artboard])
+        const json = serializer.toJSON(file)
+
+        const loaded = await serializer.fromJSONIncremental(json)
+
+        expect(loaded.version).toBe("1.0.0")
+        expect(loaded.artboards.length).toBe(1)
+    })
+
+    it("should load large JSON incrementally in chunks", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(1920, 1080, Color.white())
+
+        // Create a large file with many nodes
+        for (let i = 0; i < 250; i++) {
+            const path = new Path()
+            path.moveTo(i * 5, i * 5)
+            path.lineTo(i * 5 + 50, i * 5)
+            path.lineTo(i * 5 + 50, i * 5 + 50)
+            path.lineTo(i * 5, i * 5 + 50)
+            path.close()
+
+            const shape = new ShapeNode(path)
+            shape.fill = Paint.solid(Color.fromRGB(i % 255, 100, 150))
+            artboard.addChild(shape)
+        }
+
+        const file = serializer.serializeSamcanFile([artboard])
+        const json = serializer.toJSON(file, false)
+
+        // Ensure it's large enough to trigger chunking
+        expect(json.length).toBeGreaterThan(100000)
+
+        const loaded = await serializer.fromJSONIncremental(json)
+
+        expect(loaded.version).toBe("1.0.0")
+        expect(loaded.artboards.length).toBe(1)
+        expect(loaded.artboards[0]?.nodes.length).toBe(250)
+    })
+
+    it("should load JSON from stream", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const file = serializer.serializeSamcanFile([artboard])
+        const json = serializer.toJSON(file)
+
+        // Create a ReadableStream from the JSON string
+        const encoder = new TextEncoder()
+        const uint8Array = encoder.encode(json)
+        const stream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(uint8Array)
+                controller.close()
+            },
+        })
+
+        const loaded = await serializer.fromJSONStream(stream)
+
+        expect(loaded.version).toBe("1.0.0")
+        expect(loaded.artboards.length).toBe(1)
+    })
+
+    it("should load JSON from stream in multiple chunks", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(1920, 1080, Color.black())
+
+        for (let i = 0; i < 50; i++) {
+            const path = new Path()
+            path.moveTo(i * 10, i * 10)
+            path.lineTo(i * 10 + 100, i * 10 + 100)
+            const shape = new ShapeNode(path)
+            artboard.addChild(shape)
+        }
+
+        const file = serializer.serializeSamcanFile([artboard])
+        const json = serializer.toJSON(file, false)
+
+        // Create a ReadableStream that emits data in chunks
+        const encoder = new TextEncoder()
+        const uint8Array = encoder.encode(json)
+        const chunkSize = 1000
+
+        const stream = new ReadableStream({
+            start(controller) {
+                let offset = 0
+                while (offset < uint8Array.length) {
+                    const end = Math.min(offset + chunkSize, uint8Array.length)
+                    controller.enqueue(uint8Array.slice(offset, end))
+                    offset = end
+                }
+                controller.close()
+            },
+        })
+
+        const loaded = await serializer.fromJSONStream(stream)
+
+        expect(loaded.version).toBe("1.0.0")
+        expect(loaded.artboards.length).toBe(1)
+        expect(loaded.artboards[0]?.nodes.length).toBe(50)
+    })
+
+    it("should load compressed data from stream", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const path = new Path()
+        path.moveTo(0, 0)
+        path.lineTo(100, 100)
+        const shape = new ShapeNode(path)
+        artboard.addChild(shape)
+
+        const file = serializer.serializeSamcanFile([artboard])
+        const compressed = await serializer.toCompressedJSON(file)
+
+        // Create a ReadableStream from compressed data
+        const stream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(compressed)
+                controller.close()
+            },
+        })
+
+        const loaded = await serializer.fromCompressedStream(stream)
+
+        expect(loaded.version).toBe("1.0.0")
+        expect(loaded.artboards.length).toBe(1)
+    })
+
+    it("should load compressed data from stream in chunks", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(1920, 1080, Color.white())
+
+        for (let i = 0; i < 100; i++) {
+            const path = new Path()
+            path.moveTo(i * 8, i * 8)
+            path.lineTo(i * 8 + 80, i * 8 + 80)
+            const shape = new ShapeNode(path)
+            shape.fill = Paint.solid(Color.fromRGB(i * 2, i * 2, i * 2))
+            artboard.addChild(shape)
+        }
+
+        const file = serializer.serializeSamcanFile([artboard])
+        const compressed = await serializer.toCompressedJSON(file)
+
+        // Create a ReadableStream that emits compressed data in chunks
+        const chunkSize = 500
+        const stream = new ReadableStream({
+            start(controller) {
+                let offset = 0
+                while (offset < compressed.length) {
+                    const end = Math.min(offset + chunkSize, compressed.length)
+                    controller.enqueue(compressed.slice(offset, end))
+                    offset = end
+                }
+                controller.close()
+            },
+        })
+
+        const loaded = await serializer.fromCompressedStream(stream)
+
+        expect(loaded.version).toBe("1.0.0")
+        expect(loaded.artboards.length).toBe(1)
+        expect(loaded.artboards[0]?.nodes.length).toBe(100)
+    })
+
+    it("should load compressed JSON incrementally", async () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(1920, 1080, Color.black())
+
+        for (let i = 0; i < 20; i++) {
+            const path = new Path()
+            path.moveTo(i * 20, i * 20)
+            path.lineTo(i * 20 + 50, i * 20 + 50)
+            const shape = new ShapeNode(path)
+            shape.fill = Paint.solid(Color.fromRGB(i * 10, i * 10, i * 10))
+            artboard.addChild(shape)
+        }
+
+        const file = serializer.serializeSamcanFile([artboard])
+        const compressed = await serializer.toCompressedJSON(file)
+
+        const loaded =
+            await serializer.fromCompressedJSONIncremental(compressed)
+
+        expect(loaded.version).toBe("1.0.0")
+        expect(loaded.artboards.length).toBe(1)
+        expect(loaded.artboards[0]?.nodes.length).toBe(20)
+    })
+
+    it("should handle empty data compression", async () => {
+        const serializer = new Serializer()
+        const empty = ""
+
+        const compressed = await serializer.compress(empty)
+        const decompressed = await serializer.decompress(compressed)
+
+        expect(decompressed).toBe(empty)
+    })
+
+    it("should handle large data compression", async () => {
+        const serializer = new Serializer()
+        const largeString = "A".repeat(100000)
+
+        const compressed = await serializer.compress(largeString)
+        const decompressed = await serializer.decompress(compressed)
+
+        expect(decompressed).toBe(largeString)
+        expect(compressed.length).toBeLessThan(largeString.length)
+    })
+})

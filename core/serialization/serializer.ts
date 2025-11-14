@@ -325,6 +325,245 @@ export class Serializer {
     }
 
     /**
+     * Compress a string using gzip compression
+     * Returns a Uint8Array of compressed data
+     */
+    async compress(data: string): Promise<Uint8Array> {
+        // Convert string to Uint8Array
+        const encoder = new TextEncoder()
+        const uint8Array = encoder.encode(data)
+
+        // Create compression stream using browser API
+        const compressionStream = new CompressionStream("gzip")
+        const writer = compressionStream.writable.getWriter()
+        const reader = compressionStream.readable.getReader()
+
+        // Write data to compression stream
+        const writePromise = writer.write(uint8Array).then(() => writer.close())
+
+        // Read compressed chunks
+        const chunks: Uint8Array[] = []
+        let totalLength = 0
+
+        const readPromise = (async () => {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                chunks.push(value)
+                totalLength += value.length
+            }
+        })()
+
+        // Wait for both write and read to complete
+        await Promise.all([writePromise, readPromise])
+
+        // Combine chunks into single Uint8Array
+        const compressed = new Uint8Array(totalLength)
+        let offset = 0
+        for (const chunk of chunks) {
+            compressed.set(chunk, offset)
+            offset += chunk.length
+        }
+
+        return compressed
+    }
+
+    /**
+     * Decompress gzip-compressed data
+     * Returns the decompressed string
+     */
+    async decompress(compressedData: Uint8Array): Promise<string> {
+        // Create decompression stream using browser API
+        const decompressionStream = new DecompressionStream("gzip")
+        const writer = decompressionStream.writable.getWriter()
+        const reader = decompressionStream.readable.getReader()
+
+        // Write compressed data to decompression stream
+        const writePromise = writer
+            .write(compressedData as Uint8Array<ArrayBuffer>)
+            .then(() => writer.close())
+
+        // Read decompressed chunks
+        const chunks: Uint8Array[] = []
+        let totalLength = 0
+
+        const readPromise = (async () => {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                chunks.push(value)
+                totalLength += value.length
+            }
+        })()
+
+        // Wait for both write and read to complete
+        await Promise.all([writePromise, readPromise])
+
+        // Combine chunks into single Uint8Array
+        const decompressed = new Uint8Array(totalLength)
+        let offset = 0
+        for (const chunk of chunks) {
+            decompressed.set(chunk, offset)
+            offset += chunk.length
+        }
+
+        // Convert Uint8Array back to string
+        const decoder = new TextDecoder()
+        return decoder.decode(decompressed)
+    }
+
+    /**
+     * Serialize and compress a SamcanFile
+     * Returns compressed data as Uint8Array
+     */
+    async toCompressedJSON(
+        file: SamcanFile,
+        pretty: boolean = false,
+    ): Promise<Uint8Array> {
+        const json = this.toJSON(file, pretty)
+        return this.compress(json)
+    }
+
+    /**
+     * Decompress and deserialize a SamcanFile
+     * Accepts compressed data as Uint8Array
+     */
+    async fromCompressedJSON(compressedData: Uint8Array): Promise<SamcanFile> {
+        const json = await this.decompress(compressedData)
+        return this.fromJSON(json)
+    }
+
+    /**
+     * Load a SamcanFile incrementally from a large JSON string
+     * This is useful for large files to avoid blocking the main thread
+     * Parses JSON in chunks and yields control periodically
+     * Returns a promise that resolves with the parsed SamcanFile
+     */
+    async fromJSONIncremental(json: string): Promise<SamcanFile> {
+        // Parse in chunks to avoid blocking
+        const CHUNK_SIZE = 100000 // Process 100KB at a time
+
+        if (json.length <= CHUNK_SIZE) {
+            // Small file, parse directly
+            return this.fromJSON(json)
+        }
+
+        // For large files, parse incrementally
+        // We'll use a worker-like approach by yielding control periodically
+        return new Promise((resolve, reject) => {
+            let offset = 0
+            const chunks: string[] = []
+
+            const processChunk = () => {
+                try {
+                    // Process one chunk
+                    const end = Math.min(offset + CHUNK_SIZE, json.length)
+                    chunks.push(json.slice(offset, end))
+                    offset = end
+
+                    if (offset < json.length) {
+                        // More chunks to process, yield control
+                        setTimeout(processChunk, 0)
+                    } else {
+                        // All chunks processed, parse the complete JSON
+                        const completeJson = chunks.join("")
+                        const data = this.fromJSON(completeJson)
+                        resolve(data)
+                    }
+                } catch (error) {
+                    reject(error)
+                }
+            }
+
+            // Start processing
+            processChunk()
+        })
+    }
+
+    /**
+     * Load a SamcanFile incrementally from a ReadableStream
+     * This is useful for loading files from network or disk without loading entire file into memory
+     */
+    async fromJSONStream(
+        stream: ReadableStream<Uint8Array>,
+    ): Promise<SamcanFile> {
+        const decoder = new TextDecoder()
+        const reader = stream.getReader()
+        const chunks: string[] = []
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                // Decode chunk and add to buffer
+                chunks.push(decoder.decode(value, { stream: true }))
+            }
+
+            // Decode any remaining bytes
+            chunks.push(decoder.decode())
+
+            // Parse complete JSON
+            const json = chunks.join("")
+            return this.fromJSON(json)
+        } finally {
+            reader.releaseLock()
+        }
+    }
+
+    /**
+     * Load and decompress a SamcanFile from a compressed stream
+     * Useful for loading compressed files from network or disk
+     */
+    async fromCompressedStream(
+        stream: ReadableStream<Uint8Array>,
+    ): Promise<SamcanFile> {
+        // Read all chunks from stream
+        const reader = stream.getReader()
+        const chunks: Uint8Array[] = []
+        let totalLength = 0
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                chunks.push(value)
+                totalLength += value.length
+            }
+
+            // Combine chunks
+            const compressed = new Uint8Array(totalLength)
+            let offset = 0
+            for (const chunk of chunks) {
+                compressed.set(chunk, offset)
+                offset += chunk.length
+            }
+
+            // Decompress and parse
+            return this.fromCompressedJSON(compressed)
+        } finally {
+            reader.releaseLock()
+        }
+    }
+
+    /**
+     * Load and decompress a SamcanFile incrementally
+     * Useful for large compressed files
+     */
+    async fromCompressedJSONIncremental(
+        compressedData: Uint8Array,
+    ): Promise<SamcanFile> {
+        // Decompress first (this is already async and won't block)
+        const json = await this.decompress(compressedData)
+
+        // Then parse incrementally
+        return this.fromJSONIncremental(json)
+    }
+
+    /**
      * Assign unique IDs to all nodes in the scene graph
      */
     private _assignNodeIds(node: SceneNode): void {

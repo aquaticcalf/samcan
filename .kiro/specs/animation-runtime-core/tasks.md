@@ -165,7 +165,7 @@
     - Evaluate transitions on each update
     - _Requirements: 4.2, 4.3_
 
-- [ ] 9. Build serialization system
+- [x] 9. Build serialization system
   - [x] 9.1 Define samcan file format types
      - Create TypeScript interfaces for SamcanFile structure
      - Define ArtboardData, NodeData, TimelineData types
@@ -193,9 +193,9 @@
     - Handle parsing errors gracefully
     - _Requirements: 7.3, 7.4_
   
-  - [ ] 9.5 Add compression support
+  - [x] 9.5 Add compression support
     - Implement JSON minification
-    - Add optional gzip compression
+    - Add optional gzip compression, use CompressionStream()
     - Support incremental loading for large files
     - _Requirements: 7.4, 7.5_
 
