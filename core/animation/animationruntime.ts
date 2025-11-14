@@ -9,6 +9,7 @@ import { Clock } from "../timing/clock"
 import { Scheduler } from "../timing/scheduler"
 import { Timeline } from "./timeline"
 import { EventEmitter } from "../../editor/events/emitter"
+import { PluginRegistry } from "../plugin/pluginregistry"
 
 /**
  * Animation data structure that can be loaded into the runtime
@@ -61,12 +62,14 @@ export class AnimationRuntime {
     private _loopMode: LoopMode = "none"
     private _direction: number = 1 // 1 for forward, -1 for reverse (used in pingpong)
     private _events: EventEmitter<RuntimeEvents>
+    private _pluginRegistry: PluginRegistry
 
     constructor(renderer?: Renderer) {
         this._renderer = renderer ?? null
         this._clock = new Clock()
         this._scheduler = new Scheduler()
         this._events = new EventEmitter<RuntimeEvents>()
+        this._pluginRegistry = new PluginRegistry(this)
     }
 
     /**
@@ -106,6 +109,9 @@ export class AnimationRuntime {
         if (this._state === "playing") {
             this._stopPlayback()
         }
+
+        // Clear all plugins
+        this._pluginRegistry.clear()
 
         // Clear animation data
         this._artboard = null
@@ -201,6 +207,13 @@ export class AnimationRuntime {
      */
     setRenderer(renderer: Renderer): void {
         this._renderer = renderer
+    }
+
+    /**
+     * Get the plugin registry instance
+     */
+    get plugins(): PluginRegistry {
+        return this._pluginRegistry
     }
 
     /**
@@ -395,6 +408,9 @@ export class AnimationRuntime {
 
         // Update clock
         this._clock.tick()
+
+        // Update plugins with error handling
+        this._pluginRegistry.update(deltaTime)
 
         // Update current time based on delta and speed
         // Convert deltaTime from milliseconds to seconds

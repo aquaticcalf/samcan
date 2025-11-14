@@ -1,5 +1,7 @@
 import { AnimationState } from "./animationstate"
 import { type StateMachineContext, StateTransition } from "./statetransition"
+import type { AnimationController } from "../plugin/animationcontroller"
+import { isAnimationController } from "../plugin/animationcontroller"
 
 /**
  * StateMachine manages a collection of animation states and handles transitions between them
@@ -17,6 +19,7 @@ export class StateMachine {
         events: new Set(),
         stateTime: 0,
     }
+    private _controllers: AnimationController[] = []
 
     /**
      * Get the currently active animation state
@@ -37,6 +40,44 @@ export class StateMachine {
      */
     get transitions(): readonly StateTransition[] {
         return this._transitions
+    }
+
+    /**
+     * Register an AnimationController to receive state change notifications
+     * @param controller The controller to register
+     */
+    addController(controller: AnimationController): void {
+        if (!isAnimationController(controller)) {
+            throw new Error(
+                "Controller must implement AnimationController interface",
+            )
+        }
+
+        if (!this._controllers.includes(controller)) {
+            this._controllers.push(controller)
+        }
+    }
+
+    /**
+     * Unregister an AnimationController
+     * @param controller The controller to unregister
+     * @returns true if the controller was removed, false if it wasn't registered
+     */
+    removeController(controller: AnimationController): boolean {
+        const index = this._controllers.indexOf(controller)
+        if (index === -1) {
+            return false
+        }
+
+        this._controllers.splice(index, 1)
+        return true
+    }
+
+    /**
+     * Get all registered controllers
+     */
+    get controllers(): readonly AnimationController[] {
+        return this._controllers
     }
 
     /**
@@ -206,9 +247,14 @@ export class StateMachine {
             throw new Error(`State with id "${stateId}" does not exist`)
         }
 
+        const previousState = this._currentState
+
         // Deactivate current state if there is one
         if (this._currentState) {
             this._currentState.deactivate()
+
+            // Notify controllers of state exit
+            this._notifyStateExit(this._currentState)
         }
 
         // Activate new state
@@ -216,6 +262,14 @@ export class StateMachine {
         this._currentState.activate()
         this._currentTime = 0
         this._context.stateTime = 0
+
+        // Notify controllers of state enter
+        this._notifyStateEnter(newState)
+
+        // Notify controllers of transition if there was a previous state
+        if (previousState) {
+            this._notifyTransition(previousState, newState, 1.0)
+        }
     }
 
     /**
@@ -338,5 +392,66 @@ export class StateMachine {
      */
     getStateIds(): string[] {
         return Array.from(this._states.keys())
+    }
+
+    /**
+     * Notify all controllers that a state is being entered
+     * @private
+     */
+    private _notifyStateEnter(state: AnimationState): void {
+        for (const controller of this._controllers) {
+            if (controller.onStateEnter) {
+                try {
+                    controller.onStateEnter(state)
+                } catch (error) {
+                    console.error(
+                        `Error in controller "${controller.metadata.name}" onStateEnter:`,
+                        error,
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Notify all controllers that a state is being exited
+     * @private
+     */
+    private _notifyStateExit(state: AnimationState): void {
+        for (const controller of this._controllers) {
+            if (controller.onStateExit) {
+                try {
+                    controller.onStateExit(state)
+                } catch (error) {
+                    console.error(
+                        `Error in controller "${controller.metadata.name}" onStateExit:`,
+                        error,
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Notify all controllers of a state transition
+     * @private
+     */
+    private _notifyTransition(
+        from: AnimationState,
+        to: AnimationState,
+        progress: number,
+    ): void {
+        for (const controller of this._controllers) {
+            if (controller.onTransition) {
+                try {
+                    controller.onTransition(from, to, progress)
+                } catch (error) {
+                    console.error(
+                        `Error in controller "${controller.metadata.name}" onTransition:`,
+                        error,
+                    )
+                }
+            }
+        }
     }
 }
