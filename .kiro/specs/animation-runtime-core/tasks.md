@@ -85,7 +85,7 @@
     - _Requirements: 1.3, 8.2_
 
 - [ ] 6. Implement animation timeline system
-  - [ ] 6.1 Create Timeline class with track management
+  - [x] 6.1 Create Timeline class with track management
     - Store animation duration and FPS
     - Manage collection of AnimationTrack instances
     - Implement evaluate() to update all tracks at given time
