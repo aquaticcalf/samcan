@@ -615,6 +615,54 @@ describe("StateMachine - Transitions", () => {
         expect(sm.getNumberInput("nonexistent")).toBeUndefined()
     })
 
+    test("setInput() automatically determines type for boolean values", () => {
+        const sm = new StateMachine()
+
+        sm.setInput("isActive", true)
+
+        expect(sm.getBooleanInput("isActive")).toBe(true)
+
+        sm.setInput("isActive", false)
+
+        expect(sm.getBooleanInput("isActive")).toBe(false)
+    })
+
+    test("setInput() automatically determines type for number values", () => {
+        const sm = new StateMachine()
+
+        sm.setInput("speed", 5.5)
+
+        expect(sm.getNumberInput("speed")).toBe(5.5)
+
+        sm.setInput("speed", 10.0)
+
+        expect(sm.getNumberInput("speed")).toBe(10.0)
+    })
+
+    test("setInput() works with transitions", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("walk", "Walk", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, BooleanCondition } =
+            require("../core/animation")
+        const transition = new StateTransition("idle", "walk", [
+            new BooleanCondition("isMoving", true),
+        ])
+
+        sm.addTransition(transition)
+        sm.changeState("idle")
+
+        sm.setInput("isMoving", true)
+        sm.update(0.016)
+
+        expect(sm.currentState).toBe(state2)
+    })
+
     test("removes all transitions from a state", () => {
         const sm = new StateMachine()
         const timeline = new Timeline(5.0, 60)

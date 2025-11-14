@@ -146,6 +146,20 @@ export class StateMachine {
     }
 
     /**
+     * Set an input value for condition-based transitions
+     * Automatically determines the type based on the value
+     * @param name The name of the input
+     * @param value The value (boolean or number)
+     */
+    setInput(name: string, value: boolean | number): void {
+        if (typeof value === "boolean") {
+            this._context.booleans.set(name, value)
+        } else if (typeof value === "number") {
+            this._context.numbers.set(name, value)
+        }
+    }
+
+    /**
      * Set a boolean input value for boolean-based transitions
      * @param name The name of the boolean input
      * @param value The boolean value

@@ -138,7 +138,7 @@
     - Handle loop completion and callbacks
     - _Requirements: 1.3, 1.5, 8.1_
 
-- [ ] 8. Implement state machine system
+- [x] 8. Implement state machine system
   - [x] 8.1 Create AnimationState class
     - Store state ID, name, and associated timeline
     - Add speed and loop configuration
@@ -159,7 +159,7 @@
     - Support blend duration for smooth transitions
     - _Requirements: 4.2, 4.3, 4.5_
   
-  - [ ] 8.4 Add input and trigger system
+  - [x] 8.4 Add input and trigger system
     - Implement setInput() for boolean/number inputs
     - Add trigger() for event-based transitions
     - Evaluate transitions on each update
