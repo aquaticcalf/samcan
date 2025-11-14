@@ -139,7 +139,7 @@
     - _Requirements: 1.3, 1.5, 8.1_
 
 - [ ] 8. Implement state machine system
-  - [ ] 8.1 Create AnimationState class
+  - [x] 8.1 Create AnimationState class
     - Store state ID, name, and associated timeline
     - Add speed and loop configuration
     - Implement state activation and deactivation
