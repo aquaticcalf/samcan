@@ -17,6 +17,41 @@ globalThis.cancelAnimationFrame = dom.window.cancelAnimationFrame.bind(
     dom.window,
 )
 
+// Mock Image class that actually triggers onload for tests
+class MockImage {
+    private _src = ""
+    width = 0
+    height = 0
+    naturalWidth = 0
+    naturalHeight = 0
+    crossOrigin: string | null = null
+    onload: ((event: Event) => void) | null = null
+    onerror: ((event: ErrorEvent) => void) | null = null
+
+    get src() {
+        return this._src
+    }
+
+    set src(value: string) {
+        this._src = value
+        // Simulate async image loading
+        setTimeout(() => {
+            // Mock successful load with fake dimensions
+            this.width = 2
+            this.height = 2
+            this.naturalWidth = 2
+            this.naturalHeight = 2
+            if (this.onload) {
+                this.onload(new Event("load"))
+            }
+        }, 0)
+    }
+}
+
+globalThis.Image = MockImage as any
+globalThis.HTMLImageElement = dom.window.HTMLImageElement
+globalThis.HTMLCanvasElement = dom.window.HTMLCanvasElement
+
 // Add CompressionStream and DecompressionStream polyfills for jsdom
 // These are browser APIs that jsdom doesn't provide by default
 if (typeof globalThis.CompressionStream === "undefined") {

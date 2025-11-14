@@ -8,12 +8,70 @@ import type { Asset, RuntimeImageAsset } from "./types"
 export class AssetManager {
     private _assets: Map<string, Asset> = new Map()
     private _loadingPromises: Map<string, Promise<Asset>> = new Map()
+    private _placeholderImage: RuntimeImageAsset | null = null
 
     /**
      * Get readonly access to loaded assets
      */
     get loadedAssets(): ReadonlyMap<string, Asset> {
         return this._assets
+    }
+
+    /**
+     * Get a 1x1 placeholder image for fallback scenarios
+     */
+    getPlaceholderImage(): RuntimeImageAsset {
+        if (!this._placeholderImage) {
+            // Create a 1x1 transparent PNG data URL
+            const dataUrl =
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2NgYGD4DwABBAEAwgMZAAAAAElFTkSuQmCC"
+
+            const img = new Image()
+            img.src = dataUrl
+
+            this._placeholderImage = {
+                id: "__placeholder__",
+                type: "image",
+                url: dataUrl,
+                loaded: true,
+                width: 1,
+                height: 1,
+                data: img,
+            }
+        }
+        return this._placeholderImage
+    }
+
+    /**
+     * Load an image with optional fallback URL
+     * @param url - The URL of the image to load
+     * @param options - Optional configuration including fallback URL
+     * @returns Promise that resolves to the loaded image asset
+     */
+    async loadImage(
+        url: string,
+        options?: { fallbackUrl?: string },
+    ): Promise<RuntimeImageAsset> {
+        try {
+            const asset = await this.load(url, "image")
+            return asset as RuntimeImageAsset
+        } catch (error) {
+            // Try fallback URL if provided
+            if (options?.fallbackUrl) {
+                try {
+                    const fallbackAsset = await this.load(
+                        options.fallbackUrl,
+                        "image",
+                    )
+                    return fallbackAsset as RuntimeImageAsset
+                } catch (fallbackError) {
+                    // Return placeholder if fallback also fails
+                    return this.getPlaceholderImage()
+                }
+            }
+            // Return placeholder on failure
+            return this.getPlaceholderImage()
+        }
     }
 
     /**
@@ -74,7 +132,10 @@ export class AssetManager {
         if (asset.type === "image") {
             const imageAsset = asset as RuntimeImageAsset
             // Revoke object URLs if using ImageBitmap
-            if (imageAsset.data instanceof ImageBitmap) {
+            if (
+                typeof ImageBitmap !== "undefined" &&
+                imageAsset.data instanceof ImageBitmap
+            ) {
                 imageAsset.data.close()
             }
         }
