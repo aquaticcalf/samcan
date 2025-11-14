@@ -1,4 +1,5 @@
 import { Matrix } from "../math/matrix"
+import { Rectangle } from "../math/rectangle"
 import { Vector2 } from "../math/vector2"
 import { Transform } from "./transform"
 
@@ -14,6 +15,10 @@ export class SceneNode {
     private _opacity: number = 1.0
     private _worldTransformDirty: boolean = true
     private _cachedWorldTransform: Matrix = Matrix.identity()
+    private _boundsDirty: boolean = true
+    private _cachedLocalBounds: Rectangle | null = null
+    private _cachedWorldBounds: Rectangle | null = null
+    private _isDirty: boolean = true
 
     constructor(transform?: Transform) {
         this._transform = transform || Transform.identity()
@@ -46,6 +51,8 @@ export class SceneNode {
     set transform(value: Transform) {
         this._transform = value
         this.markWorldTransformDirty()
+        this.markBoundsDirty()
+        this.markDirty()
     }
 
     /**
@@ -59,7 +66,10 @@ export class SceneNode {
      * Set visibility state
      */
     set visible(value: boolean) {
-        this._visible = value
+        if (this._visible !== value) {
+            this._visible = value
+            this.markDirty()
+        }
     }
 
     /**
@@ -73,7 +83,11 @@ export class SceneNode {
      * Set opacity (0.0 to 1.0)
      */
     set opacity(value: number) {
-        this._opacity = Math.max(0, Math.min(1, value))
+        const newOpacity = Math.max(0, Math.min(1, value))
+        if (this._opacity !== newOpacity) {
+            this._opacity = newOpacity
+            this.markDirty()
+        }
     }
 
     /**
@@ -275,5 +289,185 @@ export class SceneNode {
         }
 
         return null
+    }
+
+    /**
+     * Get the local bounding box of this node (without transform applied)
+     * Base implementation returns null - subclasses should override
+     */
+    getLocalBounds(): Rectangle | null {
+        return null
+    }
+
+    /**
+     * Get the world bounding box of this node (with transform applied)
+     * Includes all children bounds
+     */
+    getWorldBounds(): Rectangle | null {
+        if (!this._boundsDirty && this._cachedWorldBounds !== null) {
+            return this._cachedWorldBounds
+        }
+
+        this._cachedWorldBounds = this.calculateWorldBounds()
+        this._boundsDirty = false
+        return this._cachedWorldBounds
+    }
+
+    /**
+     * Calculate the world bounds by combining local bounds with children bounds
+     */
+    private calculateWorldBounds(): Rectangle | null {
+        let bounds: Rectangle | null = null
+
+        // Get local bounds and transform to world space
+        const localBounds = this.getLocalBounds()
+        if (localBounds !== null) {
+            bounds = this.transformBoundsToWorld(localBounds)
+        }
+
+        // Include children bounds
+        for (const child of this._children) {
+            if (!child.visible) continue
+
+            const childBounds = child.getWorldBounds()
+            if (childBounds !== null) {
+                bounds =
+                    bounds === null ? childBounds : bounds.union(childBounds)
+            }
+        }
+
+        return bounds
+    }
+
+    /**
+     * Transform a local bounds rectangle to world space
+     */
+    private transformBoundsToWorld(localBounds: Rectangle): Rectangle {
+        const worldTransform = this.getWorldTransform()
+
+        // Transform all four corners of the rectangle
+        const topLeft = worldTransform.transformPoint(
+            new Vector2(localBounds.left, localBounds.top),
+        )
+        const topRight = worldTransform.transformPoint(
+            new Vector2(localBounds.right, localBounds.top),
+        )
+        const bottomLeft = worldTransform.transformPoint(
+            new Vector2(localBounds.left, localBounds.bottom),
+        )
+        const bottomRight = worldTransform.transformPoint(
+            new Vector2(localBounds.right, localBounds.bottom),
+        )
+
+        // Find the axis-aligned bounding box of the transformed corners
+        const minX = Math.min(
+            topLeft.x,
+            topRight.x,
+            bottomLeft.x,
+            bottomRight.x,
+        )
+        const maxX = Math.max(
+            topLeft.x,
+            topRight.x,
+            bottomLeft.x,
+            bottomRight.x,
+        )
+        const minY = Math.min(
+            topLeft.y,
+            topRight.y,
+            bottomLeft.y,
+            bottomRight.y,
+        )
+        const maxY = Math.max(
+            topLeft.y,
+            topRight.y,
+            bottomLeft.y,
+            bottomRight.y,
+        )
+
+        return new Rectangle(minX, minY, maxX - minX, maxY - minY)
+    }
+
+    /**
+     * Mark the bounds as dirty (needs recalculation)
+     */
+    private markBoundsDirty(): void {
+        if (this._boundsDirty) {
+            return // Already dirty
+        }
+
+        this._boundsDirty = true
+
+        // Mark parent bounds as dirty since our bounds changed
+        if (this._parent !== null) {
+            this._parent.markBoundsDirty()
+        }
+    }
+
+    /**
+     * Check if this node is dirty (needs redraw)
+     */
+    get isDirty(): boolean {
+        return this._isDirty
+    }
+
+    /**
+     * Mark this node as dirty (needs redraw)
+     */
+    markDirty(): void {
+        if (this._isDirty) {
+            return // Already dirty
+        }
+
+        this._isDirty = true
+
+        // Mark parent as dirty since we changed
+        if (this._parent !== null) {
+            this._parent.markDirty()
+        }
+    }
+
+    /**
+     * Clear the dirty flag after rendering
+     */
+    clearDirty(): void {
+        this._isDirty = false
+
+        // Clear children dirty flags
+        for (const child of this._children) {
+            child.clearDirty()
+        }
+    }
+
+    /**
+     * Get the dirty region (world bounds of this node)
+     * Returns null if not dirty or has no bounds
+     */
+    getDirtyRegion(): Rectangle | null {
+        if (!this._isDirty) {
+            return null
+        }
+
+        return this.getWorldBounds()
+    }
+
+    /**
+     * Collect all dirty regions from this node and its children
+     */
+    collectDirtyRegions(regions: Rectangle[]): void {
+        if (!this._isDirty) {
+            return
+        }
+
+        // Add this node's bounds if it has any
+        const bounds = this.getWorldBounds()
+        if (bounds !== null) {
+            regions.push(bounds)
+        }
+
+        // Collect from children
+        for (const child of this._children) {
+            child.collectDirtyRegions(regions)
+        }
     }
 }

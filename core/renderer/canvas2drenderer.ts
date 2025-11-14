@@ -2,6 +2,7 @@ import type { Color } from "../math/color"
 import type { Matrix } from "../math/matrix"
 import type { Paint } from "../math/paint"
 import type { Path } from "../math/path"
+import type { Rectangle } from "../math/rectangle"
 import type { Vector2 } from "../math/vector2"
 import type {
     Font,
@@ -105,6 +106,22 @@ export class Canvas2DRenderer implements Renderer {
             this._ctx.fillRect(0, 0, this._width, this._height)
         } else {
             this._ctx.clearRect(0, 0, this._width, this._height)
+        }
+    }
+
+    /**
+     * Clear a specific region of the canvas
+     */
+    clearRegion(region: Rectangle, color?: Color): void {
+        if (!this._ctx) {
+            throw new Error("Renderer not initialized")
+        }
+
+        if (color) {
+            this._ctx.fillStyle = color.toRGBA()
+            this._ctx.fillRect(region.x, region.y, region.width, region.height)
+        } else {
+            this._ctx.clearRect(region.x, region.y, region.width, region.height)
         }
     }
 

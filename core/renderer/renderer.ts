@@ -2,6 +2,7 @@ import type { Color } from "../math/color"
 import type { Matrix } from "../math/matrix"
 import type { Paint } from "../math/paint"
 import type { Path } from "../math/path"
+import type { Rectangle } from "../math/rectangle"
 import type { Vector2 } from "../math/vector2"
 
 /**
@@ -84,6 +85,13 @@ export interface Renderer {
      * @param color - Optional color to clear with (defaults to transparent)
      */
     clear(color?: Color): void
+
+    /**
+     * Clear a specific region of the canvas
+     * @param region - The rectangular region to clear
+     * @param color - Optional color to clear with (defaults to transparent)
+     */
+    clearRegion(region: Rectangle, color?: Color): void
 
     /**
      * Draw a path with the specified paint

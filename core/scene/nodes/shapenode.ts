@@ -1,5 +1,6 @@
 import { Path } from "../../math/path"
 import { Paint } from "../../math/paint"
+import { Rectangle } from "../../math/rectangle"
 import { Vector2 } from "../../math/vector2"
 import { SceneNode } from "../node"
 import { Transform } from "../transform"
@@ -30,6 +31,7 @@ export class ShapeNode extends SceneNode {
      */
     set path(value: Path) {
         this._path = value
+        this.markDirty()
     }
 
     /**
@@ -44,6 +46,7 @@ export class ShapeNode extends SceneNode {
      */
     set fill(value: Paint | null) {
         this._fill = value
+        this.markDirty()
     }
 
     /**
@@ -58,6 +61,7 @@ export class ShapeNode extends SceneNode {
      */
     set stroke(value: Paint | null) {
         this._stroke = value
+        this.markDirty()
     }
 
     /**
@@ -72,6 +76,25 @@ export class ShapeNode extends SceneNode {
      */
     set strokeWidth(value: number) {
         this._strokeWidth = Math.max(0, value)
+        this.markDirty()
+    }
+
+    /**
+     * Get the local bounding box of this shape
+     * Includes stroke width expansion
+     */
+    override getLocalBounds(): Rectangle | null {
+        const pathBounds = this._path.getBounds()
+        if (pathBounds === null) {
+            return null
+        }
+
+        // Expand bounds by half stroke width on each side
+        if (this._stroke !== null && this._strokeWidth > 0) {
+            return pathBounds.expand(this._strokeWidth / 2)
+        }
+
+        return pathBounds
     }
 
     /**

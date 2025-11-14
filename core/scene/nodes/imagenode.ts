@@ -30,6 +30,7 @@ export class ImageNode extends SceneNode {
      */
     set imageData(value: ImageData | HTMLImageElement | string) {
         this._imageData = value
+        this.markDirty()
     }
 
     /**
@@ -44,32 +45,13 @@ export class ImageNode extends SceneNode {
      */
     set sourceRect(value: Rectangle | null) {
         this._sourceRect = value
-    }
-
-    /**
-     * Test if a point (in world coordinates) hits this image
-     * Uses bounding box hit testing
-     */
-    override hitTest(worldPoint: Vector2): boolean {
-        // Transform world point to local coordinates
-        const worldTransform = this.getWorldTransform()
-        const inverseTransform = worldTransform.invert()
-        const localPoint = inverseTransform.transformPoint(worldPoint)
-
-        // Get image dimensions
-        const bounds = this.getLocalBounds()
-        if (!bounds) {
-            return false
-        }
-
-        // Test if point is inside the bounding box
-        return bounds.contains(localPoint)
+        this.markDirty()
     }
 
     /**
      * Get the local bounding box of the image
      */
-    private getLocalBounds(): Rectangle | null {
+    override getLocalBounds(): Rectangle | null {
         // If source rect is specified, use it
         if (this._sourceRect) {
             return this._sourceRect
@@ -96,5 +78,25 @@ export class ImageNode extends SceneNode {
 
         // For URL strings, we can't determine bounds without loading
         return null
+    }
+
+    /**
+     * Test if a point (in world coordinates) hits this image
+     * Uses bounding box hit testing
+     */
+    override hitTest(worldPoint: Vector2): boolean {
+        // Transform world point to local coordinates
+        const worldTransform = this.getWorldTransform()
+        const inverseTransform = worldTransform.invert()
+        const localPoint = inverseTransform.transformPoint(worldPoint)
+
+        // Get image dimensions
+        const bounds = this.getLocalBounds()
+        if (!bounds) {
+            return false
+        }
+
+        // Test if point is inside the bounding box
+        return bounds.contains(localPoint)
     }
 }

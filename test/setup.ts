@@ -26,7 +26,7 @@ class MockImage {
     naturalHeight = 0
     crossOrigin: string | null = null
     onload: ((event: Event) => void) | null = null
-    onerror: ((event: ErrorEvent) => void) | null = null
+    onerror: ((event: Event) => void) | null = null
 
     get src() {
         return this._src
@@ -48,9 +48,38 @@ class MockImage {
     }
 }
 
+// Make MockImage instanceof HTMLImageElement
+Object.setPrototypeOf(
+    MockImage.prototype,
+    dom.window.HTMLImageElement.prototype,
+)
+
 globalThis.Image = MockImage as any
 globalThis.HTMLImageElement = dom.window.HTMLImageElement
 globalThis.HTMLCanvasElement = dom.window.HTMLCanvasElement
+
+// Mock ImageData for canvas API
+globalThis.ImageData = class MockImageData {
+    width: number
+    height: number
+    data: Uint8ClampedArray
+
+    constructor(
+        dataOrWidth: Uint8ClampedArray | number,
+        width?: number,
+        height?: number,
+    ) {
+        if (typeof dataOrWidth === "number") {
+            this.width = dataOrWidth
+            this.height = width || 0
+            this.data = new Uint8ClampedArray(this.width * this.height * 4)
+        } else {
+            this.data = dataOrWidth
+            this.width = width || 0
+            this.height = height || 0
+        }
+    }
+} as any
 
 // Mock FontFace API for font loading tests
 class MockFontFace {

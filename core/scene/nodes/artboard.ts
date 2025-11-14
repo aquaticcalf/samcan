@@ -1,4 +1,5 @@
 import { Color } from "../../math/color"
+import { Rectangle } from "../../math/rectangle"
 import { SceneNode } from "../node"
 import { Transform } from "../transform"
 
@@ -34,6 +35,7 @@ export class Artboard extends SceneNode {
      */
     set width(value: number) {
         this._width = Math.max(0, value)
+        this.markDirty()
     }
 
     /**
@@ -48,6 +50,7 @@ export class Artboard extends SceneNode {
      */
     set height(value: number) {
         this._height = Math.max(0, value)
+        this.markDirty()
     }
 
     /**
@@ -62,5 +65,13 @@ export class Artboard extends SceneNode {
      */
     set backgroundColor(value: Color) {
         this._backgroundColor = value
+        this.markDirty()
+    }
+
+    /**
+     * Get the local bounding box of the artboard
+     */
+    override getLocalBounds(): Rectangle {
+        return new Rectangle(0, 0, this._width, this._height)
     }
 }

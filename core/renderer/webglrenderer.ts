@@ -3,6 +3,7 @@ import type { Color } from "../math/color"
 import { Matrix } from "../math/matrix"
 import type { Paint } from "../math/paint"
 import type { Path } from "../math/path"
+import type { Rectangle } from "../math/rectangle"
 import type { Vector2 } from "../math/vector2"
 import type {
     Font,
@@ -199,6 +200,37 @@ export class WebGLRenderer implements Renderer {
         }
 
         gl.clear(gl.COLOR_BUFFER_BIT)
+    }
+
+    /**
+     * Clear a specific region of the canvas
+     */
+    clearRegion(region: Rectangle, color?: Color): void {
+        if (!this._gl) {
+            throw new Error("Renderer not initialized")
+        }
+
+        const gl = this._gl
+
+        // Enable scissor test to limit clearing to the region
+        gl.enable(gl.SCISSOR_TEST)
+        gl.scissor(
+            Math.floor(region.x),
+            Math.floor(this._height - region.y - region.height),
+            Math.ceil(region.width),
+            Math.ceil(region.height),
+        )
+
+        if (color) {
+            gl.clearColor(color.r, color.g, color.b, color.a)
+        } else {
+            gl.clearColor(0, 0, 0, 0)
+        }
+
+        gl.clear(gl.COLOR_BUFFER_BIT)
+
+        // Disable scissor test
+        gl.disable(gl.SCISSOR_TEST)
     }
 
     /**

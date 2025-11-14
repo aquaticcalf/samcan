@@ -199,7 +199,7 @@
     - Support incremental loading for large files
     - _Requirements: 7.4, 7.5_
 
-- [-] 10. Implement asset management system
+- [x] 10. Implement asset management system
   - [x] 10.1 Create AssetManager with loading and caching
     - Implement load() for async asset loading
     - Add asset caching by ID
@@ -273,7 +273,7 @@
     - _Requirements: 9.4_
 
 - [ ] 13. Implement performance optimizations
-  - [ ] 13.1 Add dirty rectangle tracking
+  - [x] 13.1 Add dirty rectangle tracking
     - Track changed regions of scene graph
     - Implement incremental bounds calculation
     - Optimize renderer to only redraw dirty regions

@@ -9,3 +9,4 @@ export type {
 export { Canvas2DRenderer } from "./canvas2drenderer"
 export { WebGLRenderer } from "./webglrenderer"
 export { RendererFactory, RendererInitializationError } from "./rendererfactory"
+export { DirtyRegionManager } from "./dirtyregionmanager"
