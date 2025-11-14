@@ -226,7 +226,7 @@
     - _Requirements: 10.4_
 
 - [ ] 11. Enhance command system for editor support
-  - [ ] 11.1 Extend Command interface with metadata
+  - [x] 11.1 Extend Command interface with metadata
     - Add command description and categorization
     - Implement canUndo flag for non-undoable commands
     - Add command validation
