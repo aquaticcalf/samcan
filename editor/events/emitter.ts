@@ -5,7 +5,7 @@
 type EventHandler<T> = (data: T) => void
 
 export class EventEmitter<TEvents extends Record<string, any>> {
-    private _listeners: Map<keyof TEvents, Set<EventHandler<unknown>>>
+    private _listeners: Map<keyof TEvents, Set<EventHandler<any>>>
 
     constructor() {
         this._listeners = new Map()
@@ -24,11 +24,11 @@ export class EventEmitter<TEvents extends Record<string, any>> {
         }
 
         const handlers = this._listeners.get(event)!
-        handlers.add(handler as EventHandler<unknown>)
+        handlers.add(handler)
 
         // Return unsubscribe function
         return () => {
-            handlers.delete(handler as EventHandler<unknown>)
+            handlers.delete(handler)
         }
     }
 

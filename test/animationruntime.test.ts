@@ -311,3 +311,240 @@ describe("AnimationRuntime - Playback Controls", () => {
         expect(runtime.loopMode).toBe("none")
     })
 })
+
+describe("AnimationRuntime - Event System", () => {
+    test("emits play event when playback starts", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        let playEventFired = false
+        runtime.on("play", () => {
+            playEventFired = true
+        })
+
+        runtime.play()
+
+        expect(playEventFired).toBe(true)
+    })
+
+    test("emits pause event when playback pauses", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        let pauseEventFired = false
+        runtime.on("pause", () => {
+            pauseEventFired = true
+        })
+
+        runtime.play()
+        runtime.pause()
+
+        expect(pauseEventFired).toBe(true)
+    })
+
+    test("emits stop event when playback stops", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        let stopEventFired = false
+        runtime.on("stop", () => {
+            stopEventFired = true
+        })
+
+        runtime.play()
+        runtime.stop()
+
+        expect(stopEventFired).toBe(true)
+    })
+
+    test("emits stateChange event with new state", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        const states: string[] = []
+        runtime.on("stateChange", (state) => {
+            states.push(state)
+        })
+
+        runtime.play()
+        runtime.pause()
+        runtime.play()
+        runtime.stop()
+
+        expect(states).toEqual(["playing", "paused", "playing", "stopped"])
+    })
+
+    test("on() returns unsubscribe function", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        let eventCount = 0
+        const unsubscribe = runtime.on("play", () => {
+            eventCount++
+        })
+
+        runtime.play()
+        runtime.stop()
+
+        unsubscribe()
+
+        runtime.play()
+
+        expect(eventCount).toBe(1)
+    })
+
+    test("once() fires only once then unsubscribes", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        let eventCount = 0
+        runtime.once("play", () => {
+            eventCount++
+        })
+
+        runtime.play()
+        runtime.stop()
+        runtime.play()
+
+        expect(eventCount).toBe(1)
+    })
+
+    test("off() removes all listeners for an event", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        let eventCount = 0
+        runtime.on("play", () => {
+            eventCount++
+        })
+        runtime.on("play", () => {
+            eventCount++
+        })
+
+        runtime.play()
+        runtime.stop()
+
+        runtime.off("play")
+
+        runtime.play()
+
+        expect(eventCount).toBe(2)
+    })
+
+    test("removeAllListeners() removes all event listeners", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        let playCount = 0
+        let pauseCount = 0
+
+        runtime.on("play", () => {
+            playCount++
+        })
+        runtime.on("pause", () => {
+            pauseCount++
+        })
+
+        runtime.play()
+        runtime.pause()
+
+        runtime.removeAllListeners()
+
+        runtime.play()
+        runtime.pause()
+
+        expect(playCount).toBe(1)
+        expect(pauseCount).toBe(1)
+    })
+
+    test("emits complete event when animation finishes without loop", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(0.1, 60) // Very short duration
+
+        await runtime.load({ artboard, timeline })
+
+        let completeEventFired = false
+        runtime.on("complete", () => {
+            completeEventFired = true
+        })
+
+        runtime.play()
+
+        // Wait for animation to complete
+        await new Promise((resolve) => setTimeout(resolve, 200))
+
+        expect(completeEventFired).toBe(true)
+        expect(runtime.state).toBe("stopped")
+    })
+
+    test("emits loop event when animation loops", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(0.05, 60) // Very short duration
+
+        await runtime.load({ artboard, timeline })
+        runtime.setLoop("loop")
+
+        let loopEventCount = 0
+        runtime.on("loop", () => {
+            loopEventCount++
+        })
+
+        runtime.play()
+
+        // Wait for at least one loop
+        await new Promise((resolve) => setTimeout(resolve, 150))
+
+        runtime.stop()
+
+        expect(loopEventCount).toBeGreaterThan(0)
+    })
+
+    test("emits loop event in pingpong mode", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(0.05, 60) // Very short duration
+
+        await runtime.load({ artboard, timeline })
+        runtime.setLoop("pingpong")
+
+        let loopEventCount = 0
+        runtime.on("loop", () => {
+            loopEventCount++
+        })
+
+        runtime.play()
+
+        // Wait for at least one loop
+        await new Promise((resolve) => setTimeout(resolve, 150))
+
+        runtime.stop()
+
+        expect(loopEventCount).toBeGreaterThan(0)
+    })
+})

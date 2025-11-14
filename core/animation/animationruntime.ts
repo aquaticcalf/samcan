@@ -2,6 +2,7 @@ import type { Artboard } from "../scene/nodes/artboard"
 import { Clock } from "../timing/clock"
 import { Scheduler } from "../timing/scheduler"
 import { Timeline } from "./timeline"
+import { EventEmitter } from "../../editor/events/emitter"
 
 /**
  * Animation data structure that can be loaded into the runtime
@@ -22,6 +23,23 @@ export type PlaybackState = "idle" | "playing" | "paused" | "stopped"
 export type LoopMode = "none" | "loop" | "pingpong"
 
 /**
+ * Runtime events that can be emitted during animation playback
+ */
+export interface RuntimeEvents {
+    play: void
+    pause: void
+    stop: void
+    complete: void
+    loop: void
+    stateChange: PlaybackState
+}
+
+/**
+ * Type for runtime event names
+ */
+export type RuntimeEvent = keyof RuntimeEvents
+
+/**
  * AnimationRuntime manages the lifecycle and playback of animations
  * Connects Clock, Scheduler, and Timeline to execute animations
  */
@@ -35,10 +53,12 @@ export class AnimationRuntime {
     private _speed: number = 1.0
     private _loopMode: LoopMode = "none"
     private _direction: number = 1 // 1 for forward, -1 for reverse (used in pingpong)
+    private _events: EventEmitter<RuntimeEvents>
 
     constructor() {
         this._clock = new Clock()
         this._scheduler = new Scheduler()
+        this._events = new EventEmitter<RuntimeEvents>()
     }
 
     /**
@@ -181,6 +201,8 @@ export class AnimationRuntime {
         }
 
         this._startPlayback()
+        this._events.emit("play", undefined)
+        this._events.emit("stateChange", this._state)
     }
 
     /**
@@ -195,6 +217,8 @@ export class AnimationRuntime {
         this._state = "paused"
         this._clock.stop()
         this._scheduler.unschedule(this._onFrame)
+        this._events.emit("pause", undefined)
+        this._events.emit("stateChange", this._state)
     }
 
     /**
@@ -205,7 +229,10 @@ export class AnimationRuntime {
             return // No animation loaded
         }
 
-        if (this._state === "playing") {
+        const wasActivelyPlaying = this._state === "playing"
+        const previousState = this._state
+
+        if (wasActivelyPlaying) {
             this._stopPlayback()
         } else {
             this._state = "stopped"
@@ -217,6 +244,12 @@ export class AnimationRuntime {
 
         if (this._timeline) {
             this._timeline.evaluate(this._currentTime)
+        }
+
+        // Emit events only if we were in a meaningful state (playing or paused)
+        if (previousState === "playing" || previousState === "paused") {
+            this._events.emit("stop", undefined)
+            this._events.emit("stateChange", this._state)
         }
     }
 
@@ -259,6 +292,46 @@ export class AnimationRuntime {
      */
     setLoop(mode: LoopMode): void {
         this._loopMode = mode
+    }
+
+    /**
+     * Register an event listener for runtime events
+     * @param event Event name to listen for
+     * @param callback Function to call when event is emitted
+     * @returns Unsubscribe function to remove the listener
+     */
+    on<K extends RuntimeEvent>(
+        event: K,
+        callback: (data: RuntimeEvents[K]) => void,
+    ): () => void {
+        return this._events.on(event, callback)
+    }
+
+    /**
+     * Register a one-time event listener that automatically unsubscribes after first call
+     * @param event Event name to listen for
+     * @param callback Function to call when event is emitted
+     */
+    once<K extends RuntimeEvent>(
+        event: K,
+        callback: (data: RuntimeEvents[K]) => void,
+    ): void {
+        this._events.once(event, callback)
+    }
+
+    /**
+     * Remove all listeners for a specific event
+     * @param event Event name to remove listeners for
+     */
+    off(event: RuntimeEvent): void {
+        this._events.off(event)
+    }
+
+    /**
+     * Remove all event listeners
+     */
+    removeAllListeners(): void {
+        this._events.removeAllListeners()
     }
 
     /**
@@ -310,37 +383,54 @@ export class AnimationRuntime {
 
         if (this._loopMode === "none") {
             // No looping - stop at end
-            if (this._currentTime >= duration) {
-                this._currentTime = duration
+            if (this._currentTime >= duration || this._currentTime < 0) {
+                this._currentTime = Math.max(
+                    0,
+                    Math.min(duration, this._currentTime),
+                )
                 this._timeline.evaluate(this._currentTime)
                 this._stopPlayback()
-                return
-            }
-            if (this._currentTime < 0) {
-                this._currentTime = 0
-                this._timeline.evaluate(this._currentTime)
-                this._stopPlayback()
+                this._emitPlaybackComplete()
                 return
             }
         } else if (this._loopMode === "loop") {
             // Loop mode - wrap around
             if (this._currentTime >= duration) {
                 this._currentTime = this._currentTime % duration
+                this._emitLoopEvent()
             } else if (this._currentTime < 0) {
                 this._currentTime = duration + (this._currentTime % duration)
+                this._emitLoopEvent()
             }
         } else if (this._loopMode === "pingpong") {
             // Ping-pong mode - reverse direction at boundaries
             if (this._currentTime >= duration) {
                 this._currentTime = duration - (this._currentTime - duration)
                 this._direction = -1
+                this._emitLoopEvent()
             } else if (this._currentTime < 0) {
                 this._currentTime = -this._currentTime
                 this._direction = 1
+                this._emitLoopEvent()
             }
         }
 
         // Evaluate timeline at current time
         this._timeline.evaluate(this._currentTime)
+    }
+
+    /**
+     * Helper method to emit loop event
+     */
+    private _emitLoopEvent(): void {
+        this._events.emit("loop", undefined)
+    }
+
+    /**
+     * Helper method to emit complete event and state change
+     */
+    private _emitPlaybackComplete(): void {
+        this._events.emit("complete", undefined)
+        this._events.emit("stateChange", this._state)
     }
 }

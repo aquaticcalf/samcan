@@ -23,4 +23,6 @@ export {
     type AnimationData,
     type PlaybackState,
     type LoopMode,
+    type RuntimeEvent,
+    type RuntimeEvents,
 } from "./animationruntime"
