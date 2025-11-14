@@ -1,0 +1,182 @@
+import { AnimationState } from "./animationstate"
+
+/**
+ * StateMachine manages a collection of animation states and handles transitions between them
+ * Provides state switching logic and updates the active state's timeline
+ */
+export class StateMachine {
+    private _states: Map<string, AnimationState> = new Map()
+    private _currentState: AnimationState | null = null
+    private _currentTime: number = 0
+
+    /**
+     * Get the currently active animation state
+     */
+    get currentState(): AnimationState | null {
+        return this._currentState
+    }
+
+    /**
+     * Get all states in the state machine
+     */
+    get states(): ReadonlyMap<string, AnimationState> {
+        return this._states
+    }
+
+    /**
+     * Add a state to the state machine
+     * @param state The animation state to add
+     * @throws Error if a state with the same ID already exists
+     */
+    addState(state: AnimationState): void {
+        if (this._states.has(state.id)) {
+            throw new Error(`State with id "${state.id}" already exists`)
+        }
+
+        this._states.set(state.id, state)
+    }
+
+    /**
+     * Remove a state from the state machine
+     * @param stateId The ID of the state to remove
+     * @returns true if the state was removed, false if it didn't exist
+     */
+    removeState(stateId: string): boolean {
+        const state = this._states.get(stateId)
+        if (!state) {
+            return false
+        }
+
+        // If removing the current state, deactivate it first
+        if (this._currentState === state) {
+            this._currentState.deactivate()
+            this._currentState = null
+            this._currentTime = 0
+        }
+
+        return this._states.delete(stateId)
+    }
+
+    /**
+     * Get a state by its ID
+     * @param stateId The ID of the state to retrieve
+     * @returns The animation state, or undefined if not found
+     */
+    getState(stateId: string): AnimationState | undefined {
+        return this._states.get(stateId)
+    }
+
+    /**
+     * Check if a state exists in the state machine
+     * @param stateId The ID of the state to check
+     * @returns true if the state exists, false otherwise
+     */
+    hasState(stateId: string): boolean {
+        return this._states.has(stateId)
+    }
+
+    /**
+     * Switch to a different state
+     * @param stateId The ID of the state to switch to
+     * @throws Error if the state doesn't exist
+     */
+    changeState(stateId: string): void {
+        const newState = this._states.get(stateId)
+        if (!newState) {
+            throw new Error(`State with id "${stateId}" does not exist`)
+        }
+
+        // Deactivate current state if there is one
+        if (this._currentState) {
+            this._currentState.deactivate()
+        }
+
+        // Activate new state
+        this._currentState = newState
+        this._currentState.activate()
+        this._currentTime = 0
+    }
+
+    /**
+     * Update the state machine
+     * Advances the current state's timeline based on delta time and speed
+     * @param deltaTime Time elapsed since last update in seconds
+     */
+    update(deltaTime: number): void {
+        if (!this._currentState) {
+            return
+        }
+
+        // Apply speed multiplier
+        const adjustedDelta = deltaTime * this._currentState.speed
+
+        // Update current time
+        this._currentTime += adjustedDelta
+
+        // Handle looping
+        if (
+            this._currentState.loop &&
+            this._currentTime >= this._currentState.duration
+        ) {
+            this._currentTime = this._currentTime % this._currentState.duration
+        } else {
+            // Clamp to duration if not looping
+            this._currentTime = Math.min(
+                this._currentTime,
+                this._currentState.duration,
+            )
+        }
+
+        // Evaluate the timeline at the current time
+        this._currentState.evaluate(this._currentTime)
+    }
+
+    /**
+     * Get the current playback time of the active state
+     * @returns The current time in seconds, or 0 if no state is active
+     */
+    get currentTime(): number {
+        return this._currentTime
+    }
+
+    /**
+     * Set the current playback time of the active state
+     * @param time The time in seconds to seek to
+     */
+    set currentTime(time: number) {
+        if (!this._currentState) {
+            return
+        }
+
+        this._currentTime = Math.max(
+            0,
+            Math.min(time, this._currentState.duration),
+        )
+    }
+
+    /**
+     * Reset the state machine to its initial state
+     * Deactivates the current state and resets time
+     */
+    reset(): void {
+        if (this._currentState) {
+            this._currentState.deactivate()
+            this._currentState = null
+        }
+        this._currentTime = 0
+    }
+
+    /**
+     * Get the number of states in the state machine
+     */
+    get stateCount(): number {
+        return this._states.size
+    }
+
+    /**
+     * Get all state IDs
+     */
+    getStateIds(): string[] {
+        return Array.from(this._states.keys())
+    }
+}

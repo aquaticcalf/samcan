@@ -27,3 +27,4 @@ export {
     type RuntimeEvents,
 } from "./animationruntime"
 export { AnimationState } from "./animationstate"
+export { StateMachine } from "./statemachine"
