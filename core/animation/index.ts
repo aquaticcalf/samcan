@@ -11,3 +11,10 @@ export {
     cubicBezier,
     type EasingFunction as EasingFn,
 } from "./easing"
+export {
+    NumberInterpolator,
+    Vector2Interpolator,
+    ColorInterpolator,
+    InterpolatorRegistry,
+    type Interpolator,
+} from "./interpolator"

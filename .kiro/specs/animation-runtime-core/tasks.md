@@ -84,7 +84,7 @@
     - Support multiple scheduled callbacks
     - _Requirements: 1.3, 8.2_
 
-- [ ] 6. Implement animation timeline system
+- [x] 6. Implement animation timeline system
   - [x] 6.1 Create Timeline class with track management
     - Store animation duration and FPS
     - Manage collection of AnimationTrack instances
@@ -105,7 +105,7 @@
     - Implement cubic bezier interpolation
     - _Requirements: 3.2, 3.4_
   
-  - [ ] 6.4 Build type-specific interpolators
+  - [x] 6.4 Build type-specific interpolators
     - Create NumberInterpolator for scalar values
     - Create Vector2Interpolator for positions and scales
     - Create ColorInterpolator for color transitions
