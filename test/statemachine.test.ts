@@ -283,3 +283,364 @@ describe("StateMachine", () => {
         expect(states.size).toBe(1)
     })
 })
+
+describe("StateMachine - Transitions", () => {
+    test("adds transitions to the state machine", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("walk", "Walk", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, TimeCondition } = require("../core/animation")
+        const transition = new StateTransition("idle", "walk", [
+            new TimeCondition(2.0),
+        ])
+
+        sm.addTransition(transition)
+
+        expect(sm.transitions.length).toBe(1)
+        expect(sm.transitions[0]).toBe(transition)
+    })
+
+    test("throws error when adding transition with non-existent source state", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state = new AnimationState("walk", "Walk", timeline)
+
+        sm.addState(state)
+
+        const { StateTransition, TimeCondition } = require("../core/animation")
+        const transition = new StateTransition("idle", "walk", [
+            new TimeCondition(2.0),
+        ])
+
+        expect(() => sm.addTransition(transition)).toThrow(
+            'Cannot add transition: source state "idle" does not exist',
+        )
+    })
+
+    test("throws error when adding transition with non-existent destination state", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state = new AnimationState("idle", "Idle", timeline)
+
+        sm.addState(state)
+
+        const { StateTransition, TimeCondition } = require("../core/animation")
+        const transition = new StateTransition("idle", "walk", [
+            new TimeCondition(2.0),
+        ])
+
+        expect(() => sm.addTransition(transition)).toThrow(
+            'Cannot add transition: destination state "walk" does not exist',
+        )
+    })
+
+    test("removes transitions from the state machine", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("walk", "Walk", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, TimeCondition } = require("../core/animation")
+        const transition = new StateTransition("idle", "walk", [
+            new TimeCondition(2.0),
+        ])
+
+        sm.addTransition(transition)
+        const removed = sm.removeTransition(transition)
+
+        expect(removed).toBe(true)
+        expect(sm.transitions.length).toBe(0)
+    })
+
+    test("returns false when removing non-existent transition", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("walk", "Walk", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, TimeCondition } = require("../core/animation")
+        const transition = new StateTransition("idle", "walk", [
+            new TimeCondition(2.0),
+        ])
+
+        const removed = sm.removeTransition(transition)
+
+        expect(removed).toBe(false)
+    })
+
+    test("automatically transitions based on time condition", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("walk", "Walk", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, TimeCondition } = require("../core/animation")
+        const transition = new StateTransition("idle", "walk", [
+            new TimeCondition(2.0),
+        ])
+
+        sm.addTransition(transition)
+        sm.changeState("idle")
+
+        expect(sm.currentState).toBe(state1)
+
+        sm.update(1.0)
+        expect(sm.currentState).toBe(state1)
+
+        sm.update(1.5)
+        expect(sm.currentState).toBe(state2)
+    })
+
+    test("transitions based on event condition", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("jump", "Jump", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, EventCondition } = require("../core/animation")
+        const transition = new StateTransition("idle", "jump", [
+            new EventCondition("jumpPressed"),
+        ])
+
+        sm.addTransition(transition)
+        sm.changeState("idle")
+
+        sm.trigger("jumpPressed")
+        sm.update(0.016)
+
+        expect(sm.currentState).toBe(state2)
+    })
+
+    test("transitions based on boolean condition", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("walk", "Walk", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, BooleanCondition } =
+            require("../core/animation")
+        const transition = new StateTransition("idle", "walk", [
+            new BooleanCondition("isMoving", true),
+        ])
+
+        sm.addTransition(transition)
+        sm.changeState("idle")
+
+        sm.setBooleanInput("isMoving", true)
+        sm.update(0.016)
+
+        expect(sm.currentState).toBe(state2)
+    })
+
+    test("transitions based on number condition", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("walk", "Walk", timeline)
+        const state2 = new AnimationState("run", "Run", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, NumberCondition } =
+            require("../core/animation")
+        const transition = new StateTransition("walk", "run", [
+            new NumberCondition("speed", "greaterThan", 5.0),
+        ])
+
+        sm.addTransition(transition)
+        sm.changeState("walk")
+
+        sm.setNumberInput("speed", 6.0)
+        sm.update(0.016)
+
+        expect(sm.currentState).toBe(state2)
+    })
+
+    test("prioritizes higher priority transitions", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("walk", "Walk", timeline)
+        const state3 = new AnimationState("run", "Run", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+        sm.addState(state3)
+
+        const { StateTransition, BooleanCondition } =
+            require("../core/animation")
+
+        // Lower priority transition
+        const transition1 = new StateTransition(
+            "idle",
+            "walk",
+            [new BooleanCondition("isMoving", true)],
+            0,
+            1,
+        )
+
+        // Higher priority transition
+        const transition2 = new StateTransition(
+            "idle",
+            "run",
+            [new BooleanCondition("isMoving", true)],
+            0,
+            10,
+        )
+
+        sm.addTransition(transition1)
+        sm.addTransition(transition2)
+        sm.changeState("idle")
+
+        sm.setBooleanInput("isMoving", true)
+        sm.update(0.016)
+
+        // Should transition to run (higher priority)
+        expect(sm.currentState).toBe(state3)
+    })
+
+    test("requires all conditions to be met for transition", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("attack", "Attack", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, BooleanCondition, NumberCondition } =
+            require("../core/animation")
+
+        const transition = new StateTransition("idle", "attack", [
+            new BooleanCondition("canAttack", true),
+            new NumberCondition("energy", "greaterThanOrEqual", 10.0),
+        ])
+
+        sm.addTransition(transition)
+        sm.changeState("idle")
+
+        // Only one condition met
+        sm.setBooleanInput("canAttack", true)
+        sm.setNumberInput("energy", 5.0)
+        sm.update(0.016)
+
+        expect(sm.currentState).toBe(state1)
+
+        // Both conditions met
+        sm.setNumberInput("energy", 15.0)
+        sm.update(0.016)
+
+        expect(sm.currentState).toBe(state2)
+    })
+
+    test("clears events after each update", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("jump", "Jump", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+
+        const { StateTransition, EventCondition } = require("../core/animation")
+        const transition = new StateTransition("idle", "jump", [
+            new EventCondition("jumpPressed"),
+        ])
+
+        sm.addTransition(transition)
+        sm.changeState("idle")
+
+        sm.trigger("jumpPressed")
+        sm.update(0.016)
+
+        expect(sm.currentState).toBe(state2)
+
+        // Reset to idle
+        sm.changeState("idle")
+
+        // Event should be cleared, no transition should occur
+        sm.update(0.016)
+
+        expect(sm.currentState).toBe(state1)
+    })
+
+    test("gets and sets boolean inputs", () => {
+        const sm = new StateMachine()
+
+        sm.setBooleanInput("test", true)
+
+        expect(sm.getBooleanInput("test")).toBe(true)
+
+        sm.setBooleanInput("test", false)
+
+        expect(sm.getBooleanInput("test")).toBe(false)
+    })
+
+    test("gets and sets number inputs", () => {
+        const sm = new StateMachine()
+
+        sm.setNumberInput("speed", 5.5)
+
+        expect(sm.getNumberInput("speed")).toBe(5.5)
+
+        sm.setNumberInput("speed", 10.0)
+
+        expect(sm.getNumberInput("speed")).toBe(10.0)
+    })
+
+    test("returns undefined for non-existent inputs", () => {
+        const sm = new StateMachine()
+
+        expect(sm.getBooleanInput("nonexistent")).toBeUndefined()
+        expect(sm.getNumberInput("nonexistent")).toBeUndefined()
+    })
+
+    test("removes all transitions from a state", () => {
+        const sm = new StateMachine()
+        const timeline = new Timeline(5.0, 60)
+        const state1 = new AnimationState("idle", "Idle", timeline)
+        const state2 = new AnimationState("walk", "Walk", timeline)
+        const state3 = new AnimationState("run", "Run", timeline)
+
+        sm.addState(state1)
+        sm.addState(state2)
+        sm.addState(state3)
+
+        const { StateTransition, TimeCondition } = require("../core/animation")
+
+        sm.addTransition(
+            new StateTransition("idle", "walk", [new TimeCondition(1.0)]),
+        )
+        sm.addTransition(
+            new StateTransition("idle", "run", [new TimeCondition(2.0)]),
+        )
+        sm.addTransition(
+            new StateTransition("walk", "run", [new TimeCondition(1.0)]),
+        )
+
+        const removed = sm.removeTransitionsFrom("idle")
+
+        expect(removed).toBe(2)
+        expect(sm.transitions.length).toBe(1)
+    })
+})

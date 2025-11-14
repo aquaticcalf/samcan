@@ -28,3 +28,14 @@ export {
 } from "./animationruntime"
 export { AnimationState } from "./animationstate"
 export { StateMachine } from "./statemachine"
+export {
+    StateTransition,
+    EventCondition,
+    BooleanCondition,
+    NumberCondition,
+    TimeCondition,
+    type TransitionCondition,
+    type TransitionConditionType,
+    type StateMachineContext,
+    type NumberComparisonOperator,
+} from "./statetransition"
