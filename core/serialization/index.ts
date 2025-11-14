@@ -26,3 +26,5 @@ export type {
     FileMetadata,
     SamcanFile,
 } from "./types"
+
+export { Serializer } from "./serializer"

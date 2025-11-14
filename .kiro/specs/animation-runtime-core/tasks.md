@@ -172,7 +172,7 @@
      - Add metadata and version information
      - _Requirements: 7.1, 7.2_
   
-  - [ ] 9.2 Implement Serializer for export
+  - [x] 9.2 Implement Serializer for export
     - Convert Artboard to ArtboardData
     - Serialize scene graph nodes recursively
     - Export timeline and keyframe data
