@@ -232,7 +232,7 @@
     - Add command validation
     - _Requirements: 5.1, 5.2_
   
-  - [ ] 11.2 Create CommandHistory manager
+  - [x] 11.2 Create CommandHistory manager
     - Implement undo/redo stack management
     - Add execute() that pushes to history
     - Implement undo() and redo() operations
