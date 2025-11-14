@@ -523,8 +523,17 @@ export class Serializer {
      * Deserialize a SamcanFile from JSON string
      */
     fromJSON(json: string): SamcanFile {
-        const data = JSON.parse(json) as SamcanFile
-        return this.validateSamcanFile(data)
+        let data: unknown
+        try {
+            data = JSON.parse(json)
+        } catch (error) {
+            throw new Error(
+                `Failed to parse samcan file: ${error instanceof Error ? error.message : "Invalid JSON"}`,
+            )
+        }
+
+        const validatedData = this.validateSamcanFile(data)
+        return this.migrateSamcanFile(validatedData)
     }
 
     /**
@@ -537,23 +546,209 @@ export class Serializer {
 
         const file = data as Record<string, unknown>
 
+        // Validate version
         if (typeof file.version !== "string") {
             throw new Error("Invalid samcan file: missing or invalid version")
         }
 
+        if (!this._isValidVersion(file.version)) {
+            throw new Error(
+                `Invalid samcan file: unsupported version format "${file.version}"`,
+            )
+        }
+
+        // Validate metadata
         if (typeof file.metadata !== "object" || file.metadata === null) {
             throw new Error("Invalid samcan file: missing or invalid metadata")
         }
 
+        const metadata = file.metadata as Record<string, unknown>
+        if (typeof metadata.name !== "string") {
+            throw new Error(
+                "Invalid samcan file: metadata missing required field 'name'",
+            )
+        }
+
+        if (typeof metadata.created !== "string") {
+            throw new Error(
+                "Invalid samcan file: metadata missing required field 'created'",
+            )
+        }
+
+        if (typeof metadata.modified !== "string") {
+            throw new Error(
+                "Invalid samcan file: metadata missing required field 'modified'",
+            )
+        }
+
+        // Validate artboards
         if (!Array.isArray(file.artboards)) {
             throw new Error("Invalid samcan file: missing or invalid artboards")
         }
 
+        for (let i = 0; i < file.artboards.length; i++) {
+            this._validateArtboardData(file.artboards[i], i)
+        }
+
+        // Validate assets
         if (!Array.isArray(file.assets)) {
             throw new Error("Invalid samcan file: missing or invalid assets")
         }
 
+        // Validate state machines (optional)
+        if (
+            file.stateMachines !== undefined &&
+            !Array.isArray(file.stateMachines)
+        ) {
+            throw new Error(
+                "Invalid samcan file: stateMachines must be an array",
+            )
+        }
+
         return data as SamcanFile
+    }
+
+    /**
+     * Check if version string is valid (semver format)
+     */
+    private _isValidVersion(version: string): boolean {
+        const semverRegex = /^\d+\.\d+\.\d+$/
+        return semverRegex.test(version)
+    }
+
+    /**
+     * Validate artboard data structure
+     */
+    private _validateArtboardData(data: unknown, index: number): void {
+        if (typeof data !== "object" || data === null) {
+            throw new Error(
+                `Invalid samcan file: artboard at index ${index} is not an object`,
+            )
+        }
+
+        const artboard = data as Record<string, unknown>
+
+        if (typeof artboard.id !== "string") {
+            throw new Error(
+                `Invalid samcan file: artboard at index ${index} missing 'id'`,
+            )
+        }
+
+        if (typeof artboard.name !== "string") {
+            throw new Error(
+                `Invalid samcan file: artboard at index ${index} missing 'name'`,
+            )
+        }
+
+        if (typeof artboard.width !== "number" || artboard.width <= 0) {
+            throw new Error(
+                `Invalid samcan file: artboard at index ${index} has invalid 'width'`,
+            )
+        }
+
+        if (typeof artboard.height !== "number" || artboard.height <= 0) {
+            throw new Error(
+                `Invalid samcan file: artboard at index ${index} has invalid 'height'`,
+            )
+        }
+
+        if (!Array.isArray(artboard.nodes)) {
+            throw new Error(
+                `Invalid samcan file: artboard at index ${index} missing 'nodes' array`,
+            )
+        }
+    }
+
+    /**
+     * Migrate a SamcanFile to the current version
+     */
+    migrateSamcanFile(data: SamcanFile): SamcanFile {
+        const currentVersion = "1.0.0"
+        const fileVersion = data.version
+
+        // Check version compatibility
+        const compatibility = this._checkVersionCompatibility(
+            fileVersion,
+            currentVersion,
+        )
+
+        if (compatibility === "incompatible") {
+            throw new Error(
+                `Incompatible samcan file version: file is version ${fileVersion}, but current version is ${currentVersion}. Major version mismatch.`,
+            )
+        }
+
+        if (compatibility === "current") {
+            return data
+        }
+
+        // Perform migration
+        let migratedData = data
+
+        // Migration chain: apply migrations in order
+        const [fileMajor, fileMinor, filePatch] =
+            this._parseVersion(fileVersion)
+        const [currentMajor, currentMinor, currentPatch] =
+            this._parseVersion(currentVersion)
+
+        // Only migrate within same major version
+        if (fileMajor === currentMajor) {
+            // Example: migrate from 1.0.0 to 1.1.0
+            if (fileMajor === 1 && fileMinor === 0 && currentMinor >= 1) {
+                // Future migration logic would go here
+                // migratedData = this._migrateFrom1_0_0To1_1_0(migratedData)
+            }
+
+            // Update version to current
+            migratedData = {
+                ...migratedData,
+                version: currentVersion,
+                metadata: {
+                    ...migratedData.metadata,
+                    modified: new Date().toISOString(),
+                },
+            }
+        }
+
+        return migratedData
+    }
+
+    /**
+     * Check version compatibility
+     */
+    private _checkVersionCompatibility(
+        fileVersion: string,
+        currentVersion: string,
+    ): "current" | "compatible" | "incompatible" {
+        const [fileMajor, fileMinor, filePatch] =
+            this._parseVersion(fileVersion)
+        const [currentMajor, currentMinor, currentPatch] =
+            this._parseVersion(currentVersion)
+
+        // Same version
+        if (
+            fileMajor === currentMajor &&
+            fileMinor === currentMinor &&
+            filePatch === currentPatch
+        ) {
+            return "current"
+        }
+
+        // Different major version = incompatible
+        if (fileMajor !== currentMajor) {
+            return "incompatible"
+        }
+
+        // Same major version = compatible (can migrate)
+        return "compatible"
+    }
+
+    /**
+     * Parse version string into [major, minor, patch]
+     */
+    private _parseVersion(version: string): [number, number, number] {
+        const parts = version.split(".").map((part) => Number.parseInt(part))
+        return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0]
     }
 
     /**

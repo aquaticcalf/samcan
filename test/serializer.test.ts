@@ -537,8 +537,224 @@ describe("Serializer - Deserialization", () => {
         expect(() => {
             serializer.validateSamcanFile({
                 version: "1.0.0",
-                metadata: {},
+                metadata: {
+                    name: "Test",
+                    created: "20XX-XX-XX",
+                    modified: "20XX-XX-XX",
+                },
             })
+        }).toThrow("Invalid samcan file: missing or invalid artboards")
+    })
+
+    it("should validate version format", () => {
+        const serializer = new Serializer()
+
+        expect(() => {
+            serializer.validateSamcanFile({
+                version: "invalid",
+                metadata: {
+                    name: "Test",
+                    created: "20XX-XX-XX",
+                    modified: "20XX-XX-XX",
+                },
+                artboards: [],
+                assets: [],
+            })
+        }).toThrow("unsupported version format")
+
+        expect(() => {
+            serializer.validateSamcanFile({
+                version: "1.0",
+                metadata: {
+                    name: "Test",
+                    created: "20XX-XX-XX",
+                    modified: "20XX-XX-XX",
+                },
+                artboards: [],
+                assets: [],
+            })
+        }).toThrow("unsupported version format")
+    })
+
+    it("should validate metadata fields", () => {
+        const serializer = new Serializer()
+
+        expect(() => {
+            serializer.validateSamcanFile({
+                version: "1.0.0",
+                metadata: {
+                    created: "20XX-XX-XX",
+                    modified: "20XX-XX-XX",
+                },
+                artboards: [],
+                assets: [],
+            })
+        }).toThrow("metadata missing required field 'name'")
+
+        expect(() => {
+            serializer.validateSamcanFile({
+                version: "1.0.0",
+                metadata: {
+                    name: "Test",
+                    modified: "20XX-XX-XX",
+                },
+                artboards: [],
+                assets: [],
+            })
+        }).toThrow("metadata missing required field 'created'")
+
+        expect(() => {
+            serializer.validateSamcanFile({
+                version: "1.0.0",
+                metadata: {
+                    name: "Test",
+                    created: "20XX-XX-XX",
+                },
+                artboards: [],
+                assets: [],
+            })
+        }).toThrow("metadata missing required field 'modified'")
+    })
+
+    it("should validate artboard structure", () => {
+        const serializer = new Serializer()
+
+        expect(() => {
+            serializer.validateSamcanFile({
+                version: "1.0.0",
+                metadata: {
+                    name: "Test",
+                    created: "20XX-XX-XX",
+                    modified: "20XX-XX-XX",
+                },
+                artboards: [null],
+                assets: [],
+            })
+        }).toThrow("artboard at index 0 is not an object")
+
+        expect(() => {
+            serializer.validateSamcanFile({
+                version: "1.0.0",
+                metadata: {
+                    name: "Test",
+                    created: "20XX-XX-XX",
+                    modified: "20XX-XX-XX",
+                },
+                artboards: [
+                    {
+                        name: "Artboard",
+                        width: 800,
+                        height: 600,
+                        backgroundColor: { r: 1, g: 1, b: 1, a: 1 },
+                        nodes: [],
+                        timeline: { duration: 0, fps: 60, tracks: [] },
+                    },
+                ],
+                assets: [],
+            })
+        }).toThrow("artboard at index 0 missing 'id'")
+
+        expect(() => {
+            serializer.validateSamcanFile({
+                version: "1.0.0",
+                metadata: {
+                    name: "Test",
+                    created: "20XX-XX-XX",
+                    modified: "20XX-XX-XX",
+                },
+                artboards: [
+                    {
+                        id: "artboard_1",
+                        name: "Artboard",
+                        width: -100,
+                        height: 600,
+                        backgroundColor: { r: 1, g: 1, b: 1, a: 1 },
+                        nodes: [],
+                        timeline: { duration: 0, fps: 60, tracks: [] },
+                    },
+                ],
+                assets: [],
+            })
+        }).toThrow("artboard at index 0 has invalid 'width'")
+    })
+
+    it("should handle JSON parsing errors gracefully", () => {
+        const serializer = new Serializer()
+
+        expect(() => {
+            serializer.fromJSON("invalid json {")
+        }).toThrow("Failed to parse samcan file")
+
+        expect(() => {
+            serializer.fromJSON("")
+        }).toThrow("Failed to parse samcan file")
+    })
+
+    it("should migrate file to current version", () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const file = serializer.serializeSamcanFile([artboard])
+
+        file.version = "1.0.0"
+
+        const migrated = serializer.migrateSamcanFile(file)
+
+        expect(migrated.version).toBe("1.0.0")
+        expect(migrated.artboards.length).toBe(1)
+    })
+
+    it("should reject incompatible major versions", () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const file = serializer.serializeSamcanFile([artboard])
+
+        file.version = "2.0.0"
+
+        expect(() => {
+            serializer.migrateSamcanFile(file)
+        }).toThrow("Incompatible samcan file version")
+    })
+
+    it("should accept compatible minor versions", () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const file = serializer.serializeSamcanFile([artboard])
+
+        file.version = "1.0.0"
+
+        const migrated = serializer.migrateSamcanFile(file)
+
+        expect(migrated.version).toBe("1.0.0")
+    })
+
+    it("should validate and migrate when loading from JSON", () => {
+        const serializer = new Serializer()
+        const artboard = new Artboard(800, 600, Color.white())
+        const file = serializer.serializeSamcanFile([artboard])
+
+        const json = serializer.toJSON(file)
+        const loaded = serializer.fromJSON(json)
+
+        expect(loaded.version).toBe("1.0.0")
+        expect(loaded.artboards.length).toBe(1)
+    })
+
+    it("should reject invalid JSON structure during load", () => {
+        const serializer = new Serializer()
+
+        const invalidFile = {
+            version: "1.0.0",
+            metadata: {
+                name: "Test",
+                created: "20XX-XX-XX",
+                modified: "20XX-XX-XX",
+            },
+            artboards: "not an array",
+            assets: [],
+        }
+
+        expect(() => {
+            serializer.fromJSON(JSON.stringify(invalidFile))
         }).toThrow("Invalid samcan file: missing or invalid artboards")
     })
 })
