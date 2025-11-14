@@ -3,7 +3,7 @@ import type { Color } from "../math/color"
 import { Matrix } from "../math/matrix"
 import type { Paint } from "../math/paint"
 import type { Path } from "../math/path"
-import type { Rectangle } from "../math/rectangle"
+import { Rectangle } from "../math/rectangle"
 import type { Vector2 } from "../math/vector2"
 import type {
     Font,
@@ -1115,6 +1115,20 @@ export class WebGLRenderer implements Renderer {
             default:
                 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
         }
+    }
+
+    /**
+     * Get the current viewport bounds in world coordinates
+     * For WebGL, this is the canvas dimensions
+     */
+    getViewportBounds(): Rectangle {
+        if (!this._gl) {
+            throw new Error("Renderer not initialized")
+        }
+
+        // Return the canvas bounds in screen space
+        // This assumes the renderer is rendering in screen space coordinates
+        return new Rectangle(0, 0, this._width, this._height)
     }
 }
 

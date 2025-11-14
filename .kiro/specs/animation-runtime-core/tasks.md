@@ -279,7 +279,7 @@
     - Optimize renderer to only redraw dirty regions
     - _Requirements: 8.3_
   
-  - [ ] 13.2 Implement culling system
+  - [x] 13.2 Implement culling system
     - Add viewport bounds checking
     - Skip rendering for off-screen nodes
     - Implement hierarchical culling

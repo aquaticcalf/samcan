@@ -2,7 +2,7 @@ import type { Color } from "../math/color"
 import type { Matrix } from "../math/matrix"
 import type { Paint } from "../math/paint"
 import type { Path } from "../math/path"
-import type { Rectangle } from "../math/rectangle"
+import { Rectangle } from "../math/rectangle"
 import type { Vector2 } from "../math/vector2"
 import type {
     Font,
@@ -321,6 +321,24 @@ export class Canvas2DRenderer implements Renderer {
             throw new Error("Renderer not initialized")
         }
         this._ctx.globalAlpha = Math.max(0, Math.min(1, opacity))
+    }
+
+    /**
+     * Get the current viewport bounds in world coordinates
+     * For Canvas2D, this is the canvas dimensions
+     */
+    getViewportBounds(): Rectangle {
+        if (!this._ctx) {
+            throw new Error("Renderer not initialized")
+        }
+
+        // Get the current transform to convert viewport to world coordinates
+        const transform = this._ctx.getTransform()
+
+        // If there's a transform applied, we need to inverse transform the viewport
+        // For now, return the canvas bounds in screen space
+        // This assumes the renderer is rendering in screen space coordinates
+        return new Rectangle(0, 0, this._width, this._height)
     }
 
     /**

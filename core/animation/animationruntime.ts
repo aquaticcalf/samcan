@@ -514,6 +514,11 @@ export class AnimationRuntime {
             return
         }
 
+        // Perform culling: skip if node is completely outside viewport
+        if (!this._isNodeInViewport(node)) {
+            return
+        }
+
         // Save renderer state
         this._renderer.save()
 
@@ -535,6 +540,32 @@ export class AnimationRuntime {
 
         // Restore renderer state
         this._renderer.restore()
+    }
+
+    /**
+     * Check if a node is within the viewport bounds (culling test)
+     * Returns true if the node should be rendered, false if it can be culled
+     * @param node The node to test
+     */
+    private _isNodeInViewport(node: SceneNode): boolean {
+        if (!this._renderer) {
+            return true // Render if no renderer (shouldn't happen)
+        }
+
+        // Get the node's own world bounds (not including children)
+        const nodeBounds = node.getOwnWorldBounds()
+
+        // If node has no bounds, render it (might be a container or special node)
+        if (nodeBounds === null) {
+            return true
+        }
+
+        // Get the viewport bounds
+        const viewportBounds = this._renderer.getViewportBounds()
+
+        // Check if the node bounds intersect with the viewport
+        // If they don't intersect, the node is completely off-screen and can be culled
+        return nodeBounds.intersects(viewportBounds)
     }
 
     /**

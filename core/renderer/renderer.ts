@@ -172,4 +172,10 @@ export interface Renderer {
      * Get the current canvas height
      */
     readonly height: number
+
+    /**
+     * Get the current viewport bounds in world coordinates
+     * Used for culling off-screen objects
+     */
+    getViewportBounds(): Rectangle
 }

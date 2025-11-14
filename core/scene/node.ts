@@ -314,6 +314,18 @@ export class SceneNode {
     }
 
     /**
+     * Get the world bounding box of this node only (with transform applied)
+     * Does not include children bounds
+     */
+    getOwnWorldBounds(): Rectangle | null {
+        const localBounds = this.getLocalBounds()
+        if (localBounds === null) {
+            return null
+        }
+        return this.transformBoundsToWorld(localBounds)
+    }
+
+    /**
      * Calculate the world bounds by combining local bounds with children bounds
      */
     private calculateWorldBounds(): Rectangle | null {
@@ -342,7 +354,7 @@ export class SceneNode {
     /**
      * Transform a local bounds rectangle to world space
      */
-    private transformBoundsToWorld(localBounds: Rectangle): Rectangle {
+    protected transformBoundsToWorld(localBounds: Rectangle): Rectangle {
         const worldTransform = this.getWorldTransform()
 
         // Transform all four corners of the rectangle
