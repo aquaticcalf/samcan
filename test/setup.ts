@@ -52,6 +52,97 @@ globalThis.Image = MockImage as any
 globalThis.HTMLImageElement = dom.window.HTMLImageElement
 globalThis.HTMLCanvasElement = dom.window.HTMLCanvasElement
 
+// Mock FontFace API for font loading tests
+class MockFontFace {
+    family: string
+    source: string
+    descriptors: FontFaceDescriptors
+    status: "unloaded" | "loading" | "loaded" | "error" = "unloaded"
+    loaded: Promise<MockFontFace>
+    private _resolveLoaded!: (value: MockFontFace) => void
+    private _rejectLoaded!: (reason: any) => void
+
+    constructor(
+        family: string,
+        source: string,
+        descriptors?: FontFaceDescriptors,
+    ) {
+        this.family = family
+        this.source = source
+        this.descriptors = descriptors || {}
+        this.loaded = new Promise((resolve, reject) => {
+            this._resolveLoaded = resolve
+            this._rejectLoaded = reject
+        })
+    }
+
+    load(): Promise<MockFontFace> {
+        this.status = "loading"
+        // Simulate async font loading
+        setTimeout(() => {
+            // Check if URL looks valid (data URL or localhost)
+            const isDataUrl = this.source.includes("data:font/")
+            const isLocalhost = this.source.includes("localhost")
+            const isValidDomain =
+                this.source.includes("://") &&
+                !this.source.includes("invalid-domain")
+
+            if (
+                !isDataUrl &&
+                !isLocalhost &&
+                (!isValidDomain || this.source.includes("invalid-domain"))
+            ) {
+                this.status = "error"
+                this._rejectLoaded(
+                    new Error(`Failed to load font: ${this.source}`),
+                )
+            } else {
+                this.status = "loaded"
+                this._resolveLoaded(this)
+            }
+        }, 0)
+        return this.loaded
+    }
+
+    get weight(): string {
+        return (this.descriptors.weight as string) || "normal"
+    }
+
+    get style(): string {
+        return (this.descriptors.style as string) || "normal"
+    }
+}
+
+class MockFontFaceSet extends Set<FontFace> {
+    status: "loading" | "loaded" = "loaded"
+    ready: Promise<MockFontFaceSet> = Promise.resolve(this)
+
+    override add(font: FontFace): this {
+        super.add(font)
+        return this
+    }
+
+    override delete(font: FontFace): boolean {
+        return super.delete(font)
+    }
+
+    load(font: string, text?: string): Promise<FontFace[]> {
+        return Promise.resolve([])
+    }
+
+    check(font: string, text?: string): boolean {
+        return true
+    }
+}
+
+globalThis.FontFace = MockFontFace as any
+// Mock document.fonts if it doesn't exist
+Object.defineProperty(globalThis.document, "fonts", {
+    value: new MockFontFaceSet(),
+    writable: true,
+    configurable: true,
+})
+
 // Add CompressionStream and DecompressionStream polyfills for jsdom
 // These are browser APIs that jsdom doesn't provide by default
 if (typeof globalThis.CompressionStream === "undefined") {

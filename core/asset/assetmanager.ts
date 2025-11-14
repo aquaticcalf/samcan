@@ -1,5 +1,5 @@
 import type { AssetType } from "../serialization"
-import type { Asset, RuntimeImageAsset } from "./types"
+import type { Asset, FontAsset, RuntimeImageAsset } from "./types"
 
 /**
  * AssetManager handles loading, caching, and lifecycle management of assets
@@ -75,12 +75,72 @@ export class AssetManager {
     }
 
     /**
+     * Load a font with optional fallback URL
+     * @param url - The URL of the font file to load
+     * @param family - The font family name to use
+     * @param options - Optional configuration including fallback URL and font descriptors
+     * @returns Promise that resolves to the loaded font asset
+     */
+    async loadFont(
+        url: string,
+        family: string,
+        options?: {
+            fallbackUrl?: string
+            weight?: string
+            style?: string
+            display?: FontDisplay
+        },
+    ): Promise<FontAsset> {
+        try {
+            const asset = await this.load(url, "font", {
+                family,
+                weight: options?.weight,
+                style: options?.style,
+                display: options?.display,
+            })
+            return asset as FontAsset
+        } catch (error) {
+            // Try fallback URL if provided
+            if (options?.fallbackUrl) {
+                try {
+                    const fallbackAsset = await this.load(
+                        options.fallbackUrl,
+                        "font",
+                        {
+                            family,
+                            weight: options?.weight,
+                            style: options?.style,
+                            display: options?.display,
+                        },
+                    )
+                    return fallbackAsset as FontAsset
+                } catch (fallbackError) {
+                    throw new Error(
+                        `Failed to load font from ${url} and fallback ${options.fallbackUrl}`,
+                    )
+                }
+            }
+            throw error
+        }
+    }
+
+    /**
      * Load an asset from a URL
      * @param url - The URL of the asset to load
      * @param type - The type of asset (image, font, audio)
+     * @param options - Optional configuration for asset loading
      * @returns Promise that resolves to the loaded asset
      */
-    async load(url: string, type: AssetType): Promise<Asset> {
+    async load(
+        url: string,
+        type: AssetType,
+        options?: {
+            family?: string
+            weight?: string
+            style?: string
+            display?: FontDisplay
+        },
+    ): Promise<Asset> {
         // Generate ID from URL (use URL as ID for simplicity)
         const id = this._generateId(url)
 
@@ -97,7 +157,7 @@ export class AssetManager {
         }
 
         // Start new load operation
-        const promise = this._loadAsset(id, url, type)
+        const promise = this._loadAsset(id, url, type, options)
         this._loadingPromises.set(id, promise)
 
         try {
@@ -138,6 +198,12 @@ export class AssetManager {
             ) {
                 imageAsset.data.close()
             }
+        } else if (asset.type === "font") {
+            const fontAsset = asset as FontAsset
+            // Remove font from document fonts
+            if (typeof document !== "undefined" && document.fonts) {
+                document.fonts.delete(fontAsset.fontFace)
+            }
         }
 
         this._assets.delete(id)
@@ -149,9 +215,18 @@ export class AssetManager {
      * @returns Promise that resolves when all assets are loaded
      */
     async preload(
-        urls: Array<{ url: string; type: AssetType }>,
+        urls: Array<{
+            url: string
+            type: AssetType
+            family?: string
+            weight?: string
+            style?: string
+            display?: FontDisplay
+        }>,
     ): Promise<void> {
-        const promises = urls.map(({ url, type }) => this.load(url, type))
+        const promises = urls.map(({ url, type, ...options }) =>
+            this.load(url, type, options),
+        )
         await Promise.all(promises)
     }
 
@@ -170,12 +245,21 @@ export class AssetManager {
         id: string,
         url: string,
         type: AssetType,
+        options?: {
+            family?: string
+            weight?: string
+            style?: string
+            display?: FontDisplay
+        },
     ): Promise<Asset> {
         switch (type) {
             case "image":
                 return this._loadImage(id, url)
             case "font":
-                throw new Error("Font loading not yet implemented")
+                if (!options?.family) {
+                    throw new Error("Font family name is required")
+                }
+                return this._loadFont(id, url, options.family, options)
             case "audio":
                 throw new Error("Audio loading not yet implemented")
             default:
@@ -214,5 +298,56 @@ export class AssetManager {
             img.crossOrigin = "anonymous"
             img.src = url
         })
+    }
+
+    /**
+     * Load a font asset using the FontFace API
+     */
+    private async _loadFont(
+        id: string,
+        url: string,
+        family: string,
+        options?: {
+            weight?: string
+            style?: string
+            display?: FontDisplay
+        },
+    ): Promise<FontAsset> {
+        // Check if FontFace API is available
+        if (typeof FontFace === "undefined") {
+            throw new Error("FontFace API is not available in this environment")
+        }
+
+        // Create FontFace with descriptors
+        const fontFace = new FontFace(family, `url(${url})`, {
+            weight: options?.weight ?? "normal",
+            style: options?.style ?? "normal",
+            display: options?.display ?? "auto",
+        })
+
+        try {
+            // Load the font
+            const loadedFontFace = await fontFace.load()
+
+            // Add to document fonts if available
+            if (typeof document !== "undefined" && document.fonts) {
+                document.fonts.add(loadedFontFace)
+            }
+
+            const asset: FontAsset = {
+                id,
+                type: "font",
+                url,
+                loaded: true,
+                family,
+                fontFace: loadedFontFace,
+            }
+
+            return asset
+        } catch (error) {
+            throw new Error(
+                `Failed to load font from URL: ${url}. ${error instanceof Error ? error.message : String(error)}`,
+            )
+        }
     }
 }

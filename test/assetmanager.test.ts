@@ -119,4 +119,108 @@ describe("AssetManager", () => {
             expect(asset2).toBeDefined()
         })
     })
+
+    describe("Font Loading", () => {
+        it("should load a font using data URL", async () => {
+            // Create a minimal WOFF2 font data URL (this is a valid minimal font)
+            const fontDataUrl =
+                "data:font/woff2;base64,d09GMgABAAAAAAGQAAoAAAAABgAAAAFDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAALAoKCAhYAQYAATYCJAMIBCAFBgcHGxsHyB6FcZP1RJOiKP6/+Ih4+H6/du59H0xiniGZRBZLJkRCJZE9k+lkQsVDJeQvlUx+8Pvc+xGzJuJNI5lEPIlFT6ZBCZVGyCQS6VQiHv6tW93/r7l1gDvgAR1wAAWYhzTg3QUYYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+k="
+
+            const asset = await assetManager.loadFont(fontDataUrl, "TestFont")
+
+            expect(asset).toBeDefined()
+            expect(asset.type).toBe("font")
+            expect(asset.loaded).toBe(true)
+            expect(asset.family).toBe("TestFont")
+            expect(asset.fontFace).toBeDefined()
+        })
+
+        it("should cache loaded fonts", async () => {
+            const fontDataUrl =
+                "data:font/woff2;base64,d09GMgABAAAAAAGQAAoAAAAABgAAAAFDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAALAoKCAhYAQYAATYCJAMIBCAFBgcHGxsHyB6FcZP1RJOiKP6/+Ih4+H6/du59H0xiniGZRBZLJkRCJZE9k+lkQsVDJeQvlUx+8Pvc+xGzJuJNI5lEPIlFT6ZBCZVGyCQS6VQiHv6tW93/r7l1gDvgAR1wAAWYhzTg3QUYYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+k="
+
+            const asset1 = await assetManager.loadFont(fontDataUrl, "TestFont")
+            const asset2 = await assetManager.loadFont(fontDataUrl, "TestFont")
+
+            expect(asset1).toBe(asset2)
+        })
+
+        it("should support font weight and style options", async () => {
+            const fontDataUrl =
+                "data:font/woff2;base64,d09GMgABAAAAAAGQAAoAAAAABgAAAAFDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAALAoKCAhYAQYAATYCJAMIBCAFBgcHGxsHyB6FcZP1RJOiKP6/+Ih4+H6/du59H0xiniGZRBZLJkRCJZE9k+lkQsVDJeQvlUx+8Pvc+xGzJuJNI5lEPIlFT6ZBCZVGyCQS6VQiHv6tW93/r7l1gDvgAR1wAAWYhzTg3QUYYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+k="
+
+            const asset = await assetManager.loadFont(
+                fontDataUrl,
+                "TestFontBold",
+                {
+                    weight: "bold",
+                    style: "italic",
+                },
+            )
+
+            expect(asset).toBeDefined()
+            expect(asset.family).toBe("TestFontBold")
+            expect(asset.fontFace.weight).toBe("bold")
+            expect(asset.fontFace.style).toBe("italic")
+        })
+
+        it("should throw error on font load failure", async () => {
+            const invalidUrl =
+                "https://invalid-domain-that-does-not-exist.com/font.woff2"
+
+            await expect(
+                assetManager.loadFont(invalidUrl, "InvalidFont"),
+            ).rejects.toThrow()
+        })
+
+        it("should support fallback URLs for fonts", async () => {
+            const invalidUrl =
+                "https://invalid-domain-that-does-not-exist.com/font.woff2"
+            const fallbackUrl =
+                "data:font/woff2;base64,d09GMgABAAAAAAGQAAoAAAAABgAAAAFDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAALAoKCAhYAQYAATYCJAMIBCAFBgcHGxsHyB6FcZP1RJOiKP6/+Ih4+H6/du59H0xiniGZRBZLJkRCJZE9k+lkQsVDJeQvlUx+8Pvc+xGzJuJNI5lEPIlFT6ZBCZVGyCQS6VQiHv6tW93/r7l1gDvgAR1wAAWYhzTg3QUYYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+k="
+
+            const asset = await assetManager.loadFont(
+                invalidUrl,
+                "FallbackFont",
+                {
+                    fallbackUrl,
+                },
+            )
+
+            expect(asset).toBeDefined()
+            expect(asset.type).toBe("font")
+            expect(asset.loaded).toBe(true)
+        })
+
+        it("should unload fonts and remove from document.fonts", async () => {
+            const fontDataUrl =
+                "data:font/woff2;base64,d09GMgABAAAAAAGQAAoAAAAABgAAAAFDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAALAoKCAhYAQYAATYCJAMIBCAFBgcHGxsHyB6FcZP1RJOiKP6/+Ih4+H6/du59H0xiniGZRBZLJkRCJZE9k+lkQsVDJeQvlUx+8Pvc+xGzJuJNI5lEPIlFT6ZBCZVGyCQS6VQiHv6tW93/r7l1gDvgAR1wAAWYhzTg3QUYYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+k="
+
+            await assetManager.loadFont(fontDataUrl, "UnloadTest")
+            assetManager.unload(fontDataUrl)
+
+            const retrieved = assetManager.get(fontDataUrl)
+            expect(retrieved).toBeNull()
+        })
+
+        it("should preload multiple fonts", async () => {
+            const fontDataUrl1 =
+                "data:font/woff2;base64,d09GMgABAAAAAAGQAAoAAAAABgAAAAFDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAALAoKCAhYAQYAATYCJAMIBCAFBgcHGxsHyB6FcZP1RJOiKP6/+Ih4+H6/du59H0xiniGZRBZLJkRCJZE9k+lkQsVDJeQvlUx+8Pvc+xGzJuJNI5lEPIlFT6ZBCZVGyCQS6VQiHv6tW93/r7l1gDvgAR1wAAWYhzTg3QUYYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+k="
+            const fontDataUrl2 =
+                "data:font/woff2;base64,d09GMgABAAAAAAGQAAoAAAAABgAAAAFDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAALAoKCAhYAQYAATYCJAMIBCAFBgcHGxsHyB6FcZP1RJOiKP6/+Ih4+H6/du59H0xiniGZRBZLJkRCJZE9k+lkQsVDJeQvlUx+8Pvc+xGzJuJNI5lEPIlFT6ZBCZVGyCQS6VQiHv6tW93/r7l1gDvgAR1wAAWYhzTg3QUYYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+k="
+
+            await assetManager.preload([
+                { url: fontDataUrl1, type: "font", family: "PreloadFont1" },
+                { url: fontDataUrl2, type: "font", family: "PreloadFont2" },
+            ])
+
+            const asset1 = assetManager.get(fontDataUrl1)
+            const asset2 = assetManager.get(fontDataUrl2)
+
+            expect(asset1).toBeDefined()
+            expect(asset2).toBeDefined()
+            expect(asset1?.type).toBe("font")
+            expect(asset2?.type).toBe("font")
+        })
+    })
 })
