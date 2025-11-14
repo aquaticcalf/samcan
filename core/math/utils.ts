@@ -118,7 +118,7 @@ export function sign(value: number): number {
 /**
  * Cubic bezier interpolation
  */
-export function cubicBezier(
+export function cubicBezierInterpolate(
     t: number,
     p0: number,
     p1: number,
@@ -145,47 +145,4 @@ export function quadraticBezier(
 ): number {
     const oneMinusT = 1 - t
     return oneMinusT * oneMinusT * p0 + 2 * oneMinusT * t * p1 + t * t * p2
-}
-
-/**
- * Ease-in (quadratic)
- */
-export function easeIn(t: number): number {
-    return t * t
-}
-
-/**
- * Ease-out (quadratic)
- */
-export function easeOut(t: number): number {
-    return t * (2 - t)
-}
-
-/**
- * Ease-in-out (quadratic)
- */
-export function easeInOut(t: number): number {
-    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-}
-
-/**
- * Ease-in (cubic)
- */
-export function easeInCubic(t: number): number {
-    return t * t * t
-}
-
-/**
- * Ease-out (cubic)
- */
-export function easeOutCubic(t: number): number {
-    const f = t - 1
-    return f * f * f + 1
-}
-
-/**
- * Ease-in-out (cubic)
- */
-export function easeInOutCubic(t: number): number {
-    return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1
 }
