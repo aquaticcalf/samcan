@@ -4,67 +4,13 @@
 export type FrameCallback = (deltaTime: number) => void
 
 /**
- * Environment-agnostic frame scheduler adapter
- */
-interface FrameSchedulerAdapter {
-    requestFrame(callback: (time: number) => void): number | Timer
-    cancelFrame(id: number | Timer): void
-}
-
-/**
- * Browser adapter using requestAnimationFrame
- */
-class BrowserFrameScheduler implements FrameSchedulerAdapter {
-    requestFrame(callback: (time: number) => void): number {
-        return requestAnimationFrame(callback)
-    }
-
-    cancelFrame(id: number): void {
-        cancelAnimationFrame(id)
-    }
-}
-
-/**
- * Fallback adapter using setTimeout for non-browser environments like Bun
- */
-class FallbackFrameScheduler implements FrameSchedulerAdapter {
-    private readonly _targetFps: number = 60
-    private readonly _frameInterval: number = 1000 / this._targetFps
-
-    requestFrame(callback: (time: number) => void): Timer {
-        return setTimeout(
-            () => callback(performance.now()),
-            this._frameInterval,
-        )
-    }
-
-    cancelFrame(id: Timer): void {
-        clearTimeout(id)
-    }
-}
-
-/**
- * Detect and create appropriate frame scheduler for current environment
- */
-function createFrameScheduler(): FrameSchedulerAdapter {
-    if (
-        typeof requestAnimationFrame !== "undefined" &&
-        typeof cancelAnimationFrame !== "undefined"
-    ) {
-        return new BrowserFrameScheduler()
-    }
-    return new FallbackFrameScheduler()
-}
-
-/**
- * Scheduler for managing frame callbacks
- * Automatically adapts to browser (requestAnimationFrame) or Bun (setTimeout) environments
+ * Scheduler for managing frame callbacks using requestAnimationFrame
  * Tracks FPS and provides performance metrics
  */
 export class Scheduler {
     private _callbacks: Set<FrameCallback> = new Set()
     private _isRunning: boolean = false
-    private _animationFrameId: number | Timer | null = null
+    private _animationFrameId: number | null = null
     private _lastFrameTime: number = 0
     private _frameCount: number = 0
     private _fpsUpdateInterval: number = 1000 // Update FPS every second
@@ -72,7 +18,6 @@ export class Scheduler {
     private _currentFps: number = 0
     private _frameTimeHistory: number[] = []
     private _maxHistorySize: number = 60 // Track last 60 frames
-    private _frameScheduler: FrameSchedulerAdapter = createFrameScheduler()
 
     /**
      * Schedule a callback to be executed on each frame
@@ -126,7 +71,7 @@ export class Scheduler {
         this._isRunning = false
 
         if (this._animationFrameId !== null) {
-            this._frameScheduler.cancelFrame(this._animationFrameId)
+            cancelAnimationFrame(this._animationFrameId)
             this._animationFrameId = null
         }
     }
@@ -198,7 +143,7 @@ export class Scheduler {
      * Request the next animation frame
      */
     private _requestFrame(): void {
-        this._animationFrameId = this._frameScheduler.requestFrame((time) =>
+        this._animationFrameId = requestAnimationFrame((time) =>
             this._onFrame(time),
         )
     }
