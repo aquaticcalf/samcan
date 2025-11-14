@@ -166,11 +166,11 @@
     - _Requirements: 4.2, 4.3_
 
 - [ ] 9. Build serialization system
-  - [ ] 9.1 Define samcan file format types
-    - Create TypeScript interfaces for SamcanFile structure
-    - Define ArtboardData, NodeData, TimelineData types
-    - Add metadata and version information
-    - _Requirements: 7.1, 7.2_
+  - [x] 9.1 Define samcan file format types
+     - Create TypeScript interfaces for SamcanFile structure
+     - Define ArtboardData, NodeData, TimelineData types
+     - Add metadata and version information
+     - _Requirements: 7.1, 7.2_
   
   - [ ] 9.2 Implement Serializer for export
     - Convert Artboard to ArtboardData
