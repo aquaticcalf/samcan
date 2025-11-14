@@ -18,3 +18,8 @@ export {
     InterpolatorRegistry,
     type Interpolator,
 } from "./interpolator"
+export {
+    AnimationRuntime,
+    type AnimationData,
+    type PlaybackState,
+} from "./animationruntime"
