@@ -285,7 +285,7 @@
     - Implement hierarchical culling
     - _Requirements: 8.5_
   
-  - [ ] 13.3 Add draw call batching
+  - [x] 13.3 Add draw call batching
     - Group nodes with same paint properties
     - Batch multiple draw operations
     - Reduce state changes in renderer

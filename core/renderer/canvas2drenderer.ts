@@ -1,5 +1,5 @@
 import type { Color } from "../math/color"
-import type { Matrix } from "../math/matrix"
+import { Matrix } from "../math/matrix"
 import type { Paint } from "../math/paint"
 import type { Path } from "../math/path"
 import { Rectangle } from "../math/rectangle"
@@ -11,6 +11,7 @@ import type {
     RendererBackend,
     RendererCapabilities,
 } from "./renderer"
+import { BatchManager, type DrawOperation } from "./batchmanager"
 
 /**
  * Canvas2D renderer implementation
@@ -22,6 +23,8 @@ export class Canvas2DRenderer implements Renderer {
     private _isInitialized = false
     private _width = 0
     private _height = 0
+    private _batchManager = new BatchManager()
+    private _batchingEnabled = true
 
     readonly backend: RendererBackend = "canvas2d"
 
@@ -83,14 +86,16 @@ export class Canvas2DRenderer implements Renderer {
      * Begin a new frame
      */
     beginFrame(): void {
-        // Canvas2D doesn't require explicit frame begin
+        // Clear any pending batches from previous frame
+        this._batchManager.clear()
     }
 
     /**
      * End the current frame
      */
     endFrame(): void {
-        // Canvas2D doesn't require explicit frame end
+        // Flush any remaining batched operations
+        this._flushBatches()
     }
 
     /**
@@ -134,6 +139,30 @@ export class Canvas2DRenderer implements Renderer {
         }
 
         if (path.isEmpty()) {
+            return
+        }
+
+        // If batching is enabled, add to batch queue
+        if (this._batchingEnabled && this._batchManager.isEnabled) {
+            this._batchManager.addOperation({
+                type: "path",
+                path,
+                paint,
+                transform: this._getCurrentTransform(),
+                opacity: this._getCurrentOpacity(),
+            })
+            return
+        }
+
+        // Otherwise, draw immediately
+        this._drawPathImmediate(path, paint)
+    }
+
+    /**
+     * Draw a path immediately without batching
+     */
+    private _drawPathImmediate(path: Path, paint: Paint): void {
+        if (!this._ctx) {
             return
         }
 
@@ -181,6 +210,35 @@ export class Canvas2DRenderer implements Renderer {
         }
 
         if (path.isEmpty() || strokeWidth <= 0) {
+            return
+        }
+
+        // If batching is enabled, add to batch queue
+        if (this._batchingEnabled && this._batchManager.isEnabled) {
+            this._batchManager.addOperation({
+                type: "stroke",
+                path,
+                paint,
+                transform: this._getCurrentTransform(),
+                opacity: this._getCurrentOpacity(),
+                strokeWidth,
+            })
+            return
+        }
+
+        // Otherwise, draw immediately
+        this._drawStrokeImmediate(path, paint, strokeWidth)
+    }
+
+    /**
+     * Draw a stroke immediately without batching
+     */
+    private _drawStrokeImmediate(
+        path: Path,
+        paint: Paint,
+        strokeWidth: number,
+    ): void {
+        if (!this._ctx) {
             return
         }
 
@@ -476,6 +534,120 @@ export class Canvas2DRenderer implements Renderer {
                 return "exclusion"
             default:
                 return "source-over"
+        }
+    }
+
+    /**
+     * Get the current transform matrix from the canvas context
+     */
+    private _getCurrentTransform(): Matrix {
+        if (!this._ctx) {
+            return new Matrix()
+        }
+
+        const domMatrix = this._ctx.getTransform()
+        return new Matrix(
+            domMatrix.a,
+            domMatrix.b,
+            domMatrix.c,
+            domMatrix.d,
+            domMatrix.e,
+            domMatrix.f,
+        )
+    }
+
+    /**
+     * Get the current global opacity from the canvas context
+     */
+    private _getCurrentOpacity(): number {
+        if (!this._ctx) {
+            return 1.0
+        }
+        return this._ctx.globalAlpha
+    }
+
+    /**
+     * Flush all batched draw operations
+     * Groups operations by paint to minimize state changes
+     */
+    private _flushBatches(): void {
+        if (!this._ctx) {
+            return
+        }
+
+        const batches = this._batchManager.flush()
+
+        // Process each batch
+        for (const batch of batches) {
+            // Set up paint state once for the entire batch
+            const ctx = this._ctx
+
+            // Save state before batch
+            ctx.save()
+
+            // Process all operations in this batch
+            for (const op of batch.operations) {
+                // Apply transform and opacity for this operation
+                ctx.save()
+
+                // Set transform
+                ctx.setTransform(
+                    op.transform.a,
+                    op.transform.b,
+                    op.transform.c,
+                    op.transform.d,
+                    op.transform.tx,
+                    op.transform.ty,
+                )
+
+                // Set opacity
+                ctx.globalAlpha = op.opacity
+
+                // Draw the operation
+                if (op.type === "path") {
+                    this._drawPathImmediate(op.path, op.paint)
+                } else if (
+                    op.type === "stroke" &&
+                    op.strokeWidth !== undefined
+                ) {
+                    this._drawStrokeImmediate(op.path, op.paint, op.strokeWidth)
+                }
+
+                ctx.restore()
+            }
+
+            // Restore state after batch
+            ctx.restore()
+        }
+    }
+
+    /**
+     * Enable or disable draw call batching
+     */
+    setBatchingEnabled(enabled: boolean): void {
+        this._batchingEnabled = enabled
+        this._batchManager.setEnabled(enabled)
+
+        // If disabling, flush any pending batches
+        if (!enabled) {
+            this._flushBatches()
+        }
+    }
+
+    /**
+     * Check if batching is enabled
+     */
+    get isBatchingEnabled(): boolean {
+        return this._batchingEnabled
+    }
+
+    /**
+     * Get batching statistics
+     */
+    getBatchStats(): { batchCount: number; operationCount: number } {
+        return {
+            batchCount: this._batchManager.batchCount,
+            operationCount: this._batchManager.operationCount,
         }
     }
 }

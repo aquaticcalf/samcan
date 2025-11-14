@@ -12,6 +12,7 @@ import type {
     RendererBackend,
     RendererCapabilities,
 } from "./renderer"
+import { BatchManager, type DrawOperation } from "./batchmanager"
 
 /**
  * Vertex data for path rendering
@@ -71,6 +72,10 @@ export class WebGLRenderer implements Renderer {
     // Opacity stack
     private _opacityStack: number[] = []
     private _currentOpacity = 1.0
+
+    // Batching
+    private _batchManager = new BatchManager()
+    private _batchingEnabled = true
 
     readonly backend: RendererBackend = "webgl"
 
@@ -170,6 +175,9 @@ export class WebGLRenderer implements Renderer {
         this._currentTransform = new Matrix()
         this._opacityStack = []
         this._currentOpacity = 1.0
+
+        // Clear any pending batches from previous frame
+        this._batchManager.clear()
     }
 
     /**
@@ -179,7 +187,11 @@ export class WebGLRenderer implements Renderer {
         if (!this._gl) {
             throw new Error("Renderer not initialized")
         }
-        // Flush any pending operations
+
+        // Flush any remaining batched operations
+        this._flushBatches()
+
+        // Flush any pending GPU operations
         this._gl.flush()
     }
 
@@ -245,6 +257,30 @@ export class WebGLRenderer implements Renderer {
             return
         }
 
+        // If batching is enabled, add to batch queue
+        if (this._batchingEnabled && this._batchManager.isEnabled) {
+            this._batchManager.addOperation({
+                type: "path",
+                path,
+                paint,
+                transform: this._currentTransform.clone(),
+                opacity: this._currentOpacity,
+            })
+            return
+        }
+
+        // Otherwise, draw immediately
+        this._drawPathImmediate(path, paint)
+    }
+
+    /**
+     * Draw a path immediately without batching
+     */
+    private _drawPathImmediate(path: Path, paint: Paint): void {
+        if (!this._gl || !this._pathProgram) {
+            return
+        }
+
         const gl = this._gl
 
         // Tessellate the path
@@ -304,6 +340,35 @@ export class WebGLRenderer implements Renderer {
         }
 
         if (path.isEmpty() || strokeWidth <= 0) {
+            return
+        }
+
+        // If batching is enabled, add to batch queue
+        if (this._batchingEnabled && this._batchManager.isEnabled) {
+            this._batchManager.addOperation({
+                type: "stroke",
+                path,
+                paint,
+                transform: this._currentTransform.clone(),
+                opacity: this._currentOpacity,
+                strokeWidth,
+            })
+            return
+        }
+
+        // Otherwise, draw immediately
+        this._drawStrokeImmediate(path, paint, strokeWidth)
+    }
+
+    /**
+     * Draw a stroke immediately without batching
+     */
+    private _drawStrokeImmediate(
+        path: Path,
+        paint: Paint,
+        strokeWidth: number,
+    ): void {
+        if (!this._gl || !this._pathProgram) {
             return
         }
 
@@ -1129,6 +1194,76 @@ export class WebGLRenderer implements Renderer {
         // Return the canvas bounds in screen space
         // This assumes the renderer is rendering in screen space coordinates
         return new Rectangle(0, 0, this._width, this._height)
+    }
+
+    /**
+     * Flush all batched draw operations
+     * Groups operations by paint to minimize state changes
+     */
+    private _flushBatches(): void {
+        if (!this._gl) {
+            return
+        }
+
+        const batches = this._batchManager.flush()
+
+        // Process each batch
+        for (const batch of batches) {
+            // Process all operations in this batch
+            for (const op of batch.operations) {
+                // Save current transform and opacity
+                const savedTransform = this._currentTransform
+                const savedOpacity = this._currentOpacity
+
+                // Set transform and opacity for this operation
+                this._currentTransform = op.transform
+                this._currentOpacity = op.opacity
+
+                // Draw the operation
+                if (op.type === "path") {
+                    this._drawPathImmediate(op.path, op.paint)
+                } else if (
+                    op.type === "stroke" &&
+                    op.strokeWidth !== undefined
+                ) {
+                    this._drawStrokeImmediate(op.path, op.paint, op.strokeWidth)
+                }
+
+                // Restore transform and opacity
+                this._currentTransform = savedTransform
+                this._currentOpacity = savedOpacity
+            }
+        }
+    }
+
+    /**
+     * Enable or disable draw call batching
+     */
+    setBatchingEnabled(enabled: boolean): void {
+        this._batchingEnabled = enabled
+        this._batchManager.setEnabled(enabled)
+
+        // If disabling, flush any pending batches
+        if (!enabled) {
+            this._flushBatches()
+        }
+    }
+
+    /**
+     * Check if batching is enabled
+     */
+    get isBatchingEnabled(): boolean {
+        return this._batchingEnabled
+    }
+
+    /**
+     * Get batching statistics
+     */
+    getBatchStats(): { batchCount: number; operationCount: number } {
+        return {
+            batchCount: this._batchManager.batchCount,
+            operationCount: this._batchManager.operationCount,
+        }
     }
 }
 
