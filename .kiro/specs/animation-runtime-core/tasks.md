@@ -199,7 +199,7 @@
     - Support incremental loading for large files
     - _Requirements: 7.4, 7.5_
 
-- [ ] 10. Implement asset management system
+- [-] 10. Implement asset management system
   - [x] 10.1 Create AssetManager with loading and caching
     - Implement load() for async asset loading
     - Add asset caching by ID
@@ -219,7 +219,7 @@
     - Support text rendering with custom fonts
     - _Requirements: 10.3_
   
-  - [ ] 10.4 Implement asset dependency tracking
+  - [x] 10.4 Implement asset dependency tracking
     - Track which assets are used by which artboards
     - Include asset references in serialization
     - Support asset bundling for export

@@ -1,5 +1,8 @@
 import { describe, expect, it, beforeEach } from "bun:test"
 import { AssetManager } from "../core/asset"
+import { Artboard } from "../core/scene/nodes/artboard"
+import { ImageNode } from "../core/scene/nodes/imagenode"
+import { Color } from "../core/math/color"
 
 describe("AssetManager", () => {
     let assetManager: AssetManager
@@ -221,6 +224,133 @@ describe("AssetManager", () => {
             expect(asset2).toBeDefined()
             expect(asset1?.type).toBe("font")
             expect(asset2?.type).toBe("font")
+        })
+    })
+
+    describe("Asset Dependency Tracking", () => {
+        it("should track asset usage by artboard", () => {
+            assetManager.trackAssetUsage("artboard1", "asset1")
+            assetManager.trackAssetUsage("artboard1", "asset2")
+
+            const assets = assetManager.getArtboardAssets("artboard1")
+            expect(assets).toHaveLength(2)
+            expect(assets).toContain("asset1")
+            expect(assets).toContain("asset2")
+        })
+
+        it("should track multiple artboards using the same asset", () => {
+            assetManager.trackAssetUsage("artboard1", "asset1")
+            assetManager.trackAssetUsage("artboard2", "asset1")
+
+            const artboards = assetManager.getAssetArtboards("asset1")
+            expect(artboards).toHaveLength(2)
+            expect(artboards).toContain("artboard1")
+            expect(artboards).toContain("artboard2")
+        })
+
+        it("should untrack specific asset usage", () => {
+            assetManager.trackAssetUsage("artboard1", "asset1")
+            assetManager.trackAssetUsage("artboard1", "asset2")
+
+            assetManager.untrackAssetUsage("artboard1", "asset1")
+
+            const assets = assetManager.getArtboardAssets("artboard1")
+            expect(assets).toHaveLength(1)
+            expect(assets).toContain("asset2")
+            expect(assets).not.toContain("asset1")
+        })
+
+        it("should untrack all assets for an artboard", () => {
+            assetManager.trackAssetUsage("artboard1", "asset1")
+            assetManager.trackAssetUsage("artboard1", "asset2")
+
+            assetManager.untrackAssetUsage("artboard1")
+
+            const assets = assetManager.getArtboardAssets("artboard1")
+            expect(assets).toHaveLength(0)
+        })
+
+        it("should return empty array for artboard with no assets", () => {
+            const assets = assetManager.getArtboardAssets("nonexistent")
+            expect(assets).toHaveLength(0)
+        })
+
+        it("should return empty array for asset used by no artboards", () => {
+            const artboards = assetManager.getAssetArtboards("nonexistent")
+            expect(artboards).toHaveLength(0)
+        })
+
+        it("should get all dependencies", () => {
+            assetManager.trackAssetUsage("artboard1", "asset1")
+            assetManager.trackAssetUsage("artboard1", "asset2")
+            assetManager.trackAssetUsage("artboard2", "asset1")
+
+            const dependencies = assetManager.getAllDependencies()
+            expect(dependencies.size).toBe(2)
+            expect(dependencies.get("artboard1")?.size).toBe(2)
+            expect(dependencies.get("artboard2")?.size).toBe(1)
+        })
+
+        it("should clear all dependencies", () => {
+            assetManager.trackAssetUsage("artboard1", "asset1")
+            assetManager.trackAssetUsage("artboard2", "asset2")
+
+            assetManager.clearDependencies()
+
+            const dependencies = assetManager.getAllDependencies()
+            expect(dependencies.size).toBe(0)
+        })
+
+        it("should collect assets from scene graph", () => {
+            const artboard = new Artboard(800, 600, Color.white())
+            const imageNode1 = new ImageNode("asset1")
+            const imageNode2 = new ImageNode("asset2")
+
+            artboard.addChild(imageNode1)
+            artboard.addChild(imageNode2)
+
+            const assets = assetManager.collectSceneAssets(artboard)
+            expect(assets).toHaveLength(2)
+            expect(assets).toContain("asset1")
+            expect(assets).toContain("asset2")
+        })
+
+        it("should collect assets from nested scene graph", () => {
+            const artboard = new Artboard(800, 600, Color.white())
+            const imageNode1 = new ImageNode("asset1")
+            const imageNode2 = new ImageNode("asset2")
+
+            artboard.addChild(imageNode1)
+            imageNode1.addChild(imageNode2)
+
+            const assets = assetManager.collectSceneAssets(artboard)
+            expect(assets).toHaveLength(2)
+            expect(assets).toContain("asset1")
+            expect(assets).toContain("asset2")
+        })
+
+        it("should handle duplicate assets in scene graph", () => {
+            const artboard = new Artboard(800, 600, Color.white())
+            const imageNode1 = new ImageNode("asset1")
+            const imageNode2 = new ImageNode("asset1")
+
+            artboard.addChild(imageNode1)
+            artboard.addChild(imageNode2)
+
+            const assets = assetManager.collectSceneAssets(artboard)
+            expect(assets).toHaveLength(1)
+            expect(assets).toContain("asset1")
+        })
+
+        it("should ignore non-string image data in scene graph", () => {
+            const artboard = new Artboard(800, 600, Color.white())
+            const img = new Image()
+            const imageNode = new ImageNode(img)
+
+            artboard.addChild(imageNode)
+
+            const assets = assetManager.collectSceneAssets(artboard)
+            expect(assets).toHaveLength(0)
         })
     })
 })

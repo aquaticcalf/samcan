@@ -1,5 +1,7 @@
 import type { AssetType } from "../serialization"
 import type { Asset, FontAsset, RuntimeImageAsset } from "./types"
+import type { SceneNode } from "../scene/node"
+import { ImageNode } from "../scene/nodes/imagenode"
 
 /**
  * AssetManager handles loading, caching, and lifecycle management of assets
@@ -9,6 +11,7 @@ export class AssetManager {
     private _assets: Map<string, Asset> = new Map()
     private _loadingPromises: Map<string, Promise<Asset>> = new Map()
     private _placeholderImage: RuntimeImageAsset | null = null
+    private _assetDependencies: Map<string, Set<string>> = new Map() // artboardId -> Set of assetIds
 
     /**
      * Get readonly access to loaded assets
@@ -228,6 +231,113 @@ export class AssetManager {
             this.load(url, type, options),
         )
         await Promise.all(promises)
+    }
+
+    /**
+     * Track that an artboard uses a specific asset
+     * @param artboardId - The ID of the artboard
+     * @param assetId - The ID of the asset being used
+     */
+    trackAssetUsage(artboardId: string, assetId: string): void {
+        let dependencies = this._assetDependencies.get(artboardId)
+        if (!dependencies) {
+            dependencies = new Set()
+            this._assetDependencies.set(artboardId, dependencies)
+        }
+        dependencies.add(assetId)
+    }
+
+    /**
+     * Remove asset usage tracking for an artboard
+     * @param artboardId - The ID of the artboard
+     * @param assetId - The ID of the asset to stop tracking (optional, removes all if not specified)
+     */
+    untrackAssetUsage(artboardId: string, assetId?: string): void {
+        if (assetId) {
+            const dependencies = this._assetDependencies.get(artboardId)
+            if (dependencies) {
+                dependencies.delete(assetId)
+                if (dependencies.size === 0) {
+                    this._assetDependencies.delete(artboardId)
+                }
+            }
+        } else {
+            this._assetDependencies.delete(artboardId)
+        }
+    }
+
+    /**
+     * Get all assets used by a specific artboard
+     * @param artboardId - The ID of the artboard
+     * @returns Array of asset IDs used by the artboard
+     */
+    getArtboardAssets(artboardId: string): string[] {
+        const dependencies = this._assetDependencies.get(artboardId)
+        return dependencies ? Array.from(dependencies) : []
+    }
+
+    /**
+     * Get all artboards that use a specific asset
+     * @param assetId - The ID of the asset
+     * @returns Array of artboard IDs that use the asset
+     */
+    getAssetArtboards(assetId: string): string[] {
+        const artboards: string[] = []
+        for (const [artboardId, dependencies] of this._assetDependencies) {
+            if (dependencies.has(assetId)) {
+                artboards.push(artboardId)
+            }
+        }
+        return artboards
+    }
+
+    /**
+     * Get all asset dependencies as a map
+     * @returns ReadonlyMap of artboard IDs to sets of asset IDs
+     */
+    getAllDependencies(): ReadonlyMap<string, ReadonlySet<string>> {
+        return this._assetDependencies
+    }
+
+    /**
+     * Clear all asset dependency tracking
+     */
+    clearDependencies(): void {
+        this._assetDependencies.clear()
+    }
+
+    /**
+     * Collect all asset IDs used in a scene graph
+     * @param node - The root node to scan (typically an Artboard)
+     * @returns Array of unique asset IDs found in the scene graph
+     */
+    collectSceneAssets(node: SceneNode): string[] {
+        const assetIds = new Set<string>()
+        this._collectSceneAssetsRecursive(node, assetIds)
+        return Array.from(assetIds)
+    }
+
+    /**
+     * Recursively collect asset IDs from a scene graph
+     */
+    private _collectSceneAssetsRecursive(
+        node: SceneNode,
+        assetIds: Set<string>,
+    ): void {
+        // Check if this node uses an asset
+        if (node instanceof ImageNode) {
+            const imageData = node.imageData
+            // If imageData is a string, it's an asset ID or URL
+            if (typeof imageData === "string") {
+                const assetId = this._generateId(imageData)
+                assetIds.add(assetId)
+            }
+        }
+
+        // Recursively check children
+        for (const child of node.children) {
+            this._collectSceneAssetsRecursive(child, assetIds)
+        }
     }
 
     /**
