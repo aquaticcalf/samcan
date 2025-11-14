@@ -119,7 +119,7 @@
     - Connect to Clock and Scheduler
     - _Requirements: 1.1, 1.2_
   
-  - [ ] 7.2 Add playback controls
+  - [x] 7.2 Add playback controls
     - Implement play(), pause(), stop() methods
     - Add seek() for jumping to specific time
     - Implement setSpeed() for playback rate control

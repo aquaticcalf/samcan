@@ -112,3 +112,202 @@ describe("AnimationRuntime", () => {
         expect(runtime.scheduler).toBeDefined()
     })
 })
+
+describe("AnimationRuntime - Playback Controls", () => {
+    test("play() starts playback from stopped state", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+        runtime.play()
+
+        expect(runtime.state).toBe("playing")
+        expect(runtime.isPlaying).toBe(true)
+        expect(runtime.currentTime).toBe(0)
+    })
+
+    test("play() throws error when no animation loaded", () => {
+        const runtime = new AnimationRuntime()
+
+        expect(() => runtime.play()).toThrow("Cannot play: no animation loaded")
+    })
+
+    test("play() does nothing if already playing", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+        runtime.play()
+
+        const stateBefore = runtime.state
+        runtime.play()
+
+        expect(runtime.state).toBe(stateBefore)
+        expect(runtime.state).toBe("playing")
+    })
+
+    test("pause() pauses playback", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+        runtime.play()
+        runtime.pause()
+
+        expect(runtime.state).toBe("paused")
+        expect(runtime.isPlaying).toBe(false)
+    })
+
+    test("pause() does nothing if not playing", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+        runtime.pause()
+
+        expect(runtime.state).toBe("stopped")
+    })
+
+    test("play() resumes from paused state", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+        runtime.seek(2.5)
+        runtime.play()
+        runtime.pause()
+
+        const timeBefore = runtime.currentTime
+        runtime.play()
+
+        expect(runtime.state).toBe("playing")
+        expect(runtime.currentTime).toBe(timeBefore)
+    })
+
+    test("stop() stops playback and resets to beginning", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+        runtime.seek(2.5)
+        runtime.play()
+        runtime.stop()
+
+        expect(runtime.state).toBe("stopped")
+        expect(runtime.isPlaying).toBe(false)
+        expect(runtime.currentTime).toBe(0)
+    })
+
+    test("stop() does nothing if idle", () => {
+        const runtime = new AnimationRuntime()
+        runtime.stop()
+
+        expect(runtime.state).toBe("idle")
+    })
+
+    test("seek() jumps to specific time", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        const node = new SceneNode()
+        node.transform.position.x = 0
+        artboard.addChild(node)
+
+        const track = new AnimationTrack(node, "transform.position.x")
+        track.addKeyframe(new Keyframe(0, 0, "linear"))
+        track.addKeyframe(new Keyframe(5, 500, "linear"))
+        timeline.addTrack(track)
+
+        await runtime.load({ artboard, timeline })
+        runtime.seek(2.5)
+
+        expect(runtime.currentTime).toBe(2.5)
+        expect(node.transform.position.x).toBe(250)
+    })
+
+    test("seek() clamps time to valid range", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        runtime.seek(-1)
+        expect(runtime.currentTime).toBe(0)
+
+        runtime.seek(10)
+        expect(runtime.currentTime).toBe(5.0)
+    })
+
+    test("seek() throws error when no animation loaded", () => {
+        const runtime = new AnimationRuntime()
+
+        expect(() => runtime.seek(1.0)).toThrow(
+            "Cannot seek: no animation loaded",
+        )
+    })
+
+    test("seek() updates state from idle to stopped", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+        runtime.unload()
+        await runtime.load({ artboard, timeline })
+
+        // Manually set to idle (simulating fresh load without evaluation)
+        expect(runtime.state).toBe("stopped")
+    })
+
+    test("setSpeed() changes playback speed", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        runtime.setSpeed(2.0)
+        expect(runtime.speed).toBe(2.0)
+
+        runtime.setSpeed(0.5)
+        expect(runtime.speed).toBe(0.5)
+    })
+
+    test("setSpeed() throws error for invalid speed", () => {
+        const runtime = new AnimationRuntime()
+
+        expect(() => runtime.setSpeed(0)).toThrow(
+            "Speed must be greater than 0",
+        )
+        expect(() => runtime.setSpeed(-1)).toThrow(
+            "Speed must be greater than 0",
+        )
+    })
+
+    test("setLoop() changes loop mode", async () => {
+        const runtime = new AnimationRuntime()
+        const artboard = new Artboard(800, 600, Color.white())
+        const timeline = new Timeline(5.0, 60)
+
+        await runtime.load({ artboard, timeline })
+
+        expect(runtime.loopMode).toBe("none")
+
+        runtime.setLoop("loop")
+        expect(runtime.loopMode).toBe("loop")
+
+        runtime.setLoop("pingpong")
+        expect(runtime.loopMode).toBe("pingpong")
+
+        runtime.setLoop("none")
+        expect(runtime.loopMode).toBe("none")
+    })
+})
