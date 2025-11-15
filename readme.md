@@ -1,5 +1,8 @@
 ## samcan
 
+### what?
+
+samcan is an animation runtime for the web, my attempt at resurrecting [Flash](https://en.wikipedia.org/wiki/Adobe_Flash)
 
 ### install
 
