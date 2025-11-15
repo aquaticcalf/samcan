@@ -25,6 +25,30 @@ bun add samcan
 ```ts
 import { AnimationRuntime } from "samcan"
 ```
+ </details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn add samcan
+```
+
+```ts
+import { AnimationRuntime } from "samcan"
+```
+</details>
+
+<details>
+<summary>pnpm</summary>
+
+```bash
+pnpm add samcan
+```
+
+```ts
+import { AnimationRuntime } from "samcan"
+```
 </details>
 
 ### lines of code
