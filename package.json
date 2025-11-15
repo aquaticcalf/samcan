@@ -1,6 +1,6 @@
 {
     "name": "samcan",
-    "version": "0.0.3-placeholder",
+    "version": "0.0.1",
     "description": "canvas",
     "license": "MIT",
     "author": "aquaticcalf",
@@ -8,8 +8,23 @@
         "type": "git",
         "url": "git+https://github.com/aquaticcalf/samcan.git"
     },
+    "type": "module",
+    "main": "dist/index.js",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist"
+    ],
     "scripts": {
         "dev": "bun index.ts",
+        "build": "bun x tsc -p tsconfig.build.json",
         "tsc": "tsc --noEmit",
         "fix": "biome format --write",
         "loc": "bun .scripts/cloc.ts",
