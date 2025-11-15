@@ -12,6 +12,7 @@ import type {
     RendererCapabilities,
 } from "./renderer"
 import { BatchManager, type DrawOperation } from "./batchmanager"
+import { RendererError } from "../error/renderererror"
 
 /**
  * Canvas2D renderer implementation
@@ -59,7 +60,10 @@ export class Canvas2DRenderer implements Renderer {
         })
 
         if (!ctx) {
-            throw new Error("Failed to get 2D rendering context")
+            throw RendererError.initFailed(
+                "canvas2d",
+                "Failed to get 2D rendering context from canvas",
+            )
         }
 
         this._ctx = ctx

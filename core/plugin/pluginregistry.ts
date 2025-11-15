@@ -1,4 +1,5 @@
 import type { AnimationRuntime } from "../animation/animationruntime"
+import { getLogger } from "../animation/logger"
 import { isPlugin, type Plugin } from "./plugin"
 
 /**
@@ -84,7 +85,7 @@ export class PluginRegistry {
             try {
                 plugin.cleanup()
             } catch (error) {
-                console.error(
+                getLogger().error(
                     `Error during cleanup of plugin "${pluginName}":`,
                     error,
                 )
@@ -138,7 +139,7 @@ export class PluginRegistry {
                 try {
                     plugin.cleanup()
                 } catch (error) {
-                    console.error(
+                    getLogger().error(
                         `Error during cleanup of plugin "${plugin.metadata.name}":`,
                         error,
                     )
@@ -161,7 +162,7 @@ export class PluginRegistry {
                 try {
                     plugin.update(deltaTime)
                 } catch (error) {
-                    console.error(
+                    getLogger().error(
                         `Error during update of plugin "${plugin.metadata.name}":`,
                         error,
                     )

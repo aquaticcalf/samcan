@@ -8,6 +8,9 @@ import { Paint } from "../core/math/paint"
 import { Color } from "../core/math/color"
 import { Rectangle } from "../core/math/rectangle"
 import { Transform } from "../core/scene/transform"
+import { setupDOM } from "./dom-setup"
+
+setupDOM()
 import { Vector2 } from "../core/math/vector2"
 import { DirtyRegionManager } from "../core/renderer/dirtyregionmanager"
 

@@ -10,6 +10,10 @@ import {
 } from "../core/plugin"
 import { AnimationRuntime } from "../core/animation/animationruntime"
 import { AnimationState, Timeline, StateMachine } from "../core/animation"
+import { setLogger } from "../core/animation/logger"
+
+// Silence controller/plugin error logging during tests
+setLogger({ error: () => {}, warn: () => {}, info: () => {} })
 
 describe("Plugin Interface", () => {
     test("isPlugin validates correct plugin structure", () => {

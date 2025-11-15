@@ -2,6 +2,7 @@ import { AnimationState } from "./animationstate"
 import { type StateMachineContext, StateTransition } from "./statetransition"
 import type { AnimationController } from "../plugin/animationcontroller"
 import { isAnimationController } from "../plugin/animationcontroller"
+import { getLogger } from "./logger"
 
 /**
  * StateMachine manages a collection of animation states and handles transitions between them
@@ -404,7 +405,7 @@ export class StateMachine {
                 try {
                     controller.onStateEnter(state)
                 } catch (error) {
-                    console.error(
+                    getLogger().error(
                         `Error in controller "${controller.metadata.name}" onStateEnter:`,
                         error,
                     )
@@ -423,7 +424,7 @@ export class StateMachine {
                 try {
                     controller.onStateExit(state)
                 } catch (error) {
-                    console.error(
+                    getLogger().error(
                         `Error in controller "${controller.metadata.name}" onStateExit:`,
                         error,
                     )
@@ -446,7 +447,7 @@ export class StateMachine {
                 try {
                     controller.onTransition(from, to, progress)
                 } catch (error) {
-                    console.error(
+                    getLogger().error(
                         `Error in controller "${controller.metadata.name}" onTransition:`,
                         error,
                     )

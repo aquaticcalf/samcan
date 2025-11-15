@@ -13,6 +13,7 @@ import type {
     RendererCapabilities,
 } from "./renderer"
 import { BatchManager, type DrawOperation } from "./batchmanager"
+import { RendererError } from "../error/renderererror"
 
 /**
  * Vertex data for path rendering
@@ -121,7 +122,10 @@ export class WebGLRenderer implements Renderer {
             }) as WebGLRenderingContext | null
 
             if (!experimentalGl) {
-                throw new Error("Failed to get WebGL rendering context")
+                throw RendererError.initFailed(
+                    "webgl",
+                    "Failed to get WebGL rendering context from canvas. WebGL may not be supported in this environment.",
+                )
             }
 
             this._gl = experimentalGl
@@ -139,8 +143,16 @@ export class WebGLRenderer implements Renderer {
             maxTextureSize
 
         // Initialize shaders and buffers
-        await this._initializeShaders()
-        this._initializeBuffers()
+        try {
+            await this._initializeShaders()
+            this._initializeBuffers()
+        } catch (error) {
+            throw RendererError.initFailed(
+                "webgl",
+                `Failed to initialize WebGL shaders or buffers: ${error instanceof Error ? error.message : String(error)}`,
+                error instanceof Error ? error : undefined,
+            )
+        }
 
         // Set up initial GL state
         this._gl.viewport(0, 0, this._width, this._height)

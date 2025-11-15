@@ -1,21 +1,8 @@
 import { Canvas2DRenderer } from "./canvas2drenderer"
 import { WebGLRenderer } from "./webglrenderer"
 import type { Renderer, RendererBackend } from "./renderer"
-
-/**
- * Error thrown when renderer initialization fails
- */
-export class RendererInitializationError extends Error {
-    public readonly backend: RendererBackend
-    public override readonly cause?: Error
-
-    constructor(message: string, backend: RendererBackend, cause?: Error) {
-        super(message)
-        this.name = "RendererInitializationError"
-        this.backend = backend
-        this.cause = cause
-    }
-}
+import { RendererError } from "../error/renderererror"
+import { getLogger } from "../animation/logger"
 
 /**
  * Factory for creating renderer instances with automatic fallback logic
@@ -37,7 +24,7 @@ export class RendererFactory {
      * @param preferredBackend - Optional preferred backend to try first
      * @param fallbackOrder - Optional custom fallback order (defaults to WebGPU → WebGL → Canvas2D)
      * @returns Promise resolving to an initialized renderer
-     * @throws RendererInitializationError if all backends fail to initialize
+     * @throws RendererError if all backends fail to initialize
      */
     static async create(
         canvas: HTMLCanvasElement,
@@ -51,46 +38,69 @@ export class RendererFactory {
         )
 
         const errors: Array<{ backend: RendererBackend; error: Error }> = []
+        let attemptedBackends: RendererBackend[] = []
 
         // Try each backend in order
         for (const backend of backendsToTry) {
+            attemptedBackends.push(backend)
+
             try {
                 const renderer = await this._createBackend(backend, canvas)
                 if (renderer) {
-                    // Log fallback warning if we didn't get the preferred backend
+                    // Emit warning if we didn't get the preferred backend
                     if (
                         preferredBackend &&
                         backend !== preferredBackend &&
                         errors.length > 0
                     ) {
-                        console.warn(
-                            `Preferred renderer backend "${preferredBackend}" failed to initialize. ` +
-                                `Falling back to "${backend}".`,
-                            errors[0]?.error,
+                        const failedBackends = errors
+                            .map((e) => e.backend)
+                            .join(", ")
+                        const firstError = errors[0]?.error
+
+                        getLogger().warn(
+                            `[samcan] Renderer fallback: Preferred backend "${preferredBackend}" failed to initialize. ` +
+                                `Falling back to "${backend}". ` +
+                                `Failed backends: ${failedBackends}`,
                         )
+
+                        // Log the first error for debugging
+                        if (firstError) {
+                            getLogger().warn(
+                                `[samcan] First initialization error:`,
+                                firstError,
+                            )
+                        }
                     }
                     return renderer
                 }
             } catch (error) {
+                const errorObj =
+                    error instanceof Error ? error : new Error(String(error))
+
                 errors.push({
                     backend,
-                    error:
-                        error instanceof Error
-                            ? error
-                            : new Error(String(error)),
+                    error: errorObj,
                 })
+
+                // Emit warning for each failed backend attempt
+                getLogger().warn(
+                    `[samcan] Failed to initialize ${backend} renderer: ${errorObj.message}`,
+                )
             }
         }
 
-        // All backends failed
+        // All backends failed - create comprehensive error
         const errorMessages = errors
             .map((e) => `${e.backend}: ${e.error.message}`)
             .join("; ")
 
-        throw new RendererInitializationError(
-            `Failed to initialize any renderer backend. Tried: ${backendsToTry.join(", ")}. Errors: ${errorMessages}`,
-            backendsToTry[0] ?? "canvas2d",
-            errors[0]?.error,
+        const firstError = errors[0]?.error
+
+        throw RendererError.initFailed(
+            attemptedBackends.join(" → "),
+            `All renderer backends failed. Attempted: ${attemptedBackends.join(", ")}. Errors: ${errorMessages}`,
+            firstError,
         )
     }
 
@@ -165,9 +175,7 @@ export class RendererFactory {
     ): Promise<Renderer | null> {
         // Check if backend is available before attempting to create
         if (!this.isBackendAvailable(backend)) {
-            throw new Error(
-                `Backend "${backend}" is not available in this environment`,
-            )
+            throw RendererError.notSupported(backend)
         }
 
         switch (backend) {
@@ -178,7 +186,7 @@ export class RendererFactory {
             case "webgpu":
                 return this._createWebGPURenderer(canvas)
             default:
-                throw new Error(`Unknown backend: ${backend}`)
+                throw RendererError.notSupported(backend)
         }
     }
 
@@ -188,9 +196,17 @@ export class RendererFactory {
     private static async _createCanvas2DRenderer(
         canvas: HTMLCanvasElement,
     ): Promise<Renderer> {
-        const renderer = new Canvas2DRenderer()
-        await renderer.initialize(canvas)
-        return renderer
+        try {
+            const renderer = new Canvas2DRenderer()
+            await renderer.initialize(canvas)
+            return renderer
+        } catch (error) {
+            throw RendererError.initFailed(
+                "canvas2d",
+                error instanceof Error ? error.message : String(error),
+                error instanceof Error ? error : undefined,
+            )
+        }
     }
 
     /**
@@ -199,9 +215,17 @@ export class RendererFactory {
     private static async _createWebGLRenderer(
         canvas: HTMLCanvasElement,
     ): Promise<Renderer> {
-        const renderer = new WebGLRenderer()
-        await renderer.initialize(canvas)
-        return renderer
+        try {
+            const renderer = new WebGLRenderer()
+            await renderer.initialize(canvas)
+            return renderer
+        } catch (error) {
+            throw RendererError.initFailed(
+                "webgl",
+                error instanceof Error ? error.message : String(error),
+                error instanceof Error ? error : undefined,
+            )
+        }
     }
 
     /**
@@ -210,7 +234,10 @@ export class RendererFactory {
     private static async _createWebGPURenderer(
         _canvas: HTMLCanvasElement,
     ): Promise<Renderer> {
-        throw new Error("WebGPU renderer not yet implemented")
+        throw RendererError.initFailed(
+            "webgpu",
+            "WebGPU renderer not yet implemented",
+        )
     }
 
     /**

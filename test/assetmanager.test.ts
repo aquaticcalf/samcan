@@ -3,6 +3,9 @@ import { AssetManager } from "../core/asset"
 import { Artboard } from "../core/scene/nodes/artboard"
 import { ImageNode } from "../core/scene/nodes/imagenode"
 import { Color } from "../core/math/color"
+import { setupDOM } from "./dom-setup"
+
+setupDOM()
 
 describe("AssetManager", () => {
     let assetManager: AssetManager

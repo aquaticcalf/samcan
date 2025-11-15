@@ -1,6 +1,8 @@
 /**
  * Frame callback function type
  */
+import { getLogger } from "../animation/logger"
+
 export type FrameCallback = (deltaTime: number) => void
 
 /**
@@ -183,7 +185,7 @@ export class Scheduler {
             try {
                 callback(deltaTime)
             } catch (error) {
-                console.error("Error in scheduled callback:", error)
+                getLogger().error("Error in scheduled callback:", error)
             }
         }
 

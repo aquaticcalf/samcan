@@ -8,6 +8,9 @@ import {
 import { Artboard } from "../core/scene/nodes/artboard"
 import { ShapeNode } from "../core/scene/nodes/shapenode"
 import { Color } from "../core/math/color"
+import { setupDOM } from "./dom-setup"
+
+setupDOM()
 import { Path } from "../core/math/path"
 import { Paint } from "../core/math/paint"
 import { Canvas2DRenderer } from "../core/renderer/canvas2drenderer"
@@ -33,9 +36,9 @@ describe("AnimationRuntime - Rendering Integration", () => {
     })
 
     afterEach(() => {
-        // Clean up global state
-        delete (global as any).document
-        delete (global as any).HTMLCanvasElement
+        // Restore original jsdom-based globals instead of deleting
+        // This prevents other tests from seeing an undefined document
+        setupDOM()
     })
 
     test("accepts renderer in constructor", () => {
