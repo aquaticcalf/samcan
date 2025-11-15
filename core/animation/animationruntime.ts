@@ -8,7 +8,7 @@ import { Matrix } from "../math/matrix"
 import { Clock } from "../timing/clock"
 import { Scheduler } from "../timing/scheduler"
 import { Timeline } from "./timeline"
-import { EventEmitter } from "../../editor/events/emitter"
+import { EventEmitter } from "../editor/events/emitter"
 import { PluginRegistry } from "../plugin/pluginregistry"
 
 /**
@@ -32,12 +32,12 @@ export type LoopMode = "none" | "loop" | "pingpong"
 /**
  * Runtime events that can be emitted during animation playback
  */
-export interface RuntimeEvents {
-    play: void
-    pause: void
-    stop: void
-    complete: void
-    loop: void
+export interface RuntimeEvents extends Record<string, unknown> {
+    play: unknown
+    pause: unknown
+    stop: unknown
+    complete: unknown
+    loop: unknown
     stateChange: PlaybackState
 }
 
