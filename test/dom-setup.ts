@@ -46,13 +46,25 @@ export function setupDOM() {
             this._src = value
             // Simulate async image loading
             setTimeout(() => {
-                // Mock successful load with fake dimensions
-                this.width = 2
-                this.height = 2
-                this.naturalWidth = 2
-                this.naturalHeight = 2
-                if (this.onload) {
-                    this.onload(new Event("load"))
+                // Check if URL looks valid
+                const isDataUrl = value.startsWith("data:image/")
+                const isValidUrl =
+                    value.includes("://") && !value.includes("invalid-domain")
+
+                if (!isDataUrl && !isValidUrl) {
+                    // Invalid URL, trigger error
+                    if (this.onerror) {
+                        this.onerror(new Event("error"))
+                    }
+                } else {
+                    // Mock successful load with fake dimensions
+                    this.width = 2
+                    this.height = 2
+                    this.naturalWidth = 2
+                    this.naturalHeight = 2
+                    if (this.onload) {
+                        this.onload(new Event("load"))
+                    }
                 }
             }, 0)
         }

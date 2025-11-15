@@ -32,6 +32,102 @@ describe("AssetManager", () => {
             expect(placeholder1).toBe(placeholder2)
         })
 
+        it("should emit load-start and load-success events on successful load", async () => {
+            const events: string[] = []
+
+            assetManager.on("load-start", (event) => {
+                events.push(`start:${event.assetType}`)
+            })
+
+            assetManager.on("load-success", (event) => {
+                events.push(`success:${event.assetType}`)
+            })
+
+            const dataUrl =
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVQIW2P8z8DwHwYYGBj+AwABBgEAW3pB4QAAAABJRU5ErkJggg=="
+
+            await assetManager.loadImage(dataUrl)
+
+            expect(events).toEqual(["start:image", "success:image"])
+        })
+
+        it("should emit load-error event on load failure", async () => {
+            const events: string[] = []
+            let errorEvent: any = null
+
+            assetManager.on("load-start", (event) => {
+                events.push(`start:${event.assetType}`)
+            })
+
+            assetManager.on("load-error", (event) => {
+                events.push(`error:${event.assetType}`)
+                errorEvent = event
+            })
+
+            // Use an invalid network URL that will fail immediately
+            const invalidUrl =
+                "https://invalid-domain-that-does-not-exist.com/image.png"
+
+            // loadImage returns placeholder on failure, so we need to use load() to see the error
+            try {
+                await assetManager.load(invalidUrl, "image", { maxRetries: 0 })
+            } catch (error) {
+                // Expected to throw
+            }
+
+            expect(events).toContain("start:image")
+            expect(events).toContain("error:image")
+            expect(errorEvent).toBeDefined()
+            expect(errorEvent.error).toBeDefined()
+        })
+
+        it("should emit load-retry events when retrying", async () => {
+            const events: string[] = []
+            const retryEvents: any[] = []
+
+            assetManager.on("load-retry", (event) => {
+                events.push(`retry:${event.retryAttempt}`)
+                retryEvents.push(event)
+            })
+
+            // Use an invalid network URL that will fail immediately
+            const invalidUrl =
+                "https://invalid-domain-that-does-not-exist.com/image.png"
+
+            try {
+                await assetManager.load(invalidUrl, "image", {
+                    maxRetries: 2,
+                    retryDelay: 10,
+                })
+            } catch (error) {
+                // Expected to throw after retries
+            }
+
+            expect(events).toContain("retry:1")
+            expect(events).toContain("retry:2")
+            expect(retryEvents).toHaveLength(2)
+            expect(retryEvents[0]?.retryAttempt).toBe(1)
+            expect(retryEvents[1]?.retryAttempt).toBe(2)
+        })
+
+        it("should allow removing event listeners", async () => {
+            const events: string[] = []
+
+            const callback = (event: any) => {
+                events.push(`start:${event.assetType}`)
+            }
+
+            assetManager.on("load-start", callback)
+            assetManager.off("load-start", callback)
+
+            const dataUrl =
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVQIW2P8z8DwHwYYGBj+AwABBgEAW3pB4QAAAABJRU5ErkJggg=="
+
+            await assetManager.loadImage(dataUrl)
+
+            expect(events).toHaveLength(0)
+        })
+
         it("should load a valid image using data URL", async () => {
             // Create a simple 2x2 red pixel PNG as data URL
             const dataUrl =
@@ -61,7 +157,9 @@ describe("AssetManager", () => {
             const invalidUrl =
                 "https://invalid-domain-that-does-not-exist.com/image.png"
 
-            const asset = await assetManager.loadImage(invalidUrl)
+            const asset = await assetManager.loadImage(invalidUrl, {
+                maxRetries: 0,
+            })
 
             // Should return placeholder instead of throwing
             expect(asset).toBeDefined()
@@ -77,6 +175,7 @@ describe("AssetManager", () => {
 
             const asset = await assetManager.loadImage(invalidUrl, {
                 fallbackUrl,
+                maxRetries: 0,
             })
 
             expect(asset).toBeDefined()
@@ -105,6 +204,22 @@ describe("AssetManager", () => {
 
             const retrieved = assetManager.get(dataUrl)
             expect(retrieved).toBeNull()
+        })
+
+        it("should emit unload event when unloading assets", async () => {
+            const events: string[] = []
+
+            assetManager.on("unload", (event) => {
+                events.push(`unload:${event.assetType}`)
+            })
+
+            const dataUrl =
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVQIW2P8z8DwHwYYGBj+AwABBgEAW3pB4QAAAABJRU5ErkJggg=="
+
+            await assetManager.loadImage(dataUrl)
+            assetManager.unload(dataUrl)
+
+            expect(events).toContain("unload:image")
         })
 
         it("should preload multiple images", async () => {
@@ -175,7 +290,10 @@ describe("AssetManager", () => {
                 "https://invalid-domain-that-does-not-exist.com/font.woff2"
 
             await expect(
-                assetManager.loadFont(invalidUrl, "InvalidFont"),
+                assetManager.load(invalidUrl, "font", {
+                    family: "InvalidFont",
+                    maxRetries: 0,
+                }),
             ).rejects.toThrow()
         })
 
@@ -183,13 +301,14 @@ describe("AssetManager", () => {
             const invalidUrl =
                 "https://invalid-domain-that-does-not-exist.com/font.woff2"
             const fallbackUrl =
-                "data:font/woff2;base64,d09GMgABAAAAAAGQAAoAAAAABgAAAAFDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAALAoKCAhYAQYAATYCJAMIBCAFBgcHGxsHyB6FcZP1RJOiKP6/+Ih4+H6/du59H0xiniGZRBZLJkRCJZE9k+lkQsVDJeQvlUx+8Pvc+xGzJuJNI5lEPIlFT6ZBCZVGyCQS6VQiHv6tW93/r7l1gDvgAR1wAAWYhzTg3QUYYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+k="
+                "data:font/woff2;base64,d09GMgABAAAAAAGQAAoAAAAABgAAAAFDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAALAoKCAhYAQYAATYCJAMIBCAFBgcHGxsHyB6FcZP1RJOiKP6/+Ih4+H6/du59H0xiniGZRBZLJkRCJZE9k+lkQsVDJeQvlUx+8Pvc+xGzJuJNI5lEPIlFT6ZBCZVGyCQS6VQiHv6tW93/r7l1gDvgAR1wAAWYhzTg3QUYYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+kWYECxRZhFkmGCCQaYYAIJJJBAAhm+l+k="
 
             const asset = await assetManager.loadFont(
                 invalidUrl,
                 "FallbackFont",
                 {
                     fallbackUrl,
+                    maxRetries: 0,
                 },
             )
 
