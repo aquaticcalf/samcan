@@ -35,6 +35,16 @@ import { AnimationRuntime } from "samcan"
 |test         |6204         |130          |1594         |7928         |
 |**total**    |**14382**    |**3458**     |**3195**     |**21035**    |
 
+### star history
+
+<a href="https://www.star-history.com/#aquaticcalf/samcan&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=aquaticcalf/samcan&theme=dark&legend=bottom-right" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=aquaticcalf/samcan&legend=bottom-right" />
+   <img alt="star history chart" src="https://api.star-history.com/svg?repos=aquaticcalf/samcan&legend=bottom-right" />
+ </picture>
+</a>
+
 ### badges
 
 [![npm](https://img.shields.io/npm/v/samcan?style=for-the-badge&color=000000&labelColor=000000)](https://www.npmjs.com/package/samcan/)
