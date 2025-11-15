@@ -36,7 +36,7 @@ import { AnimationRuntime } from "samcan"
 
 ### badges
 
-![npm](https://img.shields.io/npm/v/samcan?style=for-the-badge&color=000000&labelColor=000000)
-![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge&color=000000&labelColor=000000)
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&color=000000)
+[![npm](https://img.shields.io/npm/v/samcan?style=for-the-badge&color=000000&labelColor=000000)](https://www.npmjs.com/package/samcan/)
+[![license](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge&color=000000&labelColor=000000)](https://github.com/aquaticcalf/samcan/tree/dev?tab=MIT-1-ov-file)
+[![typescript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&color=000000)](https://www.npmjs.com/package/samcan/)
 
