@@ -1,387 +1,206 @@
-# samcan API Examples
+# samcan Usage Examples
+Concise, task‑oriented examples for common scenarios. Pair with the full reference (`api-reference.md`).
 
-This document provides examples of using the samcan high-level API for common use cases.
-
-## Quick Start
-
-### Simple Animation Playback
-
-The simplest way to play an animation:
-
-```typescript
-import * as samcan from 'samcan'
-
-// Get canvas element
+## 1. Quick Start Playback
+```ts
+import { play } from 'samcan'
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
-
-// Load and play animation
-const player = await samcan.play(canvas, 'animation.samcan', {
-  loop: true,
-  speed: 1.0
-})
+const player = await play(canvas, '/animations/intro.samcan', { loop: true, speed: 1 })
 ```
 
-### Create Player with Configuration
-
-For more control, create a player with custom configuration:
-
-```typescript
+## 2. Controlled Player Lifecycle
+```ts
 import { createPlayer } from 'samcan'
-
-const player = await createPlayer({
-  canvas: document.getElementById('canvas') as HTMLCanvasElement,
-  autoplay: false,
-  loop: true,
-  speed: 1.5,
-  backend: 'webgl' // Preferred backend (will fallback automatically)
-})
-
-// Load animation
-await player.load('animation.samcan')
-
-// Control playback
+const player = await createPlayer({ canvas, autoplay: false, loop: true, backend: 'webgl' })
+await player.load('/animations/hero.samcan')
 player.play()
-player.pause()
-player.stop()
-player.seek(2.5) // Seek to 2.5 seconds
+setTimeout(() => player.pause(), 1500)
+player.seek(0.75)
+player.setSpeed(2.0)
 ```
 
-## Playback Control
-
-### Basic Controls
-
-```typescript
-// Play/pause/stop
-player.play()
-player.pause()
-player.stop()
-
-// Seek to specific time
-player.seek(5.0) // Seek to 5 seconds
-
-// Change speed
-player.setSpeed(2.0) // 2x speed
-player.setSpeed(0.5) // Half speed
-
-// Toggle loop
-player.setLoop(true)
-player.setLoop(false)
-```
-
-### Playback State
-
-```typescript
-// Check playback state
-if (player.isPlaying) {
-  console.log('Animation is playing')
-}
-
-// Get current time and duration
-console.log(`Time: ${player.currentTime}s / ${player.duration}s`)
-
-// Calculate progress percentage
-const progress = (player.currentTime / player.duration) * 100
-console.log(`Progress: ${progress}%`)
-```
-
-## Event Handling
-
-### Listen to Playback Events
-
-```typescript
-// Listen for events
-const unsubscribe = player.on('complete', () => {
-  console.log('Animation completed!')
-})
-
-player.on('loop', () => {
-  console.log('Animation looped')
-})
-
-player.on('play', () => {
-  console.log('Playback started')
-})
-
-player.on('pause', () => {
-  console.log('Playback paused')
-})
-
-player.on('stop', () => {
-  console.log('Playback stopped')
-})
-
-// Unsubscribe when done
-unsubscribe()
-```
-
-## Loading Animations
-
-### Load from URL
-
-```typescript
-// Load from URL
-await player.load('https://example.com/animation.samcan')
-
-// Load with options
-await player.load('animation.samcan', {
-  preloadAssets: true,
-  assetTimeout: 30000 // 30 seconds
-})
-```
-
-### Load from Object
-
-```typescript
-import { loadAnimation } from 'samcan'
-
-// Load animation file
-const animationFile = await loadAnimation('animation.samcan')
-
-// Inspect metadata
-console.log('Name:', animationFile.metadata.name)
-console.log('Duration:', animationFile.artboards[0]?.timeline.duration)
-
-// Load into player
-await player.load(animationFile)
-```
-
-### Load Compressed Animations
-
-```typescript
-// Compressed files (.samcan.gz) are automatically detected and decompressed
-await player.load('animation.samcan.gz')
-```
-
-## Rendering Backends
-
-### Check Available Backends
-
-```typescript
-import { getBackendInfo } from 'samcan'
-
+## 3. Backend Capability & Fallback
+```ts
+import { createPlayer, getBackendInfo } from 'samcan'
 const info = getBackendInfo()
-console.log('Available backends:', info.available)
-console.log('WebGL supported:', info.webgl)
-console.log('WebGPU supported:', info.webgpu)
-console.log('Canvas2D supported:', info.canvas2d)
-```
-
-### Specify Preferred Backend
-
-```typescript
-// Prefer WebGL, fallback to Canvas2D if unavailable
-const player = await createPlayer({
-  canvas,
-  backend: 'webgl' // Will automatically fallback if unavailable
-})
-
-// Check which backend was used
+console.log(info.available)
+const player = await createPlayer({ canvas, backend: 'webgpu', autoplay: true }) // falls back automatically
 console.log('Using backend:', player.renderer.backend)
 ```
 
-## Canvas Resizing
+## 4. Listening for Events
+```ts
+player.on('complete', () => console.log('Finished'))
+player.on('loop', () => console.log('Loop iteration'))
+player.on('play', () => console.log('Started'))
+const off = player.on('pause', () => console.log('Paused'))
+off() // unsubscribe
+```
 
-### Responsive Canvas
-
-```typescript
-// Resize canvas and renderer
-function resizeCanvas() {
-  const width = window.innerWidth
-  const height = window.innerHeight
-  
-  canvas.width = width
-  canvas.height = height
-  
-  player.resize(width, height)
+## 5. Responsive Canvas Resize
+```ts
+function resize() {
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  player.resize(canvas.width, canvas.height)
 }
-
-// Handle window resize
-window.addEventListener('resize', resizeCanvas)
-resizeCanvas()
+window.addEventListener('resize', resize)
+resize()
 ```
 
-## Asset Management
-
-### Custom Asset Manager
-
-```typescript
-import { createPlayer, AssetManager } from 'samcan'
-
-// Create shared asset manager
-const assetManager = new AssetManager()
-
-// Preload assets
-await assetManager.preload([
-  { url: 'image1.png', type: 'image' },
-  { url: 'image2.png', type: 'image' },
-  { url: 'font.woff2', type: 'font', family: 'CustomFont' }
-])
-
-// Create player with shared asset manager
-const player = await createPlayer({
-  canvas,
-  assetManager
-})
+## 6. Inspecting Loaded Data
+```ts
+await player.load('/animations/card.samcan')
+console.log('Duration:', player.duration)
+console.log('Artboard size:', player.artboard?.width, player.artboard?.height)
 ```
 
-### Asset Loading Events
+## 7. Manual Runtime Construction (Custom Flow)
+```ts
+import { AnimationRuntime, Timeline, AnimationTrack, Keyframe, ShapeNode, Path, Transform, RendererFactory, Artboard, Color } from 'samcan'
+const canvas = document.getElementById('canvas') as HTMLCanvasElement
+const renderer = await RendererFactory.create(canvas, 'canvas2d')
+const runtime = new AnimationRuntime(renderer)
 
-```typescript
+// Build scene
+const artboard = new Artboard(400, 300, Color.black())
+const path = new Path(); path.moveTo(0,0); path.lineTo(200,0); path.lineTo(200,100); path.close()
+const shape = new ShapeNode(path, new Transform())
+artboard.addChild(shape)
+
+// Build animation
+const timeline = new Timeline(2)
+const track = new AnimationTrack(shape, 'opacity')
+track.addKeyframe(new Keyframe(0, 0))
+track.addKeyframe(new Keyframe(2, 1))
+timeline.addTrack(track)
+
+await runtime.load({ artboard, timeline })
+runtime.play()
+```
+
+## 8. State Machine Interaction
+```ts
+import { StateMachine, StateTransition, EventCondition, BooleanCondition } from 'samcan'
+const sm = new StateMachine()
+// assume idleState, hoverState already created AnimationState instances
+sm.addState(idleState)
+sm.addState(hoverState)
+sm.changeState(idleState.id)
+sm.addTransition(new StateTransition(idleState.id, hoverState.id, [ new EventCondition('hover') ]))
+sm.trigger('hover')
+sm.update(0.016)
+```
+
+## 9. Custom Plugin
+```ts
+import type { Plugin } from 'samcan'
+class Pulse implements Plugin {
+  metadata = { name: 'pulse', version: '1.0.0' }
+  private runtime!: any
+  initialize(rt) { this.runtime = rt }
+  update(dt) { /* run per-frame logic */ }
+  cleanup() { /* release resources */ }
+}
+player.runtime.plugins.register(new Pulse())
+```
+
+## 10. Asset Preloading & Fallback
+```ts
 import { AssetManager } from 'samcan'
-
-const assetManager = new AssetManager()
-
-// Listen for asset events
-assetManager.on('load-start', (event) => {
-  console.log('Loading:', event.assetUrl)
-})
-
-assetManager.on('load-success', (event) => {
-  console.log('Loaded:', event.assetUrl)
-})
-
-assetManager.on('load-error', (event) => {
-  console.error('Failed to load:', event.assetUrl, event.error)
-})
+const assets = new AssetManager()
+assets.on('load-error', e => console.warn('Asset failed:', e.assetUrl))
+await assets.preload([
+  { url: '/img/logo.png', type: 'image' },
+  { url: '/fonts/Brand.woff2', type: 'font', family: 'Brand' }
+])
+const logo = await assets.loadImage('/img/logo@2x.png', { fallbackUrl: '/img/logo.png', maxRetries: 2 })
 ```
 
-## Advanced Usage
-
-### Access Runtime Directly
-
-```typescript
-// Access the underlying AnimationRuntime for advanced control
-const runtime = player.runtime
-
-// Access timeline
-const timeline = runtime.timeline
-if (timeline) {
-  console.log('Timeline duration:', timeline.duration)
-  console.log('Timeline FPS:', timeline.fps)
-  console.log('Number of tracks:', timeline.tracks.length)
-}
-
-// Access artboard
-const artboard = runtime.artboard
-if (artboard) {
-  console.log('Artboard size:', artboard.width, 'x', artboard.height)
-}
+## 11. Serialize & Compress
+```ts
+import { Serializer } from 'samcan'
+const serializer = new Serializer()
+const file = serializer.serializeSamcanFile([player.runtime.artboard!], { name: 'Banner' })
+const json = serializer.toJSON(file)
+const compressed = await serializer.toCompressedJSON(file)
+// Upload compressed (Uint8Array) to server
 ```
 
-### Plugin System
+## 12. Incremental Large File Parsing
+```ts
+const response = await fetch('/large.anim.samcan.gz')
+const arrayBuffer = await response.arrayBuffer()
+const serializer = new Serializer()
+const file = await serializer.fromCompressedJSONIncremental(new Uint8Array(arrayBuffer))
+console.log('Loaded big file', file.metadata.name)
+```
 
-```typescript
-import { Plugin } from 'samcan'
-
-// Create custom plugin
-class MyPlugin implements Plugin {
-  name = 'my-plugin'
-  version = '1.0.0'
-  
-  initialize(runtime) {
-    console.log('Plugin initialized')
-  }
-  
-  update(deltaTime) {
-    // Called every frame
-  }
-  
-  cleanup() {
-    console.log('Plugin cleaned up')
+## 13. Error Handling
+```ts
+import { SamcanError } from 'samcan'
+try { await player.load('/broken.samcan') } catch (e) {
+  if (e instanceof SamcanError) {
+    console.error('Code:', e.code, 'Details:', e.context)
   }
 }
-
-// Register plugin
-player.runtime.plugins.register(new MyPlugin())
 ```
 
-## Cleanup
-
-### Destroy Player
-
-```typescript
-// Clean up resources when done
-player.destroy()
+## 14. Dynamic Property Animation (Nested Path)
+```ts
+const track = new AnimationTrack(shape, 'transform.position.x')
+track.addKeyframe(new Keyframe(0, 0))
+track.addKeyframe(new Keyframe(1, 200))
 ```
 
-## Complete Example
+## 15. Custom Easing
+```ts
+const easeOutQuad = (t: number) => 1 - (1 - t) * (1 - t)
+track.addKeyframe(new Keyframe(0, 0, 'linear'))
+track.addKeyframe(new Keyframe(2, 100, 'linear', easeOutQuad))
+```
 
-```typescript
-import { createPlayer } from 'samcan'
-
-async function initAnimation() {
-  const canvas = document.getElementById('canvas') as HTMLCanvasElement
-  
-  // Create player
-  const player = await createPlayer({
-    canvas,
-    autoplay: false,
-    loop: true,
-    speed: 1.0
-  })
-  
-  // Load animation
-  await player.load('animation.samcan')
-  
-  // Setup controls
-  document.getElementById('play')?.addEventListener('click', () => {
-    player.play()
-  })
-  
-  document.getElementById('pause')?.addEventListener('click', () => {
-    player.pause()
-  })
-  
-  document.getElementById('stop')?.addEventListener('click', () => {
-    player.stop()
-  })
-  
-  // Setup progress bar
-  const progressBar = document.getElementById('progress') as HTMLInputElement
-  
-  player.on('play', () => {
-    const updateProgress = () => {
-      if (player.isPlaying) {
-        const progress = (player.currentTime / player.duration) * 100
-        progressBar.value = String(progress)
-        requestAnimationFrame(updateProgress)
-      }
+## 16. Checking Actual Frame Progress
+```ts
+player.on('play', () => {
+  const loop = () => {
+    if (player.isPlaying) {
+      console.log(player.currentTime, '/', player.duration)
+      requestAnimationFrame(loop)
     }
-    updateProgress()
-  })
-  
-  progressBar.addEventListener('input', () => {
-    const time = (Number(progressBar.value) / 100) * player.duration
-    player.seek(time)
-  })
-  
-  // Handle window resize
-  function resize() {
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
-    player.resize(canvas.width, canvas.height)
   }
-  
-  window.addEventListener('resize', resize)
-  resize()
-  
-  return player
+  loop()
+})
+```
+
+## 17. Transition Priority Example
+```ts
+// Higher priority wins when both conditions valid
+sm.addTransition(new StateTransition(a.id, b.id, [ new BooleanCondition('go', true) ], 0, 5))
+sm.addTransition(new StateTransition(a.id, c.id, [ new TimeCondition(2) ], 0, 1))
+```
+
+## 18. Safe Plugin Unregistration
+```ts
+player.runtime.plugins.unregister('pulse')
+```
+
+## 19. Fallback Placeholder Image
+```ts
+const img = await assets.loadImage('/missing.png')
+if (img.id === '__placeholder__') {
+  console.warn('Using placeholder')
 }
-
-// Initialize
-initAnimation().catch(console.error)
 ```
 
-## TypeScript Types
-
-All API functions and classes are fully typed. Import types as needed:
-
-```typescript
-import type {
-  PlayerConfig,
-  LoadOptions,
-  AnimationPlayer,
-  SamcanFile,
-  RendererBackend
-} from 'samcan'
+## 20. Manual Asset Bundle Extraction
+```ts
+const serializer = new Serializer()
+const file = serializer.serializeSamcanFile([player.runtime.artboard!], { name: 'Export' }, { includeAssets: true, assetManager: player.assetManager })
+const bundle = await serializer.createAssetBundle(file.assets.map(a => a.id), player.assetManager)
+for (const [id, entry] of bundle) {
+  console.log(id, entry.type)
+}
 ```
+
+End of examples.

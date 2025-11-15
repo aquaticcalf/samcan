@@ -1,567 +1,348 @@
-# samcan API Reference
+# samcan API Documentation
 
-Complete API reference for the samcan animation runtime.
+This document is a complete reference plus practical guidance for the public API surface exported from `samcan`.
 
-## High-Level API
-
-The high-level API provides simple, convenient methods for common use cases. This is the recommended API for most applications.
-
-### Functions
-
-#### `createPlayer(config: PlayerConfig): Promise<AnimationPlayer>`
-
-Create an animation player with the specified configuration.
-
-**Parameters:**
-- `config.canvas` (HTMLCanvasElement) - The canvas element to render to
-- `config.backend?` (RendererBackend) - Preferred rendering backend (default: "webgl")
-- `config.autoplay?` (boolean) - Start playing immediately after loading (default: false)
-- `config.loop?` (boolean) - Loop the animation (default: false)
-- `config.speed?` (number) - Playback speed multiplier (default: 1.0)
-- `config.assetManager?` (AssetManager) - Custom asset manager instance
-
-**Returns:** Promise<AnimationPlayer>
-
-**Example:**
-```typescript
-const player = await createPlayer({
-  canvas: document.getElementById('canvas'),
-  autoplay: true,
-  loop: true
-})
-```
+## Index
+1. High-Level Player API
+2. Core Runtime
+3. Rendering Abstraction
+4. Scene Graph
+5. Animation System (Timeline / Tracks / Keyframes / Easing)
+6. State Machine System
+7. Assets & Loading
+8. Serialization & File Format
+9. Plugin System
+10. Command / Editor Utilities
+11. Math & Geometry Primitives
+12. Timing (Clock / Scheduler)
+13. Error Handling
+14. Performance Considerations
+15. Type Glossary
 
 ---
+## 1. High-Level Player API
+Recommended entry points for 90% of use cases: simple playback, control, backend selection.
 
-#### `play(canvas: HTMLCanvasElement, url: string, options?): Promise<AnimationPlayer>`
+### `createPlayer(config: PlayerConfig): Promise<AnimationPlayer>`
+Creates a configured player with chosen backend and returns an `AnimationPlayer` instance.
 
-Load and play an animation with minimal configuration. This is the simplest way to play an animation.
+Config:
+- `canvas: HTMLCanvasElement` required target
+- `backend?: RendererBackend` default `'webgl'`
+- `autoplay?: boolean` default `false`
+- `loop?: boolean` default `false` (internally sets runtime loop mode)
+- `speed?: number` default `1.0`
+- `assetManager?: AssetManager` optional shared manager
 
-**Parameters:**
-- `canvas` (HTMLCanvasElement) - Canvas element to render to
-- `url` (string) - URL of the animation file
-- `options.loop?` (boolean) - Loop the animation
-- `options.speed?` (number) - Playback speed multiplier
-- `options.backend?` (RendererBackend) - Preferred rendering backend
+### `play(canvas: HTMLCanvasElement, url: string, options?)`
+Convenience one-liner: creates player, loads file, applies options, begins playback.
+Options: `{ loop?: boolean; speed?: number; backend?: RendererBackend }`.
 
-**Returns:** Promise<AnimationPlayer>
+### `loadAnimation(url: string): Promise<SamcanFile>`
+Fetch + parse (and decompress if `.gz`) without creating a player. Use for inspection or custom runtime wiring.
 
-**Example:**
-```typescript
-const player = await play(canvas, 'animation.samcan', { loop: true })
-```
+### `getBackendInfo()`
+Returns `{ available: RendererBackend[]; canvas2d: boolean; webgl: boolean; webgpu: boolean }` for environment capability checks.
 
----
+### `AnimationPlayer` Overview
+Wrapper around `AnimationRuntime` providing ergonomic surface.
+Properties (readonly): `runtime`, `renderer`, `assetManager`, `currentTime`, `duration`, `isPlaying`, `artboard`.
+Methods:
+- `load(source: string | SamcanFile, options?: LoadOptions)`
+- `play()`, `pause()`, `stop()`
+- `seek(time: number)` seconds
+- `setSpeed(multiplier: number)`
+- `setLoop(loop: boolean)` (maps to runtime loop mode "loop" or "none")
+- `on(event, callback): () => void` events: `play`, `pause`, `stop`, `complete`, `loop`
+- `resize(width, height)` adjusts renderer
+- `destroy()` unloads animation (runtime resources preserved for reuse of renderer / asset manager)
 
-#### `loadAnimation(url: string): Promise<SamcanFile>`
-
-Load an animation file from a URL without creating a player.
-
-**Parameters:**
-- `url` (string) - URL of the animation file
-
-**Returns:** Promise<SamcanFile>
-
-**Example:**
-```typescript
-const animation = await loadAnimation('animation.samcan')
-console.log(animation.metadata.name)
-```
-
----
-
-#### `getBackendInfo(): BackendInfo`
-
-Get information about available rendering backends.
-
-**Returns:** Object with backend availability information
-- `available` (RendererBackend[]) - Array of available backends
-- `canvas2d` (boolean) - Canvas2D support
-- `webgl` (boolean) - WebGL support
-- `webgpu` (boolean) - WebGPU support
-
-**Example:**
-```typescript
-const info = getBackendInfo()
-console.log('Available:', info.available)
-```
+LoadOptions: `{ preloadAssets?: boolean = true; assetTimeout?: number = 30000 }`.
 
 ---
+## 2. Core Runtime
+`AnimationRuntime` orchestrates timing, evaluation, rendering, events, and plugins.
 
-### AnimationPlayer Class
+Key properties: `artboard`, `timeline`, `renderer`, `currentTime`, `duration`, `speed`, `loopMode`, `isPlaying`, `state`.
+Loop modes: `"none" | "loop" | "pingpong"`.
+Playback control: `play()`, `pause()`, `stop()`, `seek(sec)`, `setSpeed(mult)`, `setLoop(mode)`.
+Events via `on(event, fn)` / `once(event, fn)` / `off(event)` / `removeAllListeners()`.
+Events: `play`, `pause`, `stop`, `complete`, `loop`, `stateChange`.
+Plugins accessed via `runtime.plugins` (PluginRegistry).
 
-The main class for controlling animation playback.
-
-#### Properties
-
-- `runtime: AnimationRuntime` - Access to underlying runtime (readonly)
-- `renderer: Renderer` - Access to renderer instance (readonly)
-- `assetManager: AssetManager` - Access to asset manager (readonly)
-- `currentTime: number` - Current playback time in seconds (readonly)
-- `duration: number` - Animation duration in seconds (readonly)
-- `isPlaying: boolean` - Whether animation is currently playing (readonly)
-- `artboard: Artboard | null` - The loaded artboard (readonly)
-
-#### Methods
-
-##### `load(source: string | SamcanFile, options?: LoadOptions): Promise<void>`
-
-Load an animation from a URL or SamcanFile object.
-
-**Parameters:**
-- `source` - URL string or SamcanFile object
-- `options.preloadAssets?` (boolean) - Preload all assets (default: true)
-- `options.assetTimeout?` (number) - Asset loading timeout in ms (default: 30000)
+Internal scheduling: integrates `Clock` (high precision) + `Scheduler` (frame callbacks). Frame evaluation handles loop wrapping and ping‑pong reversal automatically.
 
 ---
+## 3. Rendering Abstraction
+Factory selects backend; renderer API hides implementation details.
 
-##### `play(): void`
+### `RendererFactory.create(canvas, preferred?, fallbackOrder?)`
+Attempts preferred then fallback order (default: `webgpu → webgl → canvas2d`). Emits warnings on fallback.
 
-Start or resume playback.
+### Capability Queries
+- `RendererFactory.isBackendAvailable(backend)`
+- `RendererFactory.getAvailableBackends()`
 
----
+### `Renderer` (selected subset – see type exports)
+Lifecycle: `initialize(canvas)`, `resize(w,h)`, `beginFrame()`, `endFrame()`, `clear(color?)`.
+Drawing: `drawPath(path, paint)`, `drawStroke(path, paint, width)`, `drawImage(imageAsset, transform)`.
+State Stack: `save()`, `restore()`, `transform(matrix)`, `setOpacity(alpha)`.
+Viewport: `getViewportBounds()` used for culling.
+Metadata: `backend`, `capabilities`.
 
-##### `pause(): void`
-
-Pause playback at current time.
-
----
-
-##### `stop(): void`
-
-Stop playback and reset to beginning.
-
----
-
-##### `seek(time: number): void`
-
-Seek to a specific time in the animation.
-
-**Parameters:**
-- `time` (number) - Time in seconds
+Backends: `canvas2d`, `webgl`, `webgpu` (placeholder; throws init error presently).
 
 ---
+## 4. Scene Graph
+Hierarchical composition enabling transforms, opacity inheritance, visibility, culling.
 
-##### `setSpeed(speed: number): void`
+`SceneNode` base:
+- Properties: `transform`, `visible`, `opacity`, `parent`, `children[]`
+- Methods: `addChild(node)`, `removeChild(node)`, `getWorldTransform()`, `getWorldOpacity()`, `getOwnWorldBounds()`, `getWorldBounds()`.
 
-Set playback speed multiplier.
+Node Types:
+- `Artboard(width, height, backgroundColor)` root; acts as container
+- `GroupNode(transform)` structural grouping
+- `ShapeNode(path, transform)` vector shape (properties: `path`, `fill`, `stroke`, `strokeWidth`)
+- `ImageNode(imageData, transform)` supports asset ID or loaded HTMLImageElement / ImageData, optional `sourceRect`
 
-**Parameters:**
-- `speed` (number) - Speed multiplier (1.0 = normal, 2.0 = double speed, 0.5 = half speed)
-
----
-
-##### `setLoop(loop: boolean): void`
-
-Set loop mode.
-
-**Parameters:**
-- `loop` (boolean) - Whether to loop the animation
+Transforms use `Transform` (position: `Vector2`, rotation radians, scale `Vector2`, pivot `Vector2`).
 
 ---
-
-##### `on(event: string, callback: () => void): () => void`
-
-Register an event listener.
-
-**Parameters:**
-- `event` - Event name: "play", "pause", "stop", "complete", or "loop"
-- `callback` - Callback function
-
-**Returns:** Unsubscribe function
-
----
-
-##### `resize(width: number, height: number): void`
-
-Resize the canvas and renderer.
-
-**Parameters:**
-- `width` (number) - New width in pixels
-- `height` (number) - New height in pixels
-
----
-
-##### `destroy(): void`
-
-Clean up resources.
-
----
-
-## Core Runtime API
-
-For advanced usage, you can access the core runtime classes directly.
-
-### AnimationRuntime
-
-The core animation engine.
-
-**Key Methods:**
-- `load(data: AnimationData): Promise<void>` - Load animation data
-- `unload(): void` - Unload current animation
-- `play(): void` - Start playback
-- `pause(): void` - Pause playback
-- `stop(): void` - Stop playback
-- `seek(time: number): void` - Seek to time
-- `setSpeed(speed: number): void` - Set playback speed
-- `setLoop(mode: LoopMode): void` - Set loop mode ("none", "loop", "pingpong")
-- `on<K>(event: K, callback): () => void` - Register event listener
-
-**Key Properties:**
-- `isPlaying: boolean` - Playback state
-- `currentTime: number` - Current time
-- `duration: number` - Animation duration
-- `artboard: Artboard | null` - Loaded artboard
-- `timeline: Timeline | null` - Loaded timeline
-- `renderer: Renderer | null` - Renderer instance
-- `plugins: PluginRegistry` - Plugin registry
-
----
-
-### RendererFactory
-
-Factory for creating renderers with automatic fallback.
-
-**Methods:**
-- `static create(canvas, preferredBackend?, fallbackOrder?): Promise<Renderer>` - Create renderer
-- `static isBackendAvailable(backend): boolean` - Check backend availability
-- `static getAvailableBackends(): RendererBackend[]` - Get available backends
-
----
-
-### AssetManager
-
-Manages loading and caching of assets.
-
-**Methods:**
-- `load(url, type, options?): Promise<Asset>` - Load asset
-- `loadImage(url, options?): Promise<RuntimeImageAsset>` - Load image
-- `loadFont(url, family, options?): Promise<FontAsset>` - Load font
-- `get(id): Asset | null` - Get loaded asset
-- `unload(id): void` - Unload asset
-- `preload(urls): Promise<void>` - Preload multiple assets
-- `on(eventType, callback): void` - Register event listener
-- `off(eventType, callback): void` - Unregister event listener
-
-**Properties:**
-- `loadedAssets: ReadonlyMap<string, Asset>` - Loaded assets
-
----
-
-### Serializer
-
-Handles serialization and deserialization of animation files.
-
-**Methods:**
-- `serializeSamcanFile(artboards, metadata?, options?): SamcanFile` - Serialize to file
-- `deserializeSamcanFile(data): { artboards, stateMachines }` - Deserialize file
-- `toJSON(file, pretty?): string` - Convert to JSON string
-- `fromJSON(json): SamcanFile` - Parse from JSON string
-- `compress(data): Promise<Uint8Array>` - Compress data
-- `decompress(data): Promise<string>` - Decompress data
-- `toCompressedJSON(file, pretty?): Promise<Uint8Array>` - Serialize and compress
-- `fromCompressedJSON(data): Promise<SamcanFile>` - Decompress and deserialize
-
----
-
-## Scene Graph API
-
-### SceneNode
-
-Base class for all scene graph nodes.
-
-**Properties:**
-- `transform: Transform` - Local transform
-- `visible: boolean` - Visibility flag
-- `opacity: number` - Opacity (0-1)
-- `parent: SceneNode | null` - Parent node
-- `children: readonly SceneNode[]` - Child nodes
-
-**Methods:**
-- `addChild(node): void` - Add child node
-- `removeChild(node): void` - Remove child node
-- `getWorldTransform(): Matrix` - Get world transform matrix
-- `getWorldOpacity(): number` - Get world opacity
-- `getLocalBounds(): Rectangle` - Get local bounding box
-- `getWorldBounds(): Rectangle` - Get world bounding box
-
----
-
-### Artboard
-
-Root container for a scene.
-
-**Properties:**
-- `width: number` - Artboard width
-- `height: number` - Artboard height
-- `backgroundColor: Color` - Background color
-
----
-
-### ShapeNode
-
-Node for rendering vector shapes.
-
-**Properties:**
-- `path: Path` - Vector path
-- `fill: Paint | null` - Fill paint
-- `stroke: Paint | null` - Stroke paint
-- `strokeWidth: number` - Stroke width
-
----
-
-### ImageNode
-
-Node for rendering images.
-
-**Properties:**
-- `imageData: string | HTMLImageElement | ImageData` - Image data or asset ID
-- `sourceRect: Rectangle | null` - Source rectangle for cropping
-
----
-
-### GroupNode
-
-Container node for grouping other nodes.
-
----
-
-## Animation API
-
+## 5. Animation System
 ### Timeline
-
-Manages animation tracks and keyframes.
-
-**Properties:**
-- `duration: number` - Timeline duration in seconds
-- `fps: number` - Frames per second
-- `tracks: readonly AnimationTrack[]` - Animation tracks
-
-**Methods:**
-- `addTrack(track): void` - Add animation track
-- `removeTrack(track): void` - Remove animation track
-- `evaluate(time): void` - Evaluate all tracks at given time
-
----
+`Timeline(duration, fps=60)` holds `AnimationTrack[]`. `evaluate(time)` clamps and evaluates all tracks.
 
 ### AnimationTrack
-
-Animates a specific property of a scene node.
-
-**Properties:**
-- `target: SceneNode` - Target node
-- `property: string` - Property path (e.g., "position.x")
-- `keyframes: readonly Keyframe[]` - Keyframes
-
-**Methods:**
-- `addKeyframe(keyframe): void` - Add keyframe
-- `removeKeyframe(keyframe): void` - Remove keyframe
-- `evaluate(time): any` - Evaluate value at time
-
----
+Targets a property path on a `SceneNode`. Methods: `addKeyframe(k)`, `removeKeyframe(k)`, `evaluate(time)` – performs interpolation and writes value to property path.
+Property paths accept nested syntax (`transform.position.x`, `opacity`, etc.).
 
 ### Keyframe
+`new Keyframe(time, value, interpolation="linear", easing?)`.
+Interpolation types: `"linear" | "step" | "cubic" | "bezier"`.
+Easing: any `(t:number)=>number`; common easings exposed via `Easing` collection.
 
-Defines a value at a specific time.
-
-**Properties:**
-- `time: number` - Time in seconds
-- `value: any` - Keyframe value
-- `interpolation: InterpolationType` - Interpolation type
-- `easing?: EasingFunction` - Easing function
-
----
-
-### StateMachine
-
-Manages animation states and transitions.
-
-**Properties:**
-- `currentState: AnimationState | null` - Current active state
-- `states: ReadonlyMap<string, AnimationState>` - All states
-- `transitions: readonly StateTransition[]` - State transitions
-
-**Methods:**
-- `addState(state): void` - Add state
-- `removeState(stateId): void` - Remove state
-- `addTransition(transition): void` - Add transition
-- `changeState(stateId): void` - Change to state
-- `trigger(eventName): void` - Trigger event
-- `setInput(name, value): void` - Set input value
-- `update(deltaTime): void` - Update state machine
+Interpolation behavior (numeric):
+- linear: straight blend
+- step: previous value until next keyframe
+- cubic: custom ease‑in‑out curve
+- bezier: simplified smooth curve (approx cubic-bezier 0.42,0,0.58,1)
+Non‑numeric defaults to step behavior.
 
 ---
+## 6. State Machine System
+Interactive higher‑level animation logic.
 
-## Math API
+### `StateMachine`
+Stores `AnimationState` objects, transitions, inputs & events. Methods: `addState`, `removeState`, `changeState(id)`, `addTransition`, `removeTransition`, `trigger(eventName)`, `setInput(name, value)`, specialized `setBooleanInput`, `setNumberInput`, getters for input values, `update(deltaSeconds)`, `reset()`.
+Automatically evaluates transitions each update; chooses highest priority valid transition.
 
-### Vector2
+### `AnimationState`
+Represents a timeline + configuration: id, name, `timeline`, `speed`, `loop`. Has activation lifecycle (enter/exit) used by controllers.
 
-2D vector for positions, directions, and scales.
+### Transitions
+`StateTransition(from, to, conditions[], duration=0, priority=0)`. Conditions must all pass.
+Condition types & classes:
+- Events: `EventCondition(eventName)` (fires on one frame after `trigger()`)
+- Booleans: `BooleanCondition(inputName, expectedValue)`
+- Numbers: `NumberCondition(inputName, operator, threshold)` where operator: `equals | notEquals | greaterThan | greaterThanOrEqual | lessThan | lessThanOrEqual`
+- Time: `TimeCondition(durationSeconds)` (state active time >= duration)
 
-**Static Methods:**
-- `Vector2.zero(): Vector2` - Create zero vector (0, 0)
-- `Vector2.one(): Vector2` - Create one vector (1, 1)
+Blend `duration` reserved for future interpolation of state outputs.
 
-**Methods:**
-- `add(other): Vector2` - Add vectors
-- `subtract(other): Vector2` - Subtract vectors
-- `multiply(scalar): Vector2` - Multiply by scalar
-- `dot(other): number` - Dot product
-- `length(): number` - Vector length
-- `normalize(): Vector2` - Normalize vector
-- `distance(other): number` - Distance to other vector
-
----
-
-### Matrix
-
-2D affine transformation matrix.
-
-**Static Methods:**
-- `Matrix.identity(): Matrix` - Create identity matrix
-- `Matrix.translation(x, y): Matrix` - Create translation matrix
-- `Matrix.rotation(angle): Matrix` - Create rotation matrix
-- `Matrix.scale(x, y): Matrix` - Create scale matrix
-
-**Methods:**
-- `multiply(other): Matrix` - Multiply matrices
-- `invert(): Matrix` - Invert matrix
-- `transformPoint(point): Vector2` - Transform point
+### Controllers
+Plugins that implement `AnimationController` get callbacks `onStateEnter`, `onStateExit`, `onTransition`.
 
 ---
+## 7. Assets & Loading
+`AssetManager` provides loading, caching, retry, fallback, dependency tracking.
 
-### Color
+Events: `load-start`, `load-success`, `load-error`, `load-retry`, `unload` via `.on(type, cb)` / `.off(type, cb)`.
 
-RGBA color representation.
+Methods:
+- `load(url, type, options?)` generic loader (image/font/audio placeholder)
+- `loadImage(url, options?)` returns `RuntimeImageAsset` (fallback + placeholder pixel on failure)
+- `loadFont(url, family, options?)` returns `FontAsset`
+- `preload([{ url, type, ... }])` parallel batch
+- `get(id)` / `unload(id)`
+- Dependency tracking: `trackAssetUsage(artboardId, assetId)`, `getArtboardAssets(artboardId)`, `getAssetArtboards(assetId)`
+- Scene extraction: `collectSceneAssets(rootNode)`
 
-**Static Methods:**
-- `Color.white(): Color` - White color
-- `Color.black(): Color` - Black color
-- `Color.red(): Color` - Red color
-- `Color.green(): Color` - Green color
-- `Color.blue(): Color` - Blue color
-- `Color.fromHex(hex): Color` - Create from hex string
+Retry Options: `maxRetries`, `retryDelay` (exponential backoff), `fallbackUrl` for substitution, font descriptors (`family`, `weight`, `style`, `display`).
 
-**Methods:**
-- `toHex(): string` - Convert to hex string
-- `lerp(other, t): Color` - Interpolate to other color
-
----
-
-### Paint
-
-Fill and stroke styling.
-
-**Static Methods:**
-- `Paint.solid(color, blendMode?): Paint` - Create solid color paint
-- `Paint.linearGradient(start, end, stops, blendMode?): Paint` - Create linear gradient
-- `Paint.radialGradient(center, radius, stops, focal?, blendMode?): Paint` - Create radial gradient
+Placeholder: 1x1 transparent image used for failed image loads.
 
 ---
+## 8. Serialization & File Format
+`Serializer` converts runtime objects <-> data model; supports streaming & compression.
 
-### Path
+Key methods:
+- Serialize: `serializeArtboard`, `serializeTimeline`, `serializeSamcanFile(artboards, metadata, { includeAssets, assetManager })`
+- Deserialize: `deserializeArtboard`, `deserializeTimeline`, `deserializeSamcanFile`, per sub‑structures
+- Compression: `toCompressedJSON(file)`, `fromCompressedJSON(data)`
+- Incremental parsing: `fromJSONIncremental(json)`, streaming: `fromJSONStream(stream)`, compressed streaming: `fromCompressedStream(stream)`, `fromCompressedJSONIncremental(data)`
+- Asset bundling: `createAssetBundle(assetIds, assetManager)` -> map of blobs / URLs
+- Validation & migration: `validateSamcanFile(data)`, `migrateSamcanFile(file)` semver aware (current `1.0.0`)
 
-Vector path for shapes.
-
-**Methods:**
-- `moveTo(x, y): void` - Move to point
-- `lineTo(x, y): void` - Line to point
-- `curveTo(cp1x, cp1y, cp2x, cp2y, x, y): void` - Cubic bezier curve
-- `close(): void` - Close path
-- `getBounds(): Rectangle` - Get bounding box
-- `clone(): Path` - Clone path
-- `transform(matrix): Path` - Transform path
+File structure (`SamcanFile`): `version`, `metadata { name, author?, created, modified, description? }`, `artboards[]`, `assets[]`, optional `stateMachines[]`.
 
 ---
+## 9. Plugin System
+`PluginRegistry` manages plugin lifecycle.
 
-## Types
+Register: `plugins.register(plugin)` (interface validation) → calls `plugin.initialize(runtime)`.
+Unregister: `plugins.unregister(name)` → calls `cleanup()` if present.
+Update cycle: each frame invokes `plugin.update(deltaMs)` if implemented.
 
-### PlayerConfig
-
-Configuration for creating an AnimationPlayer.
-
-```typescript
-interface PlayerConfig {
-  canvas: HTMLCanvasElement
-  backend?: RendererBackend
-  autoplay?: boolean
-  loop?: boolean
-  speed?: number
-  assetManager?: AssetManager
+Plugin interface:
+```ts
+interface Plugin {
+  metadata: { name: string; version: string; description?: string; author?: string }
+  initialize(runtime: AnimationRuntime): void
+  update?(deltaMs: number): void
+  cleanup?(): void
 }
 ```
 
----
-
-### LoadOptions
-
-Options for loading animations.
-
-```typescript
-interface LoadOptions {
-  preloadAssets?: boolean
-  assetTimeout?: number
-}
-```
+Errors in plugins are caught & logged without halting runtime.
 
 ---
+## 10. Command / Editor Utilities
+Support undoable editing flows for authoring tools.
 
-### RendererBackend
+`Command` interface: `{ name, description, execute(args), undo(), canUndo }`.
+`CommandHistory`: `execute(command)`, `undo()`, `redo()`, `clear()`, `canUndo`, `canRedo`, `maxHistorySize`.
 
-Rendering backend type.
-
-```typescript
-type RendererBackend = 'canvas2d' | 'webgl' | 'webgpu'
-```
-
----
-
-### SamcanFile
-
-Animation file format.
-
-```typescript
-interface SamcanFile {
-  version: string
-  metadata: FileMetadata
-  artboards: ArtboardData[]
-  assets: AssetData[]
-  stateMachines?: StateMachineData[]
-}
-```
+Core editor commands (examples): `AddNodeCommand`, `DeleteNodeCommand`, `ModifyPropertyCommand`, `AddKeyframeCommand` (see source). Extend by implementing `Command` and pushing into history.
 
 ---
+## 11. Math & Geometry Primitives
+- `Vector2(x,y)` operations: length, normalize, distance, dot, add/subtract/multiply (methods or external utils) plus static helpers `Vector2.zero()`, `Vector2.one()`.
+- `Matrix(a,b,c,d,tx,ty)` affine transform: multiply/invert/transformPoint.
+- `Color(r,g,b,a)` methods: `lerp(other,t)`, conversions (e.g., to hex via helper), static `white/black/red/green/blue/fromHex`.
+- `Rectangle(x,y,width,height)` intersection tests used for culling.
+- `Paint` factories: `Paint.solid(color, blendMode?)`, `Paint.linearGradient(start,end,stops, blendMode?)`, `Paint.radialGradient(center,radius,stops,focal?, blendMode?)`.
+- `Path` building: `moveTo`, `lineTo`, `curveTo`, `close`, `getBounds`, `clone`, `transform`. Boolean ops available via `path.operations` module (union/intersection/difference/xor).
+- Object pools (`pool.ts`, `pools.ts`) optimize allocation reuse.
 
-## Error Handling
+Blend Modes subset: `normal | multiply | screen | overlay | darken | lighten`.
 
-All errors thrown by samcan extend the `SamcanError` base class.
+---
+## 12. Timing
+- `Clock`: `start()`, `stop()`, `tick()` returns delta ms; properties `elapsed`, `deltaTime`.
+- `Scheduler`: `schedule(callback)`, `unschedule(callback)`, maintains frame callbacks, exposes `fps`.
 
-### Error Types
+Runtime uses these to drive deterministic frame updates and plugin updates.
 
-- `AnimationError` - Animation-related errors
-- `RendererError` - Rendering errors
-- `AssetError` - Asset loading errors
-- `SerializationError` - Serialization/deserialization errors
-- `PluginError` - Plugin errors
+---
+## 13. Error Handling
+All domain errors extend `SamcanError` with `.code`, `.context`, `.serialize()`, `.toJSON()`.
 
-### Error Properties
+Error Codes (`ErrorCode` enum) categories:
+- Serialization: `INVALID_FILE_FORMAT`, `UNSUPPORTED_VERSION`, `SERIALIZATION_FAILED`, `DESERIALIZATION_FAILED`, `FILE_PARSE_ERROR`
+- Renderer: `RENDERER_INIT_FAILED`, `RENDERER_NOT_SUPPORTED`, `WEBGL_CONTEXT_LOST`, `WEBGPU_NOT_AVAILABLE`, `CANVAS_NOT_FOUND`
+- Asset: `ASSET_LOAD_FAILED`, `ASSET_NOT_FOUND`, `INVALID_ASSET_TYPE`, `ASSET_DECODE_FAILED`, `FONT_LOAD_FAILED`
+- Animation: `INVALID_ANIMATION_DATA`, `TIMELINE_ERROR`, `KEYFRAME_ERROR`, `STATE_MACHINE_ERROR`
+- Plugin: `PLUGIN_ERROR`, `PLUGIN_INIT_FAILED`, `PLUGIN_NOT_FOUND`
+- General: `INVALID_OPERATION`, `INVALID_ARGUMENT`, `NOT_IMPLEMENTED`, `UNKNOWN_ERROR`
 
-All error types have:
-- `message: string` - Error message
-- `code: ErrorCode` - Error code
-- `context?: ErrorContext` - Additional context
-- `cause?: Error` - Original error (if wrapped)
+Specialized subclasses: `AnimationError`, `RendererError`, `AssetError`, `SerializationError`, `PluginError` each provide static constructors for clarity.
 
-### Example
-
-```typescript
-try {
-  await player.load('animation.samcan')
-} catch (error) {
-  if (error instanceof AnimationError) {
-    console.error('Animation error:', error.message, error.code)
-  } else if (error instanceof AssetError) {
-    console.error('Asset error:', error.message)
+Usage:
+```ts
+try { /* ... */ } catch (e) {
+  if (e instanceof SamcanError) {
+    console.error(e.code, e.context)
   }
 }
 ```
+
+---
+## 14. Performance Considerations
+Built‑in strategies:
+- Dirty Region + Culling: runtime skips nodes outside viewport.
+- Batching: renderer groups similar paint operations.
+- Object Pooling: reused small math objects reduce GC pressure.
+- Incremental Parsing / Streaming: large files parsed in chunks.
+- Retry / Fallback assets prevent blocking on failures.
+- Loop modes avoid unnecessary recomputation on single‑play completion.
+
+Recommend: Minimize property paths with heavy nesting, batch asset preload calls, prefer gradients only where required, use pooling for frequent temporary vectors, leverage `pingpong` loop for reversible motion instead of redundant keyframes.
+
+---
+## 15. Type Glossary (Selected)
+- `PlayerConfig` – creation config for `AnimationPlayer`
+- `LoadOptions` – asset preloading & timeout control
+- `RendererBackend` – `'canvas2d' | 'webgl' | 'webgpu'`
+- `SamcanFile` – persisted animation file structure
+- `AnimationData` – `{ artboard, timeline }` runtime payload
+- `LoopMode` – playback looping behavior
+- `InterpolationType` – keyframe interpolation classification
+- `TransitionConditionType` – state machine condition taxonomy
+- `AssetType` – currently `'image' | 'font' | 'audio' (pending)'`
+
+For exhaustive type exports inspect module surfaces or your IDE's intellisense since everything is fully typed.
+
+---
+## Practical Recipes
+
+### Manual Runtime Construction
+```ts
+import { AnimationRuntime, Timeline, AnimationTrack, Keyframe, ShapeNode, Path, Transform } from 'samcan'
+
+const path = new Path(); path.moveTo(0,0); path.lineTo(100,0)
+const shape = new ShapeNode(path, new Transform())
+const timeline = new Timeline(2.0, 60)
+const track = new AnimationTrack(shape, 'opacity')
+track.addKeyframe(new Keyframe(0, 0))
+track.addKeyframe(new Keyframe(2.0, 1))
+timeline.addTrack(track)
+
+const renderer = await RendererFactory.create(canvas, 'canvas2d')
+const runtime = new AnimationRuntime(renderer)
+await runtime.load({ artboard: /* create Artboard with shape */, timeline })
+runtime.play()
+```
+
+### Inspecting Animation File Metadata
+```ts
+const file = await loadAnimation('/anim/button.samcan')
+console.log(file.metadata.name, file.artboards.length)
+```
+
+### Handling Backend Fallback
+```ts
+const player = await createPlayer({ canvas, backend: 'webgpu', autoplay: true })
+// If webgpu unsupported, will fallback and log warning; check actual backend:
+console.log(player.renderer.backend)
+```
+
+### Safe Plugin Registration
+```ts
+try { runtime.plugins.register(pluginInstance) } catch (e) { /* validation failed */ }
+```
+
+---
+## Versioning & Stability
+Public API follows semantic versioning. Breaking changes only on major version increments. Experimental features (e.g., WebGPU) throw explicit errors instead of failing silently.
+
+---
+## FAQ
+Q: How do I animate nested transform components?  
+A: Use property paths like `transform.position.x` in an `AnimationTrack`.
+
+Q: Can I stream very large files?  
+A: Yes – use `Serializer.fromCompressedStream` or `fromJSONStream` with a `ReadableStream`.
+
+Q: How do I implement custom easing?  
+A: Pass a `(t)=>number` when constructing a `Keyframe`; values outside `[0,1]` should be clamped internally.
+
+Q: Is blending between states supported?  
+A: The `duration` field on `StateTransition` reserves future blend support; currently transitions are instant.
+
+---
+## Contributing to Docs
+Enhancements welcome: more examples, advanced renderer usage, plugin patterns. Open a PR with concise additions.
+
+---
+End of API documentation.
