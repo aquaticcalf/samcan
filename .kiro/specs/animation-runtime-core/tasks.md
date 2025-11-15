@@ -298,7 +298,7 @@
     - _Requirements: 8.1_
 
 - [ ] 14. Add error handling and recovery
-  - [ ] 14.1 Create SamcanError class hierarchy
+  - [x] 14.1 Create SamcanError class hierarchy
     - Define error codes for different failure types
     - Add context information to errors
     - Implement error serialization for logging
