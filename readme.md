@@ -9,10 +9,6 @@
 ```bash
 npm install samcan
 ```
-
-```ts
-import { AnimationRuntime } from "samcan"
-```
 </details>
 
 <details>
@@ -20,10 +16,6 @@ import { AnimationRuntime } from "samcan"
 
 ```bash
 bun add samcan
-```
-
-```ts
-import { AnimationRuntime } from "samcan"
 ```
  </details>
 
@@ -33,10 +25,6 @@ import { AnimationRuntime } from "samcan"
 ```bash
 yarn add samcan
 ```
-
-```ts
-import { AnimationRuntime } from "samcan"
-```
 </details>
 
 <details>
@@ -45,11 +33,13 @@ import { AnimationRuntime } from "samcan"
 ```bash
 pnpm add samcan
 ```
+</details>
+
+### import
 
 ```ts
 import { AnimationRuntime } from "samcan"
 ```
-</details>
 
 ### lines of code
 
