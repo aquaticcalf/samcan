@@ -329,32 +329,32 @@
     - Create getting started guide
     - _Requirements: 1.1_
 
-- [ ] 16. Write comprehensive tests
-  - [ ] 16.1 Create unit tests for math utilities
+- [x] 16. Write comprehensive tests
+  - [x] 16.1 Create unit tests for math utilities
     - Test Vector2, Matrix, Color operations
     - Verify matrix multiplication and inversion
     - Test interpolation functions
     - _Requirements: 3.2, 6.3_
   
-  - [ ] 16.2 Add timeline and animation tests
+  - [x] 16.2 Add timeline and animation tests
     - Test keyframe evaluation
     - Verify interpolation correctness
     - Test track blending
     - _Requirements: 3.1, 3.2, 3.5_
   
-  - [ ] 16.3 Create state machine tests
+  - [x] 16.3 Create state machine tests
     - Test state transitions
     - Verify condition evaluation
     - Test priority handling
     - _Requirements: 4.2, 4.3, 4.5_
   
-  - [ ] 16.4 Add serialization round-trip tests
+  - [x] 16.4 Add serialization round-trip tests
     - Test serialize → deserialize produces identical data
     - Verify all node types serialize correctly
     - Test version migration
     - _Requirements: 7.2, 7.3_
   
-  - [ ] 16.5 Create renderer comparison tests
+  - [x] 16.5 Create renderer comparison tests
     - Verify Canvas2D and WebGL produce same output
     - Test visual regression with snapshots
     - Benchmark rendering performance
