@@ -35,22 +35,20 @@ async function updateReadme(table: string) {
 
 async function main() {
     const coreStats = await getCodeStats("core")
-    const editorStats = await getCodeStats("editor")
     const testStats = await getCodeStats("test")
     const totalStats = {
-        code: coreStats.code + editorStats.code + testStats.code,
-        blank: coreStats.blank + editorStats.blank + testStats.blank,
-        comment: coreStats.comment + editorStats.comment + testStats.comment,
+        code: coreStats.code + testStats.code,
+        blank: coreStats.blank + testStats.blank,
+        comment: coreStats.comment + testStats.comment,
     }
 
     const colWidth = 13
 
-    const table = `|${"folder".padEnd(colWidth)}|${"code".padEnd(colWidth)}|${"empty".padEnd(colWidth)}|${"comments".padEnd(colWidth)}|${"total".padEnd(colWidth)}|
+    const table = `|${"x".padEnd(colWidth)}|${"code".padEnd(colWidth)}|${"comments".padEnd(colWidth)}|${"empty".padEnd(colWidth)}|${"total".padEnd(colWidth)}|
 |${"-".repeat(colWidth)}|${"-".repeat(colWidth)}|${"-".repeat(colWidth)}|${"-".repeat(colWidth)}|${"-".repeat(colWidth)}|
-|${"core".padEnd(colWidth)}|${coreStats.code.toString().padEnd(colWidth)}|${coreStats.blank.toString().padEnd(colWidth)}|${coreStats.comment.toString().padEnd(colWidth)}|${(coreStats.code + coreStats.blank + coreStats.comment).toString().padEnd(colWidth)}|
-|${"editor".padEnd(colWidth)}|${editorStats.code.toString().padEnd(colWidth)}|${editorStats.blank.toString().padEnd(colWidth)}|${editorStats.comment.toString().padEnd(colWidth)}|${(editorStats.code + editorStats.blank + editorStats.comment).toString().padEnd(colWidth)}|
-|${"test".padEnd(colWidth)}|${testStats.code.toString().padEnd(colWidth)}|${testStats.blank.toString().padEnd(colWidth)}|${testStats.comment.toString().padEnd(colWidth)}|${(testStats.code + testStats.blank + testStats.comment).toString().padEnd(colWidth)}|
-|${"**total**".padEnd(colWidth)}|${("**" + totalStats.code.toString() + "**").padEnd(colWidth)}|${("**" + totalStats.blank.toString() + "**").padEnd(colWidth)}|${("**" + totalStats.comment.toString() + "**").padEnd(colWidth)}|${("**" + (totalStats.code + totalStats.blank + totalStats.comment).toString() + "**").padEnd(colWidth)}|`
+|${"core".padEnd(colWidth)}|${coreStats.code.toString().padEnd(colWidth)}|${coreStats.comment.toString().padEnd(colWidth)}|${coreStats.blank.toString().padEnd(colWidth)}|${(coreStats.code + coreStats.blank + coreStats.comment).toString().padEnd(colWidth)}|
+|${"test".padEnd(colWidth)}|${testStats.code.toString().padEnd(colWidth)}|${testStats.comment.toString().padEnd(colWidth)}|${testStats.blank.toString().padEnd(colWidth)}|${(testStats.code + testStats.blank + testStats.comment).toString().padEnd(colWidth)}|
+|${"**total**".padEnd(colWidth)}|${("**" + totalStats.code.toString() + "**").padEnd(colWidth)}|${("**" + totalStats.comment.toString() + "**").padEnd(colWidth)}|${("**" + totalStats.blank.toString() + "**").padEnd(colWidth)}|${("**" + (totalStats.code + totalStats.blank + totalStats.comment).toString() + "**").padEnd(colWidth)}|`
 
     await updateReadme(table)
 }
