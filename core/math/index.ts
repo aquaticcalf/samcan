@@ -17,3 +17,11 @@ export {
 } from "./paint"
 export { PathOperations } from "./path/operations"
 export * from "./utils"
+export { ObjectPool, type PoolStats } from "./pool"
+export {
+    Vector2Pool,
+    MatrixPool,
+    ColorPool,
+    getAllPoolStats,
+    clearAllPools,
+} from "./pools"

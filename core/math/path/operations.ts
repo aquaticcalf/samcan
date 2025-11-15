@@ -1,4 +1,3 @@
-import paper from "paper"
 import { Path, type PathCommand } from "./index"
 
 /**
@@ -6,15 +5,22 @@ import { Path, type PathCommand } from "./index"
  * Provides union, intersection, difference, and XOR operations on paths
  */
 export class PathOperations {
-    private static paperScope: paper.PaperScope | null = null
+    private static paperScope: any = null
+    private static paper: any = null
 
     /**
      * Initialize paper.js scope (call once before using operations)
      */
-    private static ensurePaperScope(): paper.PaperScope {
+    private static async ensurePaperScope(): Promise<any> {
         if (!PathOperations.paperScope) {
-            PathOperations.paperScope = new paper.PaperScope()
-            PathOperations.paperScope.setup(new paper.Size(1000, 1000))
+            // Dynamic import to ensure DOM is available
+            if (!PathOperations.paper) {
+                PathOperations.paper = (await import("paper")).default
+            }
+            PathOperations.paperScope = new PathOperations.paper.PaperScope()
+            PathOperations.paperScope.setup(
+                new PathOperations.paper.Size(1000, 1000),
+            )
         }
         return PathOperations.paperScope
     }
@@ -22,8 +28,8 @@ export class PathOperations {
     /**
      * Convert samcan Path to paper.js Path
      */
-    private static toPaperPath(path: Path): paper.Path {
-        const scope = PathOperations.ensurePaperScope()
+    private static async toPaperPath(path: Path): Promise<any> {
+        const scope = await PathOperations.ensurePaperScope()
         const paperPath = new scope.Path()
 
         for (const cmd of path.commands) {
@@ -105,11 +111,11 @@ export class PathOperations {
     /**
      * Union of two paths (combines both paths)
      */
-    static union(path1: Path, path2: Path): Path {
-        const paper1 = PathOperations.toPaperPath(path1)
-        const paper2 = PathOperations.toPaperPath(path2)
+    static async union(path1: Path, path2: Path): Promise<Path> {
+        const paper1 = await PathOperations.toPaperPath(path1)
+        const paper2 = await PathOperations.toPaperPath(path2)
 
-        const result = paper1.unite(paper2) as paper.Path
+        const result = paper1.unite(paper2)
         const samcanPath = PathOperations.fromPaperPath(result)
 
         // Clean up
@@ -123,11 +129,11 @@ export class PathOperations {
     /**
      * Intersection of two paths (only overlapping area)
      */
-    static intersection(path1: Path, path2: Path): Path {
-        const paper1 = PathOperations.toPaperPath(path1)
-        const paper2 = PathOperations.toPaperPath(path2)
+    static async intersection(path1: Path, path2: Path): Promise<Path> {
+        const paper1 = await PathOperations.toPaperPath(path1)
+        const paper2 = await PathOperations.toPaperPath(path2)
 
-        const result = paper1.intersect(paper2) as paper.Path
+        const result = paper1.intersect(paper2)
         const samcanPath = PathOperations.fromPaperPath(result)
 
         // Clean up
@@ -141,11 +147,11 @@ export class PathOperations {
     /**
      * Difference of two paths (path1 minus path2)
      */
-    static difference(path1: Path, path2: Path): Path {
-        const paper1 = PathOperations.toPaperPath(path1)
-        const paper2 = PathOperations.toPaperPath(path2)
+    static async difference(path1: Path, path2: Path): Promise<Path> {
+        const paper1 = await PathOperations.toPaperPath(path1)
+        const paper2 = await PathOperations.toPaperPath(path2)
 
-        const result = paper1.subtract(paper2) as paper.Path
+        const result = paper1.subtract(paper2)
         const samcanPath = PathOperations.fromPaperPath(result)
 
         // Clean up
@@ -159,11 +165,11 @@ export class PathOperations {
     /**
      * XOR of two paths (non-overlapping areas)
      */
-    static xor(path1: Path, path2: Path): Path {
-        const paper1 = PathOperations.toPaperPath(path1)
-        const paper2 = PathOperations.toPaperPath(path2)
+    static async xor(path1: Path, path2: Path): Promise<Path> {
+        const paper1 = await PathOperations.toPaperPath(path1)
+        const paper2 = await PathOperations.toPaperPath(path2)
 
-        const result = paper1.exclude(paper2) as paper.Path
+        const result = paper1.exclude(paper2) as any
         const samcanPath = PathOperations.fromPaperPath(result)
 
         // Clean up

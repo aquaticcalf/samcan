@@ -119,4 +119,26 @@ export class Color {
     static transparent(): Color {
         return new Color(0, 0, 0, 0)
     }
+
+    /**
+     * Set this color from another color
+     */
+    setFrom(other: Color): Color {
+        this.r = other.r
+        this.g = other.g
+        this.b = other.b
+        this.a = other.a
+        return this
+    }
+
+    /**
+     * Set the components of this color
+     */
+    set(r: number, g: number, b: number, a: number = 1): Color {
+        this.r = Math.max(0, Math.min(1, r))
+        this.g = Math.max(0, Math.min(1, g))
+        this.b = Math.max(0, Math.min(1, b))
+        this.a = Math.max(0, Math.min(1, a))
+        return this
+    }
 }

@@ -106,6 +106,15 @@ export class Vector2 {
     }
 
     /**
+     * Set this vector from another vector
+     */
+    setFrom(other: Vector2): Vector2 {
+        this.x = other.x
+        this.y = other.y
+        return this
+    }
+
+    /**
      * Linear interpolation between this vector and another
      */
     lerp(other: Vector2, t: number): Vector2 {

@@ -200,4 +200,30 @@ export class Matrix {
     prependScale(sx: number, sy: number = sx): Matrix {
         return Matrix.scale(sx, sy).multiply(this)
     }
+
+    /**
+     * Set this matrix from another matrix
+     */
+    setFrom(other: Matrix): Matrix {
+        this.a = other.a
+        this.b = other.b
+        this.c = other.c
+        this.d = other.d
+        this.tx = other.tx
+        this.ty = other.ty
+        return this
+    }
+
+    /**
+     * Set this matrix to identity
+     */
+    setIdentity(): Matrix {
+        this.a = 1
+        this.b = 0
+        this.c = 0
+        this.d = 1
+        this.tx = 0
+        this.ty = 0
+        return this
+    }
 }
