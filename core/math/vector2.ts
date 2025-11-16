@@ -90,10 +90,9 @@ export class Vector2 {
      * Check if this vector equals another vector
      */
     equals(other: Vector2, epsilon: number = 0.0001): boolean {
-        const decimals = epsilon > 0 ? Math.ceil(-Math.log10(epsilon)) : 0
         return (
-            this.x.toFixed(decimals) === other.x.toFixed(decimals) &&
-            this.y.toFixed(decimals) === other.y.toFixed(decimals)
+            Math.abs(this.x - other.x) < epsilon &&
+            Math.abs(this.y - other.y) < epsilon
         )
     }
 

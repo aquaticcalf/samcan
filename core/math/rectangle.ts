@@ -12,35 +12,35 @@ export class Rectangle {
     ) {}
 
     /**
-     * Get the left edge x-coordinate
+     * Get the left edge as a Vector2
      */
-    get left(): number {
-        return this.x
+    get left(): Vector2 {
+        return new Vector2(this.x, 0)
     }
 
     /**
-     * Get the right edge x-coordinate
+     * Get the right edge as a Vector2
      */
-    get right(): number {
-        return this.x + this.width
+    get right(): Vector2 {
+        return new Vector2(this.x + this.width, 0)
     }
 
     /**
-     * Get the top edge y-coordinate
+     * Get the top edge as a Vector2
      */
-    get top(): number {
-        return this.y
+    get top(): Vector2 {
+        return new Vector2(0, this.y + this.height)
     }
 
     /**
-     * Get the bottom edge y-coordinate
+     * Get the bottom edge as a Vector2
      */
-    get bottom(): number {
-        return this.y + this.height
+    get bottom(): Vector2 {
+        return new Vector2(0, this.y)
     }
 
     /**
-     * Get the center point of the rectangle
+     * Get the center point of the rectangle as a Vector2
      */
     get center(): Vector2 {
         return new Vector2(this.x + this.width / 2, this.y + this.height / 2)
@@ -62,11 +62,11 @@ export class Rectangle {
      * Check if this rectangle intersects with another rectangle
      */
     intersects(other: Rectangle): boolean {
-        return !(
-            other.left > this.right ||
-            other.right < this.left ||
-            other.top > this.bottom ||
-            other.bottom < this.top
+        return (
+            this.left.x < other.right.x &&
+            this.right.x > other.left.x &&
+            this.bottom.y < other.top.y &&
+            this.top.y > other.bottom.y
         )
     }
 
@@ -76,24 +76,25 @@ export class Rectangle {
     intersection(other: Rectangle): Rectangle | null {
         if (!this.intersects(other)) return null
 
-        const x = Math.max(this.left, other.left)
-        const y = Math.max(this.top, other.top)
-        const right = Math.min(this.right, other.right)
-        const bottom = Math.min(this.bottom, other.bottom)
+        const x = Math.max(this.left.x, other.left.x)
+        const y = Math.max(this.top.y, other.top.y)
+        const right = Math.min(this.right.x, other.right.x)
+        const top = Math.min(this.top.y, other.top.y)
 
-        return new Rectangle(x, y, right - x, bottom - y)
+        return new Rectangle(x, y, right - x, top - y)
     }
 
     /**
      * Get the union of this rectangle with another
      */
-    union(other: Rectangle): Rectangle {
-        const x = Math.min(this.left, other.left)
-        const y = Math.min(this.top, other.top)
-        const right = Math.max(this.right, other.right)
-        const bottom = Math.max(this.bottom, other.bottom)
+    boundingBoxUnion(other: Rectangle): Rectangle {
+        const minX = Math.min(this.left.x, other.left.x)
+        const maxX = Math.max(this.right.x, other.right.x)
 
-        return new Rectangle(x, y, right - x, bottom - y)
+        const minY = Math.min(this.bottom.y, other.bottom.y)
+        const maxY = Math.max(this.top.y, other.top.y)
+
+        return new Rectangle(minX, minY, maxX - minX, maxY - minY)
     }
 
     /**

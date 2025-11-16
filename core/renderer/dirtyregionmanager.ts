@@ -75,7 +75,7 @@ export class DirtyRegionManager {
             // Check if regions overlap or are adjacent
             if (this._shouldMerge(current, next)) {
                 // Merge regions
-                current = current.union(next)
+                current = current?.boundingBoxUnion(next)
             } else {
                 // Save current and move to next
                 optimized.push(current)
@@ -106,7 +106,7 @@ export class DirtyRegionManager {
         for (let i = 1; i < this._dirtyRegions.length; i++) {
             const region = this._dirtyRegions[i]
             if (region) {
-                bounds = bounds.union(region)
+                bounds = bounds?.boundingBoxUnion(region)
             }
         }
 

@@ -344,7 +344,9 @@ export class SceneNode {
             const childBounds = child.getWorldBounds()
             if (childBounds !== null) {
                 bounds =
-                    bounds === null ? childBounds : bounds.union(childBounds)
+                    bounds === null
+                        ? childBounds
+                        : bounds.boundingBoxUnion(childBounds)
             }
         }
 
@@ -359,16 +361,16 @@ export class SceneNode {
 
         // Transform all four corners of the rectangle
         const topLeft = worldTransform.transformPoint(
-            new Vector2(localBounds.left, localBounds.top),
+            new Vector2(localBounds.left.x, localBounds.top.y),
         )
         const topRight = worldTransform.transformPoint(
-            new Vector2(localBounds.right, localBounds.top),
+            new Vector2(localBounds.right.x, localBounds.top.y),
         )
         const bottomLeft = worldTransform.transformPoint(
-            new Vector2(localBounds.left, localBounds.bottom),
+            new Vector2(localBounds.left.x, localBounds.bottom.y),
         )
         const bottomRight = worldTransform.transformPoint(
-            new Vector2(localBounds.right, localBounds.bottom),
+            new Vector2(localBounds.right.x, localBounds.bottom.y),
         )
 
         // Find the axis-aligned bounding box of the transformed corners
