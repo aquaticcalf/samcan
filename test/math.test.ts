@@ -483,7 +483,7 @@ describe("Color", () => {
         test("checks equality", () => {
             const c1 = new Color(0.5, 0.6, 0.7, 0.8)
             const c2 = new Color(0.5, 0.6, 0.7, 0.8)
-            const c3 = new Color(0.5001, 0.6001, 0.7001, 0.8001)
+            const c3 = new Color(0.5002, 0.6002, 0.7002, 0.8002)
 
             expect(c1.equals(c2)).toBe(true)
             expect(c1.equals(c3)).toBe(false)

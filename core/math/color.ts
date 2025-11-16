@@ -63,12 +63,11 @@ export class Color {
      * Check if this color equals another color
      */
     equals(other: Color, epsilon: number = 0.0001): boolean {
-        const decimals = epsilon > 0 ? Math.ceil(-Math.log10(epsilon)) : 0
         return (
-            this.r.toFixed(decimals) === other.r.toFixed(decimals) &&
-            this.g.toFixed(decimals) === other.g.toFixed(decimals) &&
-            this.b.toFixed(decimals) === other.b.toFixed(decimals) &&
-            this.a.toFixed(decimals) === other.a.toFixed(decimals)
+            Math.abs(this.r - other.r) < epsilon &&
+            Math.abs(this.g - other.g) < epsilon &&
+            Math.abs(this.b - other.b) < epsilon &&
+            Math.abs(this.a - other.a) < epsilon
         )
     }
 
