@@ -214,6 +214,13 @@ export class AnimationTrack {
         const finalProp = parts[parts.length - 1]
         if (finalProp && target[finalProp] !== undefined) {
             target[finalProp] = value
+
+            // Notify target of change
+            if (this._property.startsWith("transform.")) {
+                this._target.notifyTransformChanged()
+            } else {
+                this._target.markDirty()
+            }
         }
     }
 }

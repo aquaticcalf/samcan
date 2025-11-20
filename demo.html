@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>samcan canvas demo</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      height: 100%;
+      color: #eee;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 1rem;
+    }
+
+    canvas {
+      display: block;
+      background: #222;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px #333, 0 18px 45px rgba(0, 0, 0, 0.7);
+    }
+
+    .status {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    code {
+      font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: #181818;
+      padding: 0.15rem 0.35rem;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <canvas id="canvas" width="800" height="450"></canvas>
+    <div class="status" id="status">booting…</div>
+    <div class="status">If you see a white bar sliding across the canvas, rendering works.</div>
+  </main>
+
+  <script type="module">
+    import {
+      AnimationRuntime,
+      RendererFactory,
+      Artboard,
+      ShapeNode,
+      Path,
+      Transform,
+      Color,
+      Timeline,
+      AnimationTrack,
+      Keyframe,
+      Paint,
+    } from "./dist/bundle.js";
+
+    const statusEl = document.getElementById("status");
+
+    function setStatus(text) {
+      if (statusEl) statusEl.textContent = text;
+    }
+
+    async function main() {
+      try {
+        const canvas = /** @type {HTMLCanvasElement | null} */ (
+          document.getElementById("canvas")
+        );
+        if (!canvas) {
+          setStatus("missing <canvas id=\"canvas\"> element");
+          return;
+        }
+
+        setStatus("initializing renderer…");
+
+        const renderer = await RendererFactory.create(canvas, "canvas2d");
+        const runtime = new AnimationRuntime(renderer);
+
+        // Build a simple artboard with a single rectangle
+        const artboard = new Artboard(800, 450, Color.black());
+        const path = new Path();
+        path.moveTo(0, 0);
+        path.lineTo(200, 0);
+        path.lineTo(200, 100);
+        path.lineTo(0, 100);
+        path.close();
+
+        const transform = new Transform();
+        const shape = new ShapeNode(path, transform);
+        shape.fill = Paint.solid(Color.white());
+        artboard.addChild(shape);
+
+        // Animate the rectangle horizontally
+        const timeline = new Timeline(2); // seconds
+        const track = new AnimationTrack(shape, "transform.position.x");
+        track.addKeyframe(new Keyframe(0, 0));
+        track.addKeyframe(new Keyframe(2, 500));
+        timeline.addTrack(track);
+
+        await runtime.load({ artboard, timeline });
+        runtime.setLoop("loop");
+        runtime.play();
+
+        setStatus("running – white bar should be sliding across");
+
+        // Debug: Monitor loop
+        let frameCount = 0;
+        runtime.scheduler.schedule(() => {
+          frameCount++;
+          if (frameCount % 10 === 0) {
+            setStatus(`Running... Time: ${runtime.currentTime.toFixed(2)}s | Frames: ${frameCount}`);
+          }
+        });
+      } catch (err) {
+        console.error(err);
+        setStatus("error: " + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    main();
+  </script>
+</body>
+
+</html>

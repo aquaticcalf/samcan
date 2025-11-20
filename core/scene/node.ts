@@ -201,6 +201,16 @@ export class SceneNode {
     }
 
     /**
+     * Notify that the local transform has changed internally
+     * This should be called when modifying properties of the transform object directly
+     */
+    notifyTransformChanged(): void {
+        this.markWorldTransformDirty()
+        this.markBoundsDirty()
+        this.markDirty()
+    }
+
+    /**
      * Get the world visibility (combines with parent visibility)
      */
     getWorldVisible(): boolean {
