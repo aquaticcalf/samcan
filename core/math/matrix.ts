@@ -142,14 +142,13 @@ export class Matrix {
      * Check if this matrix equals another matrix
      */
     equals(other: Matrix, epsilon: number = 0.0001): boolean {
-        const decimals = epsilon > 0 ? Math.ceil(-Math.log10(epsilon)) : 0
         return (
-            this.a.toFixed(decimals) === other.a.toFixed(decimals) &&
-            this.b.toFixed(decimals) === other.b.toFixed(decimals) &&
-            this.c.toFixed(decimals) === other.c.toFixed(decimals) &&
-            this.d.toFixed(decimals) === other.d.toFixed(decimals) &&
-            this.tx.toFixed(decimals) === other.tx.toFixed(decimals) &&
-            this.ty.toFixed(decimals) === other.ty.toFixed(decimals)
+            Math.abs(this.a - other.a) < epsilon &&
+            Math.abs(this.b - other.b) < epsilon &&
+            Math.abs(this.c - other.c) < epsilon &&
+            Math.abs(this.d - other.d) < epsilon &&
+            Math.abs(this.tx - other.tx) < epsilon &&
+            Math.abs(this.ty - other.ty) < epsilon
         )
     }
 

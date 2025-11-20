@@ -353,7 +353,7 @@ describe("Matrix", () => {
         test("checks equality", () => {
             const m1 = new Matrix(1, 0, 0, 1, 5, 10)
             const m2 = new Matrix(1, 0, 0, 1, 5, 10)
-            const m3 = new Matrix(1, 0, 0, 1, 5.0001, 10.0001)
+            const m3 = new Matrix(1, 0, 0, 1, 5.0002, 10.0002)
 
             expect(m1.equals(m2)).toBe(true)
             expect(m1.equals(m3)).toBe(false)
