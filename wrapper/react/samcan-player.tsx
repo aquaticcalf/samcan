@@ -37,11 +37,17 @@ export function SamcanPlayer(props: SamcanPlayerProps) {
 
     const { canvasRef, player, isLoading, error } = useSamcanPlayer(options)
 
+    // Store the latest onReady callback in a ref
+    const onReadyRef = React.useRef(onReady)
     React.useEffect(() => {
-        if (player && onReady) {
-            onReady(player)
+        onReadyRef.current = onReady
+    }, [onReady])
+
+    React.useEffect(() => {
+        if (player && onReadyRef.current) {
+            onReadyRef.current(player)
         }
-    }, [player, onReady])
+    }, [player])
 
     const mergedStyle: CSSProperties = {
         display: "inline-block",
