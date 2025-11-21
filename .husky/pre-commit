@@ -2,5 +2,7 @@ bun tsc
 bun fix
 bun test
 bun loc
-bun bench
+if git diff --name-only | grep -q readme.md; then
+    bun bench
+fi
 git add .
