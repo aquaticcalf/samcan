@@ -104,20 +104,20 @@ Events via `on(event, fn)` / `once(event, fn)` / `off(event)` / `removeAllListen
 Events: `play`, `pause`, `stop`, `complete`, `loop`, `stateChange`.
 Plugins accessed via `runtime.plugins` (PluginRegistry).
 
-Internal scheduling: integrates `Clock` (high precision) + `Scheduler` (frame callbacks). Frame evaluation handles loop wrapping and ping3pong reversal automatically.
+Internal scheduling: integrates `Clock` (high precision) + `Scheduler` (frame callbacks). Frame evaluation handles loop wrapping and ping-pong reversal automatically.
 
 ---
 ## 3. Rendering Abstraction
 Factory selects backend; renderer API hides implementation details.
 
 ### `RendererFactory.create(canvas, preferred?, fallbackOrder?)`
-Attempts preferred then fallback order (default: `webgpu  webgl  canvas2d`). Emits warnings on fallback.
+Attempts preferred then fallback order (default: `webgpu -> webgl -> canvas2d`). Emits warnings on fallback.
 
 ### Capability Queries
 - `RendererFactory.isBackendAvailable(backend)`
 - `RendererFactory.getAvailableBackends()`
 
-### `Renderer` (selected subset 3 see type exports)
+### `Renderer` (selected subset - see type exports)
 Lifecycle: `initialize(canvas)`, `resize(w,h)`, `beginFrame()`, `endFrame()`, `clear(color?)`.
 
 ---
@@ -142,7 +142,7 @@ Transforms use `Transform` (position: `Vector2`, rotation radians, scale `Vector
 `Timeline(duration, fps=60)` holds `AnimationTrack[]`. `evaluate(time)` clamps and evaluates all tracks.
 
 ### AnimationTrack
-Targets a property path on a `SceneNode`. Methods: `addKeyframe(k)`, `removeKeyframe(k)`, `evaluate(time)` 3 performs interpolation and writes value to property path.
+Targets a property path on a `SceneNode`. Methods: `addKeyframe(k)`, `removeKeyframe(k)`, `evaluate(time)` - performs interpolation and writes value to property path.
 Property paths accept nested syntax (`transform.position.x`, `opacity`, etc.).
 
 ### Keyframe
@@ -153,13 +153,13 @@ Easing: any `(t:number)=>number`; common easings exposed via `Easing` collection
 Interpolation behavior (numeric):
 - linear: straight blend
 - step: previous value until next keyframe
-- cubic: custom ease3in3out curve
+- cubic: custom ease-in-out curve
 - bezier: simplified smooth curve (approx cubic-bezier 0.42,0,0.58,1)
-Non3numeric defaults to step behavior.
+Non-numeric defaults to step behavior.
 
 ---
 ## 6. State Machine System
-Interactive higher3level animation logic.
+Interactive higher-level animation logic.
 
 ### `StateMachine`
 Stores `AnimationState` objects, transitions, inputs & events. Methods: `addState`, `removeState`, `changeState(id)`, `addTransition`, `removeTransition`, `trigger(eventName)`, `setInput(name, value)`, specialized `setBooleanInput`, `setNumberInput`, getters for input values, `update(deltaSeconds)`, `reset()`.
@@ -205,7 +205,7 @@ Placeholder: 1x1 transparent image used for failed image loads.
 
 Key methods:
 - Serialize: `serializeArtboard`, `serializeTimeline`, `serializeSamcanFile(artboards, metadata, { includeAssets, assetManager })`
-- Deserialize: `deserializeArtboard`, `deserializeTimeline`, `deserializeSamcanFile`, per sub3structures
+- Deserialize: `deserializeArtboard`, `deserializeTimeline`, `deserializeSamcanFile`, per sub-structures
 - Compression: `toCompressedJSON(file)`, `fromCompressedJSON(data)`
 - Incremental parsing: `fromJSONIncremental(json)`, streaming: `fromJSONStream(stream)`, compressed streaming: `fromCompressedStream(stream)`, `fromCompressedJSONIncremental(data)`
 - Asset bundling: `createAssetBundle(assetIds, assetManager)` -> map of blobs / URLs
@@ -216,8 +216,8 @@ File structure (`SamcanFile`): `version`, `metadata { name, author?, created, mo
 ## 9. Plugin System
 `PluginRegistry` manages plugin lifecycle.
 
-Register: `plugins.register(plugin)` (interface validation)  calls `plugin.initialize(runtime)`.
-Unregister: `plugins.unregister(name)`  calls `cleanup()` if present.
+Register: `plugins.register(plugin)` (interface validation) -> calls `plugin.initialize(runtime)`.
+Unregister: `plugins.unregister(name)` -> calls `cleanup()` if present.
 Update cycle: each frame invokes `plugin.update(deltaMs)` if implemented.
 
 Plugin interface:
@@ -284,27 +284,27 @@ try { /* ... */ } catch (e) {
 
 ---
 ## 14. Performance Considerations
-Built3in strategies:
+Built-in strategies:
 - Dirty Region + Culling: runtime skips nodes outside viewport.
 - Batching: renderer groups similar paint operations.
 - Object Pooling: reused small math objects reduce GC pressure.
 - Incremental Parsing / Streaming: large files parsed in chunks.
 - Retry / Fallback assets prevent blocking on failures.
-- Loop modes avoid unnecessary recomputation on single3play completion.
+- Loop modes avoid unnecessary recomputation on single-play completion.
 
 Recommend: Minimize property paths with heavy nesting, batch asset preload calls, prefer gradients only where required, use pooling for frequent temporary vectors, leverage `pingpong` loop for reversible motion instead of redundant keyframes.
 
 ---
 ## 15. Type Glossary (Selected)
-- `PlayerConfig` 3 creation config for `AnimationPlayer`
-- `LoadOptions` 3 asset preloading & timeout control
-- `RendererBackend` 3 `'canvas2d' | 'webgl' | 'webgpu'`
-- `SamcanFile` 3 persisted animation file structure
-- `AnimationData` 3 `{ artboard, timeline }` runtime payload
-- `LoopMode` 3 playback looping behavior
-- `InterpolationType` 3 keyframe interpolation classification
-- `TransitionConditionType` 3 state machine condition taxonomy
-- `AssetType` 3 currently `'image' | 'font' | 'audio' (pending)'`
+- `PlayerConfig` - creation config for `AnimationPlayer`
+- `LoadOptions` - asset preloading & timeout control
+- `RendererBackend` - `'canvas2d' | 'webgl' | 'webgpu'`
+- `SamcanFile` - persisted animation file structure
+- `AnimationData` - `{ artboard, timeline }` runtime payload
+- `LoopMode` - playback looping behavior
+- `InterpolationType` - keyframe interpolation classification
+- `TransitionConditionType` - state machine condition taxonomy
+- `AssetType` - currently `'image' | 'font' | 'audio' (pending)'`
 
 For exhaustive type exports inspect module surfaces or your IDE's intellisense since everything is fully typed.
 
