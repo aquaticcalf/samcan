@@ -2,10 +2,26 @@ import type { RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
 import {
     type AnimationPlayer,
+    createPlayer,
     type LoadOptions,
     type PlayerConfig,
-    createPlayer,
 } from "../../core/api"
+
+function deepEqual(a: unknown, b: unknown): boolean {
+    if (a === b) return true
+    if (a == null || b == null) return a === b
+    if (typeof a !== "object" || typeof b !== "object") return a === b
+    const objA = a as Record<string, unknown>
+    const objB = b as Record<string, unknown>
+    const keysA = Object.keys(objA)
+    const keysB = Object.keys(objB)
+    if (keysA.length !== keysB.length) return false
+    for (const key of keysA) {
+        if (!keysB.includes(key)) return false
+        if (!deepEqual(objA[key], objB[key])) return false
+    }
+    return true
+}
 
 export interface UseSamcanPlayerOptions {
     /**
@@ -50,6 +66,16 @@ export function useSamcanPlayer(
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<Error | null>(null)
 
+    const prevOptionsRef = useRef<
+        | {
+              src?: string
+              autoplay?: boolean
+              loadOptions?: LoadOptions
+              config?: Omit<PlayerConfig, "canvas">
+          }
+        | undefined
+    >()
+
     // Keep latest options in refs to avoid re-creating
     // the player unnecessarily.
     useEffect(() => {
@@ -57,6 +83,17 @@ export function useSamcanPlayer(
         if (!canvas) {
             return
         }
+
+        if (
+            prevOptionsRef.current &&
+            deepEqual(
+                { src, autoplay, loadOptions, config },
+                prevOptionsRef.current,
+            )
+        ) {
+            return
+        }
+        prevOptionsRef.current = { src, autoplay, loadOptions, config }
 
         let cancelled = false
         let currentPlayer: AnimationPlayer | null = null
@@ -107,6 +144,7 @@ export function useSamcanPlayer(
             if (currentPlayer) {
                 currentPlayer.destroy()
             }
+            prevOptionsRef.current = undefined
         }
     }, [src, autoplay, loadOptions, config])
 
