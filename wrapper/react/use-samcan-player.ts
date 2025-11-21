@@ -59,41 +59,30 @@ interface UseSamcanPlayerResult {
 export function useSamcanPlayer(
     options: UseSamcanPlayerOptions = {},
 ): UseSamcanPlayerResult {
-    const { src, autoplay, loadOptions, config } = options
-
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const [player, setPlayer] = useState<AnimationPlayer | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<Error | null>(null)
 
-    const prevOptionsRef = useRef<
-        | {
-              src?: string
-              autoplay?: boolean
-              loadOptions?: LoadOptions
-              config?: Omit<PlayerConfig, "canvas">
-          }
-        | undefined
-    >()
+    // Maintain a stable snapshot of options so React
+    // callers can pass new object literals without
+    // forcing the player to be recreated.
+    const [stableOptions, setStableOptions] =
+        useState<UseSamcanPlayerOptions>(options)
 
-    // Keep latest options in refs to avoid re-creating
-    // the player unnecessarily.
+    useEffect(() => {
+        if (!deepEqual(options, stableOptions)) {
+            setStableOptions(options)
+        }
+    }, [options, stableOptions])
+
     useEffect(() => {
         const canvas = canvasRef.current
         if (!canvas) {
             return
         }
 
-        if (
-            prevOptionsRef.current &&
-            deepEqual(
-                { src, autoplay, loadOptions, config },
-                prevOptionsRef.current,
-            )
-        ) {
-            return
-        }
-        prevOptionsRef.current = { src, autoplay, loadOptions, config }
+        const { src, autoplay, loadOptions, config } = stableOptions
 
         let cancelled = false
         let currentPlayer: AnimationPlayer | null = null
@@ -143,10 +132,10 @@ export function useSamcanPlayer(
             cancelled = true
             if (currentPlayer) {
                 currentPlayer.destroy()
+                setPlayer(null)
             }
-            prevOptionsRef.current = undefined
         }
-    }, [src, autoplay, loadOptions, config])
+    }, [stableOptions])
 
     return { canvasRef, player, isLoading, error }
 }
