@@ -242,7 +242,7 @@ export function PlayerWithControls() {
         <button onClick={() => player?.pause()}>Pause</button>
         <button onClick={() => player?.stop()}>Stop</button>
       </div>
-      {isLoading && <p>Loading3 hellip;</p>}
+      {isLoading && <p>Loading...</p>}
       {error && <p>Error: {error.message}</p>}
     </div>
   )
