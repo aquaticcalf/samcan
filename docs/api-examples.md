@@ -1,5 +1,5 @@
 # samcan Usage Examples
-Concise, taskoriented examples for common scenarios. Pair with the full reference (`api-reference.md`).
+Concise, task-oriented examples for common scenarios. Pair with the full reference (`api-reference.md`).
 
 ## 1. Quick Start Playback
 ```ts
