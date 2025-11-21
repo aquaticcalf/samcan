@@ -203,4 +203,50 @@ for (const [id, entry] of bundle) {
 }
 ```
 
+## 21. React Wrapper  `<SamcanPlayer>` Component
+```tsx
+import { SamcanPlayer } from 'samcan/react'
+
+export function HeroAnimation() {
+  return (
+    <SamcanPlayer
+      src="/animations/hero.samcan"
+      autoplay
+      config={{ loop: true, speed: 1 }}
+      width={800}
+      height={600}
+      onReady={player => {
+        // You can call player?.pause(), player?.seek(0.5), etc.
+      }}
+    />
+  )
+}
+```
+
+## 22. React Wrapper  `useSamcanPlayer` Hook
+```tsx
+import { useSamcanPlayer } from 'samcan/react'
+
+export function PlayerWithControls() {
+  const { canvasRef, player, isLoading, error } = useSamcanPlayer({
+    src: '/animations/button.samcan',
+    autoplay: true,
+    config: { loop: true }
+  })
+
+  return (
+    <div>
+      <canvas ref={canvasRef} width={640} height={360} />
+      <div>
+        <button onClick={() => player?.play()}>Play</button>
+        <button onClick={() => player?.pause()}>Pause</button>
+        <button onClick={() => player?.stop()}>Stop</button>
+      </div>
+      {isLoading && <p>Loading3 hellip;</p>}
+      {error && <p>Error: {error.message}</p>}
+    </div>
+  )
+}
+```
+
 End of examples.
