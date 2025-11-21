@@ -37,6 +37,17 @@ A small React integration is available via the `samcan/react` subpath.
     - `className?: string`
     - `onReady?: (player: AnimationPlayer | null) => void`
 
+  - Typical usage (see `PlayerConfig` below for all options):
+    ```tsx
+    <SamcanPlayer
+      src="/animations/hero.samcan"
+      autoplay
+      config={{ backend: 'canvas2d', loop: true, speed: 1.5 }}
+      width={800}
+      height={600}
+    />
+    ```
+
 - `useSamcanPlayer(options?: UseSamcanPlayerOptions)` hook
   - Options mirror the component props minus layout/styling.
   - Returns `{ canvasRef, player, isLoading, error }`.
@@ -93,27 +104,21 @@ Events via `on(event, fn)` / `once(event, fn)` / `off(event)` / `removeAllListen
 Events: `play`, `pause`, `stop`, `complete`, `loop`, `stateChange`.
 Plugins accessed via `runtime.plugins` (PluginRegistry).
 
-Internal scheduling: integrates `Clock` (high precision) + `Scheduler` (frame callbacks). Frame evaluation handles loop wrapping and ping‑pong reversal automatically.
+Internal scheduling: integrates `Clock` (high precision) + `Scheduler` (frame callbacks). Frame evaluation handles loop wrapping and ping3pong reversal automatically.
 
 ---
 ## 3. Rendering Abstraction
 Factory selects backend; renderer API hides implementation details.
 
 ### `RendererFactory.create(canvas, preferred?, fallbackOrder?)`
-Attempts preferred then fallback order (default: `webgpu → webgl → canvas2d`). Emits warnings on fallback.
+Attempts preferred then fallback order (default: `webgpu  webgl  canvas2d`). Emits warnings on fallback.
 
 ### Capability Queries
 - `RendererFactory.isBackendAvailable(backend)`
 - `RendererFactory.getAvailableBackends()`
 
-### `Renderer` (selected subset – see type exports)
+### `Renderer` (selected subset 3 see type exports)
 Lifecycle: `initialize(canvas)`, `resize(w,h)`, `beginFrame()`, `endFrame()`, `clear(color?)`.
-Drawing: `drawPath(path, paint)`, `drawStroke(path, paint, width)`, `drawImage(imageAsset, transform)`.
-State Stack: `save()`, `restore()`, `transform(matrix)`, `setOpacity(alpha)`.
-Viewport: `getViewportBounds()` used for culling.
-Metadata: `backend`, `capabilities`.
-
-Backends: `canvas2d`, `webgl`, `webgpu` (placeholder; throws init error presently).
 
 ---
 ## 4. Scene Graph
@@ -137,7 +142,7 @@ Transforms use `Transform` (position: `Vector2`, rotation radians, scale `Vector
 `Timeline(duration, fps=60)` holds `AnimationTrack[]`. `evaluate(time)` clamps and evaluates all tracks.
 
 ### AnimationTrack
-Targets a property path on a `SceneNode`. Methods: `addKeyframe(k)`, `removeKeyframe(k)`, `evaluate(time)` – performs interpolation and writes value to property path.
+Targets a property path on a `SceneNode`. Methods: `addKeyframe(k)`, `removeKeyframe(k)`, `evaluate(time)` 3 performs interpolation and writes value to property path.
 Property paths accept nested syntax (`transform.position.x`, `opacity`, etc.).
 
 ### Keyframe
@@ -148,13 +153,13 @@ Easing: any `(t:number)=>number`; common easings exposed via `Easing` collection
 Interpolation behavior (numeric):
 - linear: straight blend
 - step: previous value until next keyframe
-- cubic: custom ease‑in‑out curve
+- cubic: custom ease3in3out curve
 - bezier: simplified smooth curve (approx cubic-bezier 0.42,0,0.58,1)
-Non‑numeric defaults to step behavior.
+Non3numeric defaults to step behavior.
 
 ---
 ## 6. State Machine System
-Interactive higher‑level animation logic.
+Interactive higher3level animation logic.
 
 ### `StateMachine`
 Stores `AnimationState` objects, transitions, inputs & events. Methods: `addState`, `removeState`, `changeState(id)`, `addTransition`, `removeTransition`, `trigger(eventName)`, `setInput(name, value)`, specialized `setBooleanInput`, `setNumberInput`, getters for input values, `update(deltaSeconds)`, `reset()`.
@@ -189,7 +194,6 @@ Methods:
 - `preload([{ url, type, ... }])` parallel batch
 - `get(id)` / `unload(id)`
 - Dependency tracking: `trackAssetUsage(artboardId, assetId)`, `getArtboardAssets(artboardId)`, `getAssetArtboards(assetId)`
-- Scene extraction: `collectSceneAssets(rootNode)`
 
 Retry Options: `maxRetries`, `retryDelay` (exponential backoff), `fallbackUrl` for substitution, font descriptors (`family`, `weight`, `style`, `display`).
 
@@ -201,11 +205,10 @@ Placeholder: 1x1 transparent image used for failed image loads.
 
 Key methods:
 - Serialize: `serializeArtboard`, `serializeTimeline`, `serializeSamcanFile(artboards, metadata, { includeAssets, assetManager })`
-- Deserialize: `deserializeArtboard`, `deserializeTimeline`, `deserializeSamcanFile`, per sub‑structures
+- Deserialize: `deserializeArtboard`, `deserializeTimeline`, `deserializeSamcanFile`, per sub3structures
 - Compression: `toCompressedJSON(file)`, `fromCompressedJSON(data)`
 - Incremental parsing: `fromJSONIncremental(json)`, streaming: `fromJSONStream(stream)`, compressed streaming: `fromCompressedStream(stream)`, `fromCompressedJSONIncremental(data)`
 - Asset bundling: `createAssetBundle(assetIds, assetManager)` -> map of blobs / URLs
-- Validation & migration: `validateSamcanFile(data)`, `migrateSamcanFile(file)` semver aware (current `1.0.0`)
 
 File structure (`SamcanFile`): `version`, `metadata { name, author?, created, modified, description? }`, `artboards[]`, `assets[]`, optional `stateMachines[]`.
 
@@ -213,8 +216,8 @@ File structure (`SamcanFile`): `version`, `metadata { name, author?, created, mo
 ## 9. Plugin System
 `PluginRegistry` manages plugin lifecycle.
 
-Register: `plugins.register(plugin)` (interface validation) → calls `plugin.initialize(runtime)`.
-Unregister: `plugins.unregister(name)` → calls `cleanup()` if present.
+Register: `plugins.register(plugin)` (interface validation)  calls `plugin.initialize(runtime)`.
+Unregister: `plugins.unregister(name)`  calls `cleanup()` if present.
 Update cycle: each frame invokes `plugin.update(deltaMs)` if implemented.
 
 Plugin interface:
@@ -246,7 +249,6 @@ Core editor commands (examples): `AddNodeCommand`, `DeleteNodeCommand`, `ModifyP
 - `Rectangle(x,y,width,height)` intersection tests used for culling.
 - `Paint` factories: `Paint.solid(color, blendMode?)`, `Paint.linearGradient(start,end,stops, blendMode?)`, `Paint.radialGradient(center,radius,stops,focal?, blendMode?)`.
 - `Path` building: `moveTo`, `lineTo`, `curveTo`, `close`, `getBounds`, `clone`, `transform`. Boolean ops available via `path.operations` module (union/intersection/difference/xor).
-- Object pools (`pool.ts`, `pools.ts`) optimize allocation reuse.
 
 Blend Modes subset: `normal | multiply | screen | overlay | darken | lighten`.
 
@@ -282,27 +284,27 @@ try { /* ... */ } catch (e) {
 
 ---
 ## 14. Performance Considerations
-Built‑in strategies:
+Built3in strategies:
 - Dirty Region + Culling: runtime skips nodes outside viewport.
 - Batching: renderer groups similar paint operations.
 - Object Pooling: reused small math objects reduce GC pressure.
 - Incremental Parsing / Streaming: large files parsed in chunks.
 - Retry / Fallback assets prevent blocking on failures.
-- Loop modes avoid unnecessary recomputation on single‑play completion.
+- Loop modes avoid unnecessary recomputation on single3play completion.
 
 Recommend: Minimize property paths with heavy nesting, batch asset preload calls, prefer gradients only where required, use pooling for frequent temporary vectors, leverage `pingpong` loop for reversible motion instead of redundant keyframes.
 
 ---
 ## 15. Type Glossary (Selected)
-- `PlayerConfig` – creation config for `AnimationPlayer`
-- `LoadOptions` – asset preloading & timeout control
-- `RendererBackend` – `'canvas2d' | 'webgl' | 'webgpu'`
-- `SamcanFile` – persisted animation file structure
-- `AnimationData` – `{ artboard, timeline }` runtime payload
-- `LoopMode` – playback looping behavior
-- `InterpolationType` – keyframe interpolation classification
-- `TransitionConditionType` – state machine condition taxonomy
-- `AssetType` – currently `'image' | 'font' | 'audio' (pending)'`
+- `PlayerConfig` 3 creation config for `AnimationPlayer`
+- `LoadOptions` 3 asset preloading & timeout control
+- `RendererBackend` 3 `'canvas2d' | 'webgl' | 'webgpu'`
+- `SamcanFile` 3 persisted animation file structure
+- `AnimationData` 3 `{ artboard, timeline }` runtime payload
+- `LoopMode` 3 playback looping behavior
+- `InterpolationType` 3 keyframe interpolation classification
+- `TransitionConditionType` 3 state machine condition taxonomy
+- `AssetType` 3 currently `'image' | 'font' | 'audio' (pending)'`
 
 For exhaustive type exports inspect module surfaces or your IDE's intellisense since everything is fully typed.
 
@@ -319,53 +321,4 @@ const timeline = new Timeline(2.0, 60)
 const track = new AnimationTrack(shape, 'opacity')
 track.addKeyframe(new Keyframe(0, 0))
 track.addKeyframe(new Keyframe(2.0, 1))
-timeline.addTrack(track)
-
-const renderer = await RendererFactory.create(canvas, 'canvas2d')
-const runtime = new AnimationRuntime(renderer)
-await runtime.load({ artboard: /* create Artboard with shape */, timeline })
-runtime.play()
 ```
-
-### Inspecting Animation File Metadata
-```ts
-const file = await loadAnimation('/anim/button.samcan')
-console.log(file.metadata.name, file.artboards.length)
-```
-
-### Handling Backend Fallback
-```ts
-const player = await createPlayer({ canvas, backend: 'webgpu', autoplay: true })
-// If webgpu unsupported, will fallback and log warning; check actual backend:
-console.log(player.renderer.backend)
-```
-
-### Safe Plugin Registration
-```ts
-try { runtime.plugins.register(pluginInstance) } catch (e) { /* validation failed */ }
-```
-
----
-## Versioning & Stability
-Public API follows semantic versioning. Breaking changes only on major version increments. Experimental features (e.g., WebGPU) throw explicit errors instead of failing silently.
-
----
-## FAQ
-Q: How do I animate nested transform components?  
-A: Use property paths like `transform.position.x` in an `AnimationTrack`.
-
-Q: Can I stream very large files?  
-A: Yes – use `Serializer.fromCompressedStream` or `fromJSONStream` with a `ReadableStream`.
-
-Q: How do I implement custom easing?  
-A: Pass a `(t)=>number` when constructing a `Keyframe`; values outside `[0,1]` should be clamped internally.
-
-Q: Is blending between states supported?  
-A: The `duration` field on `StateTransition` reserves future blend support; currently transitions are instant.
-
----
-## Contributing to Docs
-Enhancements welcome: more examples, advanced renderer usage, plugin patterns. Open a PR with concise additions.
-
----
-End of API documentation.

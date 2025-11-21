@@ -1,5 +1,5 @@
 # samcan Usage Examples
-Concise, task‑oriented examples for common scenarios. Pair with the full reference (`api-reference.md`).
+Concise, taskoriented examples for common scenarios. Pair with the full reference (`api-reference.md`).
 
 ## 1. Quick Start Playback
 ```ts
@@ -73,7 +73,6 @@ const timeline = new Timeline(2)
 const track = new AnimationTrack(shape, 'opacity')
 track.addKeyframe(new Keyframe(0, 0))
 track.addKeyframe(new Keyframe(2, 1))
-timeline.addTrack(track)
 
 await runtime.load({ artboard, timeline })
 runtime.play()
@@ -212,9 +211,11 @@ export function HeroAnimation() {
     <SamcanPlayer
       src="/animations/hero.samcan"
       autoplay
-      config={{ loop: true, speed: 1 }}
+      config={{ backend: 'canvas2d', loop: true, speed: 1.25 }}
       width={800}
       height={600}
+      // Alternatively, control size via parent CSS:
+      // style={{ width: '100%', height: 400 }}
       onReady={player => {
         // You can call player?.pause(), player?.seek(0.5), etc.
       }}
