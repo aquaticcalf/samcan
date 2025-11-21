@@ -4,7 +4,6 @@
     "": {
       "name": "samcan",
       "dependencies": {
-        "canvas": "^3.2.0",
         "earcut": "^3.0.2",
         "paper": "^0.12.18",
       },
@@ -15,6 +14,7 @@
         "@types/jsdom": "^27.0.0",
         "@types/react": "18.3.1",
         "@types/react-dom": "18.3.1",
+        "canvas": "^3.2.0",
         "cloc": "^2.6.0-cloc",
         "husky": "^9.1.7",
         "jsdom": "^27.2.0",
