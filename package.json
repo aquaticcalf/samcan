@@ -1,6 +1,6 @@
 {
     "name": "samcan",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "canvas",
     "license": "MIT",
     "author": "aquaticcalf",
@@ -37,6 +37,7 @@
         "bench": "bun .scripts/benchmark.ts",
         "prepare": "husky",
         "demo": "bun run build && bun run bundle && bun demo-server.ts",
+        "publish": "npm publish --tag latest",
         "test": "bun test"
     },
     "devDependencies": {

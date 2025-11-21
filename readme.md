@@ -59,9 +59,9 @@ import { AnimationRuntime } from "samcan"
 
 |name                            |ops/s                           |latency avg (ns)                |samples                         |
 |--------------------------------|--------------------------------|--------------------------------|--------------------------------|
-|timeline-eval-10-tracks         |1402671 ± 0.02%                 |728.05 ± 0.46%                  |686770                          |
-|timeline-eval-100-tracks        |152697 ± 0.07%                  |6664.4 ± 0.34%                  |75026                           |
-|timeline-eval-500-tracks        |33008 ± 0.13%                   |30691 ± 0.40%                   |16292                           |
+|timeline-eval-10-tracks         |1314307 ± 0.03%                 |796.60 ± 0.66%                  |627666                          |
+|timeline-eval-100-tracks        |151428 ± 0.09%                  |6854.0 ± 0.48%                  |72950                           |
+|timeline-eval-500-tracks        |31537 ± 0.19%                   |32745 ± 0.64%                   |15270                           |
 
 </details>
 
@@ -70,8 +70,8 @@ import { AnimationRuntime } from "samcan"
 
 |name                            |ops/s                           |latency avg (ns)                |samples                         |
 |--------------------------------|--------------------------------|--------------------------------|--------------------------------|
-|scene-world-transform-1k-nodes  |673175 ± 0.06%                  |1574.9 ± 0.70%                  |317474                          |
-|scene-world-transform-5k-nodes  |821988 ± 0.05%                  |1284.5 ± 0.57%                  |389245                          |
+|scene-world-transform-1k-nodes  |1028021 ± 0.06%                 |1070.2 ± 1.02%                  |467182                          |
+|scene-world-transform-5k-nodes  |501313 ± 0.07%                  |2152.7 ± 0.75%                  |232265                          |
 
 </details>
 
