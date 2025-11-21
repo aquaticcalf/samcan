@@ -52,9 +52,6 @@ export function useSamcanPlayer(
 
     // Keep latest options in refs to avoid re-creating
     // the player unnecessarily.
-    const latestOptionsRef = useRef<UseSamcanPlayerOptions>(options)
-    latestOptionsRef.current = options
-
     useEffect(() => {
         const canvas = canvasRef.current
         if (!canvas) {
