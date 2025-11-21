@@ -293,4 +293,51 @@ export function setupDOM() {
         globalThis.DecompressionStream =
             DecompressionStreamPolyfill as unknown as typeof DecompressionStream
     }
+
+    // Mock ResizeObserver for tests
+    class MockResizeObserver {
+        private _callback: ResizeObserverCallback
+        private _elements: Set<Element> = new Set()
+
+        constructor(callback: ResizeObserverCallback) {
+            this._callback = callback
+        }
+
+        observe(element: Element): void {
+            this._elements.add(element)
+            // Immediately trigger a resize observation for testing
+            setTimeout(() => {
+                const entry: ResizeObserverEntry = {
+                    target: element,
+                    contentRect: {
+                        width: 100,
+                        height: 100,
+                        top: 0,
+                        left: 0,
+                        right: 100,
+                        bottom: 100,
+                        x: 0,
+                        y: 0,
+                        toJSON: () => ({}),
+                    },
+                    borderBoxSize: [{ blockSize: 100, inlineSize: 100 }],
+                    contentBoxSize: [{ blockSize: 100, inlineSize: 100 }],
+                    devicePixelContentBoxSize: [
+                        { blockSize: 100, inlineSize: 100 },
+                    ],
+                }
+                this._callback([entry], this as any)
+            }, 0)
+        }
+
+        unobserve(element: Element): void {
+            this._elements.delete(element)
+        }
+
+        disconnect(): void {
+            this._elements.clear()
+        }
+    }
+
+    globalThis.ResizeObserver = MockResizeObserver as any
 }
