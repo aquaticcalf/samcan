@@ -156,7 +156,12 @@ async function runTimelineBenchmarks(): Promise<string> {
 
     const rows = bench.table() as BenchRow[]
     const table = buildMarkdownTable(rows)
-    return `#### timeline\n\n${table}`
+    return `<details>
+<summary>timeline</summary>
+
+${table}
+
+</details>`
 }
 
 async function runSceneBenchmarks(): Promise<string> {
@@ -185,7 +190,12 @@ async function runSceneBenchmarks(): Promise<string> {
 
     const rows = bench.table() as BenchRow[]
     const table = buildMarkdownTable(rows)
-    return `#### scene graph\n\n${table}`
+    return `<details>
+<summary>scene graph</summary>
+
+${table}
+
+</details>`
 }
 
 async function main() {
