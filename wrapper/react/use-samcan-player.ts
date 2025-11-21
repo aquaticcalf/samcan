@@ -67,14 +67,13 @@ export function useSamcanPlayer(
     // Maintain a stable snapshot of options so React
     // callers can pass new object literals without
     // forcing the player to be recreated.
-    const [stableOptions, setStableOptions] =
-        useState<UseSamcanPlayerOptions>(options)
+    const stableOptionsRef = useRef<UseSamcanPlayerOptions>(options)
 
-    useEffect(() => {
-        if (!deepEqual(options, stableOptions)) {
-            setStableOptions(options)
-        }
-    }, [options, stableOptions])
+    if (!deepEqual(options, stableOptionsRef.current)) {
+        stableOptionsRef.current = options
+    }
+
+    const stableOptions = stableOptionsRef.current
 
     useEffect(() => {
         const canvas = canvasRef.current
@@ -132,7 +131,6 @@ export function useSamcanPlayer(
             cancelled = true
             if (currentPlayer) {
                 currentPlayer.destroy()
-                setPlayer(null)
             }
         }
     }, [stableOptions])
