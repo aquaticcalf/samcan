@@ -34,6 +34,7 @@
         "tsc": "tsc --noEmit",
         "fix": "biome format --write",
         "loc": "bun .scripts/cloc.ts",
+        "bench": "bun .scripts/benchmark.ts",
         "prepare": "husky",
         "demo": "bun run build && bun run bundle && bun demo-server.ts",
         "test": "bun test"
@@ -58,6 +59,7 @@
     },
     "dependencies": {
         "earcut": "^3.0.2",
-        "paper": "^0.12.18"
+        "paper": "^0.12.18",
+        "tinybench": "^5.1.0"
     }
 }

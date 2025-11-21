@@ -2,4 +2,5 @@ bun tsc
 bun fix
 bun test
 bun loc
+bun bench
 git add .

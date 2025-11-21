@@ -52,6 +52,23 @@ import { AnimationRuntime } from "samcan"
 |test         |6383         |143          |1634         |8160         |
 |**total**    |**14570**    |**3476**     |**3238**     |**21284**    |
 
+### benchmarks
+
+#### timeline
+
+|name                            |ops/s                           |latency avg (ns)                |samples                         |
+|--------------------------------|--------------------------------|--------------------------------|--------------------------------|
+|timeline-eval-10-tracks         |1416255 ± 0.02%                 |726.07 ± 0.52%                  |688636                          |
+|timeline-eval-100-tracks        |157321 ± 0.08%                  |6535.8 ± 0.51%                  |76502                           |
+|timeline-eval-500-tracks        |33676 ± 0.12%                   |30096 ± 0.48%                   |16614                           |
+
+#### scene graph
+
+|name                            |ops/s                           |latency avg (ns)                |samples                         |
+|--------------------------------|--------------------------------|--------------------------------|--------------------------------|
+|scene-world-transform-1k-nodes  |797611 ± 0.06%                  |1359.2 ± 0.92%                  |367875                          |
+|scene-world-transform-5k-nodes  |419621 ± 0.08%                  |2528.9 ± 0.77%                  |197712                          |
+
 ### star history
 
 <a href="https://www.star-history.com/#aquaticcalf/samcan&legend=bottom-right">
