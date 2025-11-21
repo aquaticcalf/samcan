@@ -23,6 +23,29 @@ This document is a complete reference plus practical guidance for the public API
 ## 1. High-Level Player API
 Recommended entry points for 90% of use cases: simple playback, control, backend selection.
 
+### React Wrapper (optional convenience)
+A small React integration is available via the `samcan/react` subpath.
+
+- `<SamcanPlayer>` component
+  - Props extend `UseSamcanPlayerOptions` plus layout/styling:
+    - `src?: string`
+    - `autoplay?: boolean`
+    - `loadOptions?: LoadOptions`
+    - `config?: Omit<PlayerConfig, 'canvas'>`
+    - `width?: number` / `height?: number`
+    - `style?: React.CSSProperties`
+    - `className?: string`
+    - `onReady?: (player: AnimationPlayer | null) => void`
+
+- `useSamcanPlayer(options?: UseSamcanPlayerOptions)` hook
+  - Options mirror the component props minus layout/styling.
+  - Returns `{ canvasRef, player, isLoading, error }`.
+
+Import examples:
+```ts
+import { SamcanPlayer, useSamcanPlayer } from 'samcan/react'
+```
+
 ### `createPlayer(config: PlayerConfig): Promise<AnimationPlayer>`
 Creates a configured player with chosen backend and returns an `AnimationPlayer` instance.
 
