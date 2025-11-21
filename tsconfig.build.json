@@ -10,6 +10,11 @@
         "stripInternal": true,
         "allowImportingTsExtensions": false
     },
-    "include": ["index.ts", "core/**/*.ts"],
+    "include": [
+        "index.ts",
+        "core/**/*.ts",
+        "wrapper/**/*.ts",
+        "wrapper/**/*.tsx"
+    ],
     "exclude": ["test", "**/*.test.ts", "docs", ".scripts"]
 }
