@@ -202,10 +202,11 @@ for (const [id, entry] of bundle) {
 }
 ```
 
-## 21. React Wrapper  `<SamcanPlayer>` Component
+## 21. React Wrapper `<SamcanPlayer>` Component
 ```tsx
 import { SamcanPlayer } from 'samcan/react'
 
+// Fixed size animation
 export function HeroAnimation() {
   return (
     <SamcanPlayer
@@ -214,17 +215,31 @@ export function HeroAnimation() {
       config={{ backend: 'canvas2d', loop: true, speed: 1.25 }}
       width={800}
       height={600}
-      // Alternatively, control size via parent CSS:
-      // style={{ width: '100%', height: 400 }}
       onReady={player => {
         // You can call player?.pause(), player?.seek(0.5), etc.
       }}
     />
   )
 }
+
+// Responsive animation (fills container)
+export function ResponsiveAnimation() {
+  return (
+    <div style={{ width: '100%', height: '400px' }}>
+      <SamcanPlayer
+        src="/animations/banner.samcan"
+        autoplay
+        config={{ loop: true }}
+        onReady={player => {
+          // Canvas automatically resizes to match container
+        }}
+      />
+    </div>
+  )
+}
 ```
 
-## 22. React Wrapper  `useSamcanPlayer` Hook
+## 22. React Wrapper `useSamcanPlayer` Hook
 ```tsx
 import { useSamcanPlayer } from 'samcan/react'
 
@@ -237,7 +252,11 @@ export function PlayerWithControls() {
 
   return (
     <div>
-      <canvas ref={canvasRef} width={640} height={360} />
+      {/* Canvas size controlled by CSS; buffer resizes automatically */}
+      <canvas
+        ref={canvasRef}
+        style={{ width: '640px', height: '360px', display: 'block' }}
+      />
       <div>
         <button onClick={() => player?.play()}>Play</button>
         <button onClick={() => player?.pause()}>Pause</button>

@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react"
 import React from "react"
 import {
-    useSamcanPlayer,
     type UseSamcanPlayerOptions,
+    useSamcanPlayer,
 } from "./use-samcan-player"
 
 export interface SamcanPlayerProps extends UseSamcanPlayerOptions {
@@ -49,20 +49,50 @@ export function SamcanPlayer(props: SamcanPlayerProps) {
         }
     }, [player])
 
+    // Handle canvas resizing
+    React.useEffect(() => {
+        const canvas = canvasRef.current
+        if (!canvas || !player) return
+
+        const updateCanvasSize = () => {
+            const rect = canvas.getBoundingClientRect()
+            const dpr = window.devicePixelRatio || 1
+            const width = Math.floor(rect.width * dpr)
+            const height = Math.floor(rect.height * dpr)
+
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width
+                canvas.height = height
+                player.resize(width, height)
+            }
+        }
+
+        // Initial size update
+        updateCanvasSize()
+
+        const resizeObserver = new ResizeObserver(updateCanvasSize)
+        resizeObserver.observe(canvas)
+
+        return () => {
+            resizeObserver.disconnect()
+        }
+    }, [player, canvasRef])
+
     const mergedStyle: CSSProperties = {
         display: "inline-block",
         position: "relative",
         ...style,
     }
 
+    const canvasStyle: CSSProperties = {
+        display: "block",
+        width: width ? `${width}px` : "100%",
+        height: height ? `${height}px` : "100%",
+    }
+
     return (
         <div className={className} style={mergedStyle}>
-            <canvas
-                ref={canvasRef}
-                width={width}
-                height={height}
-                style={{ display: "block", width: "100%", height: "100%" }}
-            />
+            <canvas ref={canvasRef} style={canvasStyle} />
             {isLoading && (
                 <div
                     style={{

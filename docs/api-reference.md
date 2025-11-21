@@ -32,19 +32,29 @@ A small React integration is available via the `samcan/react` subpath.
     - `autoplay?: boolean`
     - `loadOptions?: LoadOptions`
     - `config?: Omit<PlayerConfig, 'canvas'>`
-    - `width?: number` / `height?: number`
+    - `width?: number` / `height?: number` - CSS dimensions in pixels; if omitted, component fills container (100% width/height)
     - `style?: React.CSSProperties`
     - `className?: string`
     - `onReady?: (player: AnimationPlayer | null) => void`
 
+  - The component automatically resizes the canvas buffer to match displayed dimensions with proper device pixel ratio handling, preventing scaling artifacts.
+
   - Typical usage (see `PlayerConfig` below for all options):
     ```tsx
+    // Fixed size
     <SamcanPlayer
       src="/animations/hero.samcan"
       autoplay
       config={{ backend: 'canvas2d', loop: true, speed: 1.5 }}
       width={800}
       height={600}
+    />
+
+    // Responsive (fills container)
+    <SamcanPlayer
+      src="/animations/hero.samcan"
+      autoplay
+      style={{ width: '100%', height: '400px' }}
     />
     ```
 
