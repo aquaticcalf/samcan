@@ -42,20 +42,22 @@ describe("React wrapper - SamcanPlayer", () => {
 
         function TestComponent() {
             const [mounted, setMounted] = useState(true)
+            const [player, setPlayer] = useState<unknown>(null)
 
             useEffect(() => {
                 // Unmount after player is ready to also exercise cleanup
-                if (readyPlayer) {
+                if (player) {
                     setMounted(false)
                 }
-            }, [readyPlayer])
+            }, [player])
 
             return mounted ? (
                 <SamcanPlayer
                     width={320}
                     height={180}
-                    onReady={(player) => {
-                        readyPlayer = player
+                    onReady={(playerInstance) => {
+                        readyPlayer = playerInstance
+                        setPlayer(playerInstance)
                     }}
                     // Use canvas2d backend which is supported in jsdom via mocks
                     config={{ backend: "canvas2d" }}

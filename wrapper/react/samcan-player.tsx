@@ -64,35 +64,39 @@ export function SamcanPlayer(props: SamcanPlayerProps) {
                 style={{ display: "block", width: "100%", height: "100%" }}
             />
             {isLoading && (
-                <div style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "rgba(255,255,255,0.7)",
-                    zIndex: 1,
-                }}>
+                <div
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "rgba(255,255,255,0.7)",
+                        zIndex: 1,
+                    }}
+                >
                     Loading...
                 </div>
             )}
             {error && (
-                <div style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "rgba(255,0,0,0.1)",
-                    color: "#b00",
-                    zIndex: 2,
-                }}>
+                <div
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "rgba(255,0,0,0.1)",
+                        color: "#b00",
+                        zIndex: 2,
+                    }}
+                >
                     Error: {error.message || String(error)}
                 </div>
             )}
