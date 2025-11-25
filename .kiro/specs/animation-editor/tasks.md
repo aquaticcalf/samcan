@@ -6,7 +6,7 @@
     - Create index.ts exports for each module
     - _Requirements: All_
 
-  - [ ] 1.2 Define core editor interfaces and types
+  - [x] 1.2 Define core editor interfaces and types
     - Create EditorState, EditorDocument, ViewportState interfaces
     - Create EditorEvent types and EditorPreferences interface
     - Create KeyframeSelection and related types
