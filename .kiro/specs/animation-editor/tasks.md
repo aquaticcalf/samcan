@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Set up editor project structure and core interfaces
+- [x] 1. Set up editor project structure and core interfaces
   - [x] 1.1 Create editor directory structure (editor/, editor/core/, editor/canvas/, editor/tools/, editor/panels/, editor/commands/)
     - Set up TypeScript configuration extending the main project
     - Create index.ts exports for each module
@@ -12,13 +12,13 @@
     - Create KeyframeSelection and related types
     - _Requirements: All_
 
-  - [ ] 1.3 Set up fast-check for property-based testing
+  - [x] 1.3 Set up fast-check for property-based testing
     - Install fast-check as dev dependency
     - Create test utilities and custom arbitraries for editor types
     - _Requirements: Testing Strategy_
 
 - [ ] 2. Implement ViewportManager
-  - [ ] 2.1 Create ViewportManager class with zoom and pan
+  - [x] 2.1 Create ViewportManager class with zoom and pan
     - Implement zoom operations (zoomIn, zoomOut, zoomTo, zoomToFit, resetZoom)
     - Implement pan operations (pan, panTo, centerOn)
     - Implement coordinate transforms (screenToWorld, worldToScreen)
