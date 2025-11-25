@@ -48,9 +48,9 @@ import { AnimationRuntime } from "samcan"
 
 |x            |code         |comments     |empty        |total        |
 |-------------|-------------|-------------|-------------|-------------|
-|core         |8187         |3333         |1604         |13124        |
+|core         |8194         |3345         |1604         |13143        |
 |test         |6383         |143          |1634         |8160         |
-|**total**    |**14570**    |**3476**     |**3238**     |**21284**    |
+|**total**    |**14577**    |**3488**     |**3238**     |**21303**    |
 
 ### benchmarks
 
@@ -59,9 +59,9 @@ import { AnimationRuntime } from "samcan"
 
 |name                            |ops/s                           |latency avg (ns)                |samples                         |
 |--------------------------------|--------------------------------|--------------------------------|--------------------------------|
-|timeline-eval-10-tracks         |1314307 ± 0.03%                 |796.60 ± 0.66%                  |627666                          |
-|timeline-eval-100-tracks        |151428 ± 0.09%                  |6854.0 ± 0.48%                  |72950                           |
-|timeline-eval-500-tracks        |31537 ± 0.19%                   |32745 ± 0.64%                   |15270                           |
+|timeline-eval-10-tracks         |1209270 ± 0.06%                 |912.13 ± 0.36%                  |548180                          |
+|timeline-eval-100-tracks        |141927 ± 0.17%                  |7703.1 ± 0.68%                  |64909                           |
+|timeline-eval-500-tracks        |27168 ± 0.44%                   |40736 ± 0.91%                   |12275                           |
 
 </details>
 
@@ -70,8 +70,8 @@ import { AnimationRuntime } from "samcan"
 
 |name                            |ops/s                           |latency avg (ns)                |samples                         |
 |--------------------------------|--------------------------------|--------------------------------|--------------------------------|
-|scene-world-transform-1k-nodes  |1028021 ± 0.06%                 |1070.2 ± 1.02%                  |467182                          |
-|scene-world-transform-5k-nodes  |501313 ± 0.07%                  |2152.7 ± 0.75%                  |232265                          |
+|scene-world-transform-1k-nodes  |686027 ± 0.12%                  |1872.9 ± 1.74%                  |266961                          |
+|scene-world-transform-5k-nodes  |936901 ± 0.09%                  |1263.7 ± 1.21%                  |395649                          |
 
 </details>
 
