@@ -49,6 +49,7 @@
         "@types/react-dom": "18.3.1",
         "canvas": "^3.2.0",
         "cloc": "^2.6.0-cloc",
+        "fast-check": "^4.3.0",
         "husky": "^9.1.7",
         "jsdom": "^27.2.0",
         "mcp-fetch-server": "^1.0.2",
