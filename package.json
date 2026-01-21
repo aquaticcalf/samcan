@@ -36,7 +36,7 @@
         "loc": "bun .scripts/cloc.ts",
         "bench": "bun .scripts/benchmark.ts",
         "prepare": "husky",
-        "demo": "bun run build && bun run bundle && bun demo-server.ts",
+        "demo": "bun run build && bun run bundle && bun demo/server.ts",
         "publish": "npm publish --tag latest",
         "test": "bun test"
     },
