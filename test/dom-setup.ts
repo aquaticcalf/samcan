@@ -1,12 +1,10 @@
 import { JSDOM } from "jsdom"
 
-// Prevent multiple executions of setup
+// Setup DOM environment for tests
 export function setupDOM() {
-    if (
-        (globalThis as any).__samcan_dom_setup_done &&
-        typeof globalThis.document !== "undefined"
-    ) {
-        return // Already set up and still present
+    // Skip if already initialized to avoid overhead
+    if ((globalThis as any).__samcan_dom_setup_done) {
+        return
     }
     ;(globalThis as any).__samcan_dom_setup_done = true
 
@@ -46,17 +44,13 @@ export function setupDOM() {
             this._src = value
             // Simulate async image loading
             setTimeout(() => {
-                // Check if URL looks valid
+                // Only data URLs and localhost work in test environment
+                // Real network requests (http/https) will fail
                 const isDataUrl = value.startsWith("data:image/")
-                const isValidUrl =
-                    value.includes("://") && !value.includes("invalid-domain")
+                const isLocalhost =
+                    value.includes("localhost") || value.includes("127.0.0.1")
 
-                if (!isDataUrl && !isValidUrl) {
-                    // Invalid URL, trigger error
-                    if (this.onerror) {
-                        this.onerror(new Event("error"))
-                    }
-                } else {
+                if (isDataUrl || isLocalhost) {
                     // Mock successful load with fake dimensions
                     this.width = 2
                     this.height = 2
@@ -64,6 +58,11 @@ export function setupDOM() {
                     this.naturalHeight = 2
                     if (this.onload) {
                         this.onload(new Event("load"))
+                    }
+                } else {
+                    // Network requests fail in test environment
+                    if (this.onerror) {
+                        this.onerror(new Event("error"))
                     }
                 }
             }, 0)
@@ -131,25 +130,21 @@ export function setupDOM() {
             this.status = "loading"
             // Simulate async font loading
             setTimeout(() => {
-                // Check if URL looks valid (data URL or localhost)
+                // Only data URLs and localhost work in test environment
                 const isDataUrl = this.source.includes("data:font/")
-                const isLocalhost = this.source.includes("localhost")
-                const isValidDomain =
-                    this.source.includes("://") &&
-                    !this.source.includes("invalid-domain")
+                const isLocalhost =
+                    this.source.includes("localhost") ||
+                    this.source.includes("127.0.0.1")
 
-                if (
-                    !isDataUrl &&
-                    !isLocalhost &&
-                    (!isValidDomain || this.source.includes("invalid-domain"))
-                ) {
+                if (isDataUrl || isLocalhost) {
+                    this.status = "loaded"
+                    this._resolveLoaded(this)
+                } else {
+                    // Network requests fail in test environment
                     this.status = "error"
                     this._rejectLoaded(
                         new Error(`Failed to load font: ${this.source}`),
                     )
-                } else {
-                    this.status = "loaded"
-                    this._resolveLoaded(this)
                 }
             }, 0)
             return this.loaded

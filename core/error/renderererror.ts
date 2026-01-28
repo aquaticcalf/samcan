@@ -62,4 +62,26 @@ export class RendererError extends SamcanError {
             { selector },
         )
     }
+
+    /**
+     * Create a renderer not initialized error
+     */
+    static notInitialized(backend: string): RendererError {
+        return new RendererError(
+            `Renderer not initialized: ${backend}`,
+            ErrorCode.INVALID_OPERATION,
+            { backend },
+        )
+    }
+
+    /**
+     * Create an invalid dimensions error
+     */
+    static invalidDimensions(width: number, height: number): RendererError {
+        return new RendererError(
+            `Invalid dimensions: ${width}x${height}. Dimensions must be positive.`,
+            ErrorCode.INVALID_OPERATION,
+            { width, height },
+        )
+    }
 }

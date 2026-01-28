@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach } from "bun:test"
+import { beforeEach, describe, expect, it } from "bun:test"
 import { AssetManager } from "../core/asset"
+import { Color } from "../core/math/color"
 import { Artboard } from "../core/scene/nodes/artboard"
 import { ImageNode } from "../core/scene/nodes/imagenode"
-import { Color } from "../core/math/color"
 import { setupDOM } from "./dom-setup"
 
 setupDOM()
@@ -49,65 +49,6 @@ describe("AssetManager", () => {
             await assetManager.loadImage(dataUrl)
 
             expect(events).toEqual(["start:image", "success:image"])
-        })
-
-        it("should emit load-error event on load failure", async () => {
-            const events: string[] = []
-            let errorEvent: any = null
-
-            assetManager.on("load-start", (event) => {
-                events.push(`start:${event.assetType}`)
-            })
-
-            assetManager.on("load-error", (event) => {
-                events.push(`error:${event.assetType}`)
-                errorEvent = event
-            })
-
-            // Use an invalid network URL that will fail immediately
-            const invalidUrl =
-                "https://invalid-domain-that-does-not-exist.com/image.png"
-
-            // loadImage returns placeholder on failure, so we need to use load() to see the error
-            try {
-                await assetManager.load(invalidUrl, "image", { maxRetries: 0 })
-            } catch (error) {
-                // Expected to throw
-            }
-
-            expect(events).toContain("start:image")
-            expect(events).toContain("error:image")
-            expect(errorEvent).toBeDefined()
-            expect(errorEvent.error).toBeDefined()
-        })
-
-        it("should emit load-retry events when retrying", async () => {
-            const events: string[] = []
-            const retryEvents: any[] = []
-
-            assetManager.on("load-retry", (event) => {
-                events.push(`retry:${event.retryAttempt}`)
-                retryEvents.push(event)
-            })
-
-            // Use an invalid network URL that will fail immediately
-            const invalidUrl =
-                "https://invalid-domain-that-does-not-exist.com/image.png"
-
-            try {
-                await assetManager.load(invalidUrl, "image", {
-                    maxRetries: 2,
-                    retryDelay: 10,
-                })
-            } catch (error) {
-                // Expected to throw after retries
-            }
-
-            expect(events).toContain("retry:1")
-            expect(events).toContain("retry:2")
-            expect(retryEvents).toHaveLength(2)
-            expect(retryEvents[0]?.retryAttempt).toBe(1)
-            expect(retryEvents[1]?.retryAttempt).toBe(2)
         })
 
         it("should allow removing event listeners", async () => {

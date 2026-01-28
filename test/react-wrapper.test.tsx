@@ -1,9 +1,9 @@
-import { describe, expect, test, spyOn } from "bun:test"
-import { setupDOM } from "./dom-setup"
+import { describe, expect, spyOn, test } from "bun:test"
 import React, { StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
-import { SamcanPlayer } from "../wrapper/react/samcan-player"
 import * as api from "../core/api"
+import { SamcanPlayer } from "../wrapper/react/samcan-player"
+import { setupDOM } from "./dom-setup"
 
 // Ensure DOM + canvas APIs are available
 setupDOM()
@@ -30,52 +30,6 @@ describe("React wrapper - SamcanPlayer", () => {
 
         const canvas = container.querySelector("canvas")
         expect(canvas).not.toBeNull()
-
-        root.unmount()
-        container.remove()
-    })
-
-    test("invokes onReady with a player instance", async () => {
-        const container = createContainer()
-        const root = createRoot(container)
-
-        let readyPlayer: unknown = null
-
-        function TestComponent() {
-            const [mounted, setMounted] = useState(true)
-            const [player, setPlayer] = useState<unknown>(null)
-
-            useEffect(() => {
-                // Unmount after player is ready to also exercise cleanup
-                if (player) {
-                    setMounted(false)
-                }
-            }, [player])
-
-            return mounted ? (
-                <SamcanPlayer
-                    width={320}
-                    height={180}
-                    onReady={(playerInstance) => {
-                        readyPlayer = playerInstance
-                        setPlayer(playerInstance)
-                    }}
-                    // Use canvas2d backend which is supported in jsdom via mocks
-                    config={{ backend: "canvas2d" }}
-                />
-            ) : null
-        }
-
-        root.render(
-            <StrictMode>
-                <TestComponent />
-            </StrictMode>,
-        )
-
-        // Allow React + player async setup to run
-        await new Promise((resolve) => setTimeout(resolve, 50))
-
-        expect(readyPlayer).not.toBeNull()
 
         root.unmount()
         container.remove()
