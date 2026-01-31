@@ -1,5 +1,0 @@
-export type { Plugin, PluginMetadata } from "./plugin"
-export { isPlugin } from "./plugin"
-export { PluginRegistry, PluginRegistrationError } from "./pluginregistry"
-export type { AnimationController } from "./animationcontroller"
-export { isAnimationController } from "./animationcontroller"
