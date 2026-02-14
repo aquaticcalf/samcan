@@ -253,8 +253,7 @@ function reset_stabilizer(state: stabilizer_state): stabilizer_state
 ## File Structure
 
 ```
-stroke/
-  types.ts         # stroke, live_stroke, stroke_style
+stroke/ # stroke, live_stroke, stroke_style
   live.ts          # Live drawing functions
   process.ts       # Simplification, spline fitting
   render.ts        # Path generation, LOD selection
