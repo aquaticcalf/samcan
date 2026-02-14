@@ -1,4 +1,3 @@
-import type { vector2 } from "@/math/vector2"
 import type { rectangle } from "@/math/rectangle"
 import { create_rectangle, contains_point_rectangle, intersects_rectangle } from "@/math/rectangle"
 
@@ -41,7 +40,7 @@ export function create_quadtree_node(
 ): quadtree_node {
   return {
     boundary: [boundary[0], boundary[1], boundary[2], boundary[3]],
-    points: [],
+    points: [] as readonly quadtree_point[],
     children: null,
     capacity: Math.max(1, capacity),
     depth: Math.max(0, depth),
@@ -84,7 +83,7 @@ export function point_count_quadtree_node(node: quadtree_node): number {
   return total
 }
 
-export function subdivide_quadtree_node(node: quadtree_node): quadtree_node {
+export function subdivide_quadtree_node(node: quadtree_node, max_depth: number): quadtree_node {
   if (node.children !== null) {
     return node
   }
@@ -127,7 +126,7 @@ export function subdivide_quadtree_node(node: quadtree_node): quadtree_node {
       for (let j = 0; j < 4; j = j + 1) {
         const child = updated_children[j]
         if (child) {
-          const child_result = insert_quadtree_node(child, point, node.depth + 8)
+          const child_result = insert_quadtree_node(child, point, max_depth)
           if (child_result !== null) {
             updated_children[j] = child_result
             break
@@ -167,7 +166,7 @@ export function insert_quadtree_node(
       }
     }
 
-    const subdivided = subdivide_quadtree_node(node)
+    const subdivided = subdivide_quadtree_node(node, max_depth)
     return insert_quadtree_node(subdivided, point, max_depth)
   }
 
