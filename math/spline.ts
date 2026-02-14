@@ -48,20 +48,20 @@ export function build_natural_spline_1d(points: number[], t_values: number[]): s
     ]
   }
 
-  const h = new Array(n - 1)
+  const h = Array.from({ length: n - 1 }, () => 0)
   for (let i = 0; i < n - 1; i++) {
     h[i] = t_values[i + 1]! - t_values[i]!
   }
 
-  const alpha = new Array(n - 1)
+  const alpha = Array.from({ length: n - 1 }, () => 0)
   for (let i = 1; i < n - 1; i++) {
     alpha[i] =
       (3 / h[i]!) * (points[i + 1]! - points[i]!) - (3 / h[i - 1]!) * (points[i]! - points[i - 1]!)
   }
 
-  const l = new Array(n)
-  const mu = new Array(n)
-  const z = new Array(n)
+  const l = Array.from({ length: n }, () => 0)
+  const mu = Array.from({ length: n }, () => 0)
+  const z = Array.from({ length: n }, () => 0)
 
   l[0] = 1
   mu[0] = 0
@@ -76,7 +76,7 @@ export function build_natural_spline_1d(points: number[], t_values: number[]): s
   l[n - 1] = 1
   z[n - 1] = 0
 
-  const c = new Array(n)
+  const c = Array.from({ length: n }, () => 0)
   c[n - 1] = 0
 
   for (let j = n - 2; j >= 0; j--) {
@@ -112,7 +112,7 @@ export function build_natural_spline_from_points(points: vector2[], spline: spli
     return spline
   }
 
-  const t_values = new Array(n)
+  const t_values = Array.from({ length: n }, () => 0)
   t_values[0] = 0
 
   for (let i = 1; i < n; i++) {
