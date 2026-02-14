@@ -10,6 +10,8 @@ export type camera_limits = {
 }
 
 export type zoom_anchor = {
+  readonly screen_x: number
+  readonly screen_y: number
   readonly world_x: number
   readonly world_y: number
 }

@@ -4,7 +4,7 @@ import type { rectangle } from "@/math/rectangle"
 import type { frustum } from "@/math/frustum"
 import type { transform } from "@/math/transform"
 
-export type viewport = [number, number]
+export type viewport = [number, number, number]
 
 export function world_to_screen_camera(
   c: camera,
@@ -210,4 +210,38 @@ export function height_of_camera_world(c: camera, v: viewport): number {
 export function pixel_size_of_camera(c: camera): number {
   const safe_zoom = c[2] <= 0 ? 0.0001 : c[2]
   return 1 / safe_zoom
+}
+
+export function pixel_ratio_of_viewport(v: viewport): number {
+  return v[2]
+}
+
+export function device_width_of_viewport(v: viewport): number {
+  return v[0] * v[2]
+}
+
+export function device_height_of_viewport(v: viewport): number {
+  return v[1] * v[2]
+}
+
+export function world_to_device_camera(
+  c: camera,
+  v: viewport,
+  world_pos: vector2,
+  out: vector2,
+): vector2 {
+  world_to_screen_camera(c, v, world_pos, out)
+  out[0] = out[0] * v[2]
+  out[1] = out[1] * v[2]
+  return out
+}
+
+export function device_to_world_camera(
+  c: camera,
+  v: viewport,
+  device_pos: vector2,
+  out: vector2,
+): vector2 {
+  const screen_pos: vector2 = [device_pos[0] / v[2], device_pos[1] / v[2]]
+  return screen_to_world_camera(c, v, screen_pos, out)
 }
