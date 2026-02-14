@@ -311,7 +311,6 @@ function element_at_point_document(doc: document, x: number, y: number): element
 
 ```
 document/
-  types.ts         # All type definitions
   element.ts       # Element creation and update functions
   document.ts      # Document operations
   layer.ts         # Layer operations
