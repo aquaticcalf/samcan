@@ -13,7 +13,7 @@ export function clone_color(c: color): color {
   return [c[0], c[1], c[2], c[3]]
 }
 
-export function set_color(out: color, r: number, g: number, b: number, a: number = 1): color {
+export function set_color(r: number, g: number, b: number, a: number = 1, out: color): color {
   out[0] = Math.max(0, Math.min(1, r))
   out[1] = Math.max(0, Math.min(1, g))
   out[2] = Math.max(0, Math.min(1, b))
@@ -21,7 +21,7 @@ export function set_color(out: color, r: number, g: number, b: number, a: number
   return out
 }
 
-export function copy_color(out: color, c: color): color {
+export function copy_color(c: color, out: color): color {
   out[0] = c[0]
   out[1] = c[1]
   out[2] = c[2]
@@ -62,7 +62,7 @@ export function to_hex_string_color(c: color): string {
   return c[3] === 1 ? `#${r}${g}${b}` : `#${r}${g}${b}${a}`
 }
 
-export function lerp_color(out: color, c1: color, c2: color, t: number): color {
+export function lerp_color(c1: color, c2: color, t: number, out: color): color {
   out[0] = c1[0] + (c2[0] - c1[0]) * t
   out[1] = c1[1] + (c2[1] - c1[1]) * t
   out[2] = c1[2] + (c2[2] - c1[2]) * t

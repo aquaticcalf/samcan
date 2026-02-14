@@ -16,10 +16,10 @@ export function clone_rectangle(r: rectangle): rectangle {
 }
 
 export function from_center_rectangle(
-  out: rectangle,
   center: vector2,
   width: number,
   height: number,
+  out: rectangle,
 ): rectangle {
   out[0] = center[0] - width / 2
   out[1] = center[1] - height / 2
@@ -63,11 +63,11 @@ export function area_of_rectangle(r: rectangle): number {
 }
 
 export function set_rectangle(
-  out: rectangle,
   x: number,
   y: number,
   width: number,
   height: number,
+  out: rectangle,
 ): rectangle {
   out[0] = x
   out[1] = y
@@ -77,10 +77,10 @@ export function set_rectangle(
 }
 
 export function translate_rectangle(
-  out: rectangle,
   r: rectangle,
   dx: number,
   dy: number,
+  out: rectangle,
 ): rectangle {
   out[0] = r[0] + dx
   out[1] = r[1] + dy
@@ -89,7 +89,7 @@ export function translate_rectangle(
   return out
 }
 
-export function scale_rectangle(out: rectangle, r: rectangle, scale: number): rectangle {
+export function scale_rectangle(r: rectangle, scale: number, out: rectangle): rectangle {
   out[0] = r[0] * scale
   out[1] = r[1] * scale
   out[2] = r[2] * scale
@@ -117,9 +117,9 @@ export function intersects_rectangle(r1: rectangle, r2: rectangle): boolean {
 }
 
 export function intersection_rectangle(
-  out: rectangle,
   r1: rectangle,
   r2: rectangle,
+  out: rectangle,
 ): rectangle | null {
   const x1 = Math.max(r1[0], r2[0])
   const y1 = Math.max(r1[1], r2[1])
@@ -137,7 +137,7 @@ export function intersection_rectangle(
   return out
 }
 
-export function union_rectangle(out: rectangle, r1: rectangle, r2: rectangle): rectangle {
+export function union_rectangle(r1: rectangle, r2: rectangle, out: rectangle): rectangle {
   const x1 = Math.min(r1[0], r2[0])
   const y1 = Math.min(r1[1], r2[1])
   const x2 = Math.max(r1[0] + r1[2], r2[0] + r2[2])
@@ -150,7 +150,7 @@ export function union_rectangle(out: rectangle, r1: rectangle, r2: rectangle): r
   return out
 }
 
-export function expand_rectangle(out: rectangle, r: rectangle, amount: number): rectangle {
+export function expand_rectangle(r: rectangle, amount: number, out: rectangle): rectangle {
   out[0] = r[0] - amount
   out[1] = r[1] - amount
   out[2] = r[2] + amount * 2
