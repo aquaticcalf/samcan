@@ -2,6 +2,7 @@ import type { vector2 } from "@/math/vector2"
 import type { renderer } from "@/renderer/renderer"
 import type { draw_style } from "@/renderer/style"
 import type { stroke_style, stroke_point, live_stroke } from "./stroke"
+import { clone_stroke_style } from "./stroke"
 import { create_stabilizer, stabilize_point, reset_stabilizer } from "./stabilizer"
 import { line_cap_round, line_join_round } from "@/renderer/style"
 
@@ -16,7 +17,7 @@ export function create_live_stroke(style: stroke_style, id?: string): live_strok
   return {
     id: id ?? generate_stroke_id(),
     points: [],
-    style: { ...style },
+    style: clone_stroke_style(style),
     stabilizer_state: create_stabilizer(),
   }
 }
@@ -30,16 +31,7 @@ export function add_point_live_stroke(
   const stabilized: vector2 = [0, 0]
   stabilize_point(live.stabilizer_state, position, stabilized)
 
-  const point: stroke_point = {
-    position: [stabilized[0], stabilized[1]],
-    pressure,
-    timestamp,
-  }
-
-  return {
-    ...live,
-    points: [...live.points, point],
-  }
+  return add_point_to_live_stroke_internal(live, stabilized, pressure, timestamp)
 }
 
 export function add_raw_point_live_stroke(
@@ -48,7 +40,25 @@ export function add_raw_point_live_stroke(
   pressure: number = 0.5,
   timestamp: number = Date.now(),
 ): live_stroke {
-  return add_point_live_stroke(live, raw_position, pressure, timestamp)
+  return add_point_to_live_stroke_internal(live, raw_position, pressure, timestamp)
+}
+
+function add_point_to_live_stroke_internal(
+  live: live_stroke,
+  position: vector2,
+  pressure: number,
+  timestamp: number,
+): live_stroke {
+  const point: stroke_point = {
+    position: [position[0], position[1]],
+    pressure,
+    timestamp,
+  }
+
+  return {
+    ...live,
+    points: [...live.points, point],
+  }
 }
 
 export function get_points_from_live_stroke(live: live_stroke): vector2[] {
