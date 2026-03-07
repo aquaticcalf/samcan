@@ -1,9 +1,9 @@
 import type { vector2 } from "@/math/vector2"
 import type { renderer } from "@/renderer/renderer"
 import type { draw_style } from "@/renderer/style"
-import type { stroke_style, stroke_point, live_stroke } from "./stroke"
+import type { stroke_style, stroke_point, live_stroke, stabilizer_state } from "./stroke"
 import { clone_stroke_style } from "./stroke"
-import { create_stabilizer, stabilize_point, reset_stabilizer } from "./stabilizer"
+import { create_stabilizer, stabilize_point } from "./stabilizer"
 import { line_cap_round, line_join_round } from "@/renderer/style"
 
 let live_stroke_counter = 0
@@ -28,10 +28,20 @@ export function add_point_live_stroke(
   pressure: number = 0.5,
   timestamp: number = Date.now(),
 ): live_stroke {
+  const next_stabilizer_state: stabilizer_state = {
+    ...live.stabilizer_state,
+    history: live.stabilizer_state.history.map((p) => [p[0], p[1]]),
+  }
   const stabilized: vector2 = [0, 0]
-  stabilize_point(live.stabilizer_state, position, stabilized)
+  stabilize_point(next_stabilizer_state, position, stabilized)
 
-  return add_point_to_live_stroke_internal(live, stabilized, pressure, timestamp)
+  return add_point_to_live_stroke_internal(
+    live,
+    stabilized,
+    pressure,
+    timestamp,
+    next_stabilizer_state,
+  )
 }
 
 export function add_raw_point_live_stroke(
@@ -48,6 +58,7 @@ function add_point_to_live_stroke_internal(
   position: vector2,
   pressure: number,
   timestamp: number,
+  next_stabilizer_state?: stabilizer_state,
 ): live_stroke {
   const point: stroke_point = {
     position: [position[0], position[1]],
@@ -58,6 +69,10 @@ function add_point_to_live_stroke_internal(
   return {
     ...live,
     points: [...live.points, point],
+    stabilizer_state: next_stabilizer_state ?? {
+      ...live.stabilizer_state,
+      history: live.stabilizer_state.history.map((p) => [p[0], p[1]]),
+    },
   }
 }
 
@@ -113,8 +128,6 @@ export function finalize_live_stroke(
   z_index: number
   layer_id: string
 } {
-  reset_stabilizer(live.stabilizer_state)
-
   const points = get_points_from_live_stroke(live)
   const pressure = get_pressure_from_live_stroke(live)
 

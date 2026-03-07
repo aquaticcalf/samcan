@@ -56,11 +56,12 @@ export function stroke_to_path_commands(
   if (use_spline && !use_lod) {
     const interval = get_spline_evaluation_interval(lod)
     const spline_length = get_spline_length(stroke.spline!)
-    const steps = Math.max(2, Math.floor(spline_length / interval))
-    const dt = spline_length / steps
-
     const first_segment = stroke.spline!.segments_x[0]!
+    const last_segment = stroke.spline!.segments_x[stroke.spline!.segments_x.length - 1]!
     const t_start = first_segment.x_start
+    const t_end = last_segment.x_end
+    const steps = Math.max(2, Math.floor(spline_length / interval))
+    const dt = (t_end - t_start) / steps
     const temp_point: vector2 = [0, 0]
 
     for (let i = 0; i <= steps; i++) {
@@ -116,21 +117,24 @@ export function render_stroke(stroke: stroke, renderer: renderer, zoom: number =
   if (use_spline && !use_lod) {
     const interval = get_spline_evaluation_interval(lod)
     const spline_length = get_spline_length(stroke.spline!)
-    const steps = Math.max(2, Math.floor(spline_length / interval))
-    const dt = spline_length / steps
-
     const first_segment = stroke.spline!.segments_x[0]!
+    const last_segment = stroke.spline!.segments_x[stroke.spline!.segments_x.length - 1]!
     const t_start = first_segment.x_start
+    const t_end = last_segment.x_end
+    const steps = Math.max(2, Math.floor(spline_length / interval))
+    const dt = (t_end - t_start) / steps
     const temp_point: vector2 = [0, 0]
-    const points: vector2[] = []
+    const points = ensure_lod_scratch(steps + 1)
 
     for (let i = 0; i <= steps; i++) {
       const t = t_start + i * dt
       evaluate_spline_at_t(stroke.spline!, t, temp_point)
-      points.push([temp_point[0], temp_point[1]])
+      const p = points[i]!
+      p[0] = temp_point[0]
+      p[1] = temp_point[1]
     }
 
-    renderer.draw_polyline(points, style)
+    renderer.draw_polyline(points.slice(0, steps + 1), style)
   } else {
     const points_to_use = use_lod
       ? get_simplified_for_lod(stroke.points, 1 / lod, ensure_lod_scratch(stroke.points.length))
