@@ -1,0 +1,5 @@
+{
+  "singleQuote": false,
+  "semi": false,
+  "ignorePatterns": ["node_modules/**"]
+}
