@@ -77,7 +77,14 @@ export function process_stroke(
   simplified: vector2[]
   spline: spline
 } {
-  const simplified_count = simplify_stroke_points(points, default_simplify_epsilon, out_simplified)
+  let epsilon = default_simplify_epsilon
+
+  if (pressure && pressure.length > 1 && style.pressure_sensitivity > 0) {
+    const variance = calculate_pressure_variance(pressure)
+    epsilon = epsilon / (1.0 + variance * style.pressure_sensitivity * 2.0)
+  }
+
+  const simplified_count = simplify_stroke_points(points, epsilon, out_simplified)
   const simplified = out_simplified.slice(0, simplified_count)
 
   fit_spline_to_stroke(simplified, out_spline)
@@ -86,6 +93,19 @@ export function process_stroke(
     simplified,
     spline: out_spline,
   }
+}
+
+function calculate_pressure_variance(pressure: number[]): number {
+  if (pressure.length < 2) return 0
+  let sum = 0
+  let sum_sq = 0
+  for (let i = 0; i < pressure.length; i++) {
+    const p = pressure[i]!
+    sum += p
+    sum_sq += p * p
+  }
+  const mean = sum / pressure.length
+  return Math.sqrt(Math.max(0, sum_sq / pressure.length - mean * mean))
 }
 
 export function get_simplified_for_lod(

@@ -6,6 +6,15 @@ import { evaluate_spline_at_t, get_spline_length } from "@/math/spline"
 import { get_simplified_for_lod } from "./process"
 import { line_cap_round, line_join_round } from "@/renderer/style"
 
+const lod_scratch_buffer: vector2[] = []
+
+function ensure_lod_scratch(size: number): vector2[] {
+  while (lod_scratch_buffer.length < size) {
+    lod_scratch_buffer.push([0, 0])
+  }
+  return lod_scratch_buffer
+}
+
 export const lod_high = 1.0
 export const lod_medium = 0.5
 export const lod_low = 0.25
@@ -68,11 +77,7 @@ export function stroke_to_path_commands(
     }
   } else {
     const points_to_use = use_lod
-      ? get_simplified_for_lod(
-          stroke.points,
-          1 / lod,
-          Array.from({ length: stroke.points.length * 2 }, () => [0, 0] as vector2),
-        )
+      ? get_simplified_for_lod(stroke.points, 1 / lod, ensure_lod_scratch(stroke.points.length))
       : stroke.points
 
     for (let i = 0; i < points_to_use.length; i++) {
@@ -128,11 +133,7 @@ export function render_stroke(stroke: stroke, renderer: renderer, zoom: number =
     renderer.draw_polyline(points, style)
   } else {
     const points_to_use = use_lod
-      ? get_simplified_for_lod(
-          stroke.points,
-          1 / lod,
-          Array.from({ length: stroke.points.length * 2 }, () => [0, 0] as vector2),
-        )
+      ? get_simplified_for_lod(stroke.points, 1 / lod, ensure_lod_scratch(stroke.points.length))
       : stroke.points
 
     renderer.draw_polyline(points_to_use, style)
@@ -161,6 +162,21 @@ export function render_stroke_with_pressure(
     return
   }
 
-  const style = create_stroke_draw_style(stroke.style)
-  renderer.draw_polyline(stroke.points, style)
+  const points = stroke.points
+  const pressure = stroke.pressure
+  const base_style = create_stroke_draw_style(stroke.style)
+  const base_width = stroke.style.width
+  const sensitivity = stroke.style.pressure_sensitivity
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i]!
+    const p2 = points[i + 1]!
+    const pr1 = pressure[i] ?? 0.5
+    const pr2 = pressure[i + 1] ?? pr1
+
+    const avg_pressure = (pr1 + pr2) / 2
+    const width = base_width * (1.0 + avg_pressure * sensitivity)
+
+    renderer.draw_line(p1, p2, { ...base_style, stroke_width: width })
+  }
 }

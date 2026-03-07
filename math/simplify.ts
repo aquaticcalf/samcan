@@ -114,7 +114,14 @@ export function simplify_douglas_peucker(
 ): number {
   if (points.length <= 2) {
     for (let i = 0; i < points.length; i++) {
-      out_points[i] = [points[i]![0], points[i]![1]]
+      const p = points[i]!
+      const out = out_points[i]
+      if (out) {
+        out[0] = p[0]
+        out[1] = p[1]
+      } else {
+        out_points[i] = [p[0], p[1]]
+      }
     }
     return points.length
   }
@@ -128,7 +135,14 @@ export function simplify_douglas_peucker(
   let result_count = 0
   for (let i = 0; i < points.length; i++) {
     if (keep_flags[i]) {
-      out_points[result_count] = [points[i]![0], points[i]![1]]
+      const p = points[i]!
+      const out = out_points[result_count]
+      if (out) {
+        out[0] = p[0]
+        out[1] = p[1]
+      } else {
+        out_points[result_count] = [p[0], p[1]]
+      }
       result_count = result_count + 1
     }
   }
