@@ -1,7 +1,7 @@
 import type { editor } from "@/editor/types"
 import type { renderer } from "@/renderer/renderer"
 import { get_element_by_id_document } from "@/document/document"
-import { selection_handles_editor } from "@/editor/hit"
+import { selection_handles_for_elements_editor } from "@/editor/hit"
 import { marquee_rectangle_editor, selection_bounds_editor } from "@/editor/selection"
 import {
   overlay_handle_style,
@@ -35,7 +35,7 @@ function draw_selection_overlay_editor(state: editor, drawer: renderer): void {
     return
   }
   drawer.draw_rectangle(selection_bounds, overlay_selection_style)
-  const handles = selection_handles_editor(selection_bounds)
+  const handles = selection_handles_for_elements_editor(state.engine.document, selected_ids)
   for (let i = 0; i < handles.length; i = i + 1) {
     const handle = handles[i]
     if (handle !== undefined) {

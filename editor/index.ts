@@ -50,5 +50,11 @@ export {
   undo_action_editor,
 } from "@/editor/create"
 
-export { contains_point_editor, hit_selection_handle_editor, selection_handles_editor } from "@/editor/hit"
+export {
+  contains_point_editor,
+  hit_selection_handle_editor,
+  hit_selection_handles_editor,
+  selection_handles_editor,
+  selection_handles_for_elements_editor,
+} from "@/editor/hit"
 export { element_hit_at_point_editor } from "@/editor/hittest"

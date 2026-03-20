@@ -1,7 +1,7 @@
 import type { editor_tool } from "@/editor/types"
 import { clone_document } from "@/document/document"
 import { element_type_text } from "@/document/element"
-import { hit_selection_handle_editor } from "@/editor/hit"
+import { hit_selection_handles_editor, selection_handles_for_elements_editor } from "@/editor/hit"
 import { element_hit_at_point_editor } from "@/editor/hittest"
 import { cancel_transaction_editor, begin_transaction_editor, commit_transaction_editor } from "@/editor/history"
 import { selection_bounds_editor } from "@/editor/selection"
@@ -23,8 +23,8 @@ export function create_select_tool_editor(): editor_tool {
     pointer_down: (state, input) => {
       const selected_ids = Array.from(state.selected_element_ids.values())
       const selected_bounds = selection_bounds_editor(state.engine.document, selected_ids)
-      const handle_hit =
-        selected_bounds === null ? null : hit_selection_handle_editor(selected_bounds, state.pointer_world)
+      const handles = selection_handles_for_elements_editor(state.engine.document, selected_ids)
+      const handle_hit = hit_selection_handles_editor(handles, state.pointer_world)
       if (handle_hit !== null) {
         state.active_handle = handle_hit.id
         begin_transaction_editor(state, handle_hit.id === "rotate" ? "rotate" : "resize")
@@ -150,6 +150,7 @@ export function create_select_tool_editor(): editor_tool {
       if (state.drag_state?.kind === "resize") return "nwse-resize"
       if (state.drag_state?.kind === "rotate") return "crosshair"
       if (state.active_handle === "rotate") return "crosshair"
+      if (state.active_handle === "start" || state.active_handle === "end") return "crosshair"
       if (["nw", "se", "ne", "sw"].includes(state.active_handle ?? "")) return "nwse-resize"
       if (["n", "s"].includes(state.active_handle ?? "")) return "ns-resize"
       if (["e", "w"].includes(state.active_handle ?? "")) return "ew-resize"

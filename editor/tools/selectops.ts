@@ -7,6 +7,7 @@ import {
   angle_to_center_editor,
   transform_elements_editor,
 } from "@/editor/transform"
+import { apply_line_endpoint_resize_editor } from "@/editor/tools/lineresize"
 
 export function start_move_editor(state: editor, ids: string[]): void {
   state.drag_state = {
@@ -50,6 +51,7 @@ export function apply_marquee_selection_editor(
 
 export function apply_resize_drag_editor(state: editor): void {
   if (state.drag_state === null || state.drag_state.kind !== "resize") return
+  if (apply_line_endpoint_resize_editor(state)) return
   const base = state.drag_state.selection_bounds
   const left = base[0]
   const right = base[0] + base[2]
@@ -90,4 +92,3 @@ export function apply_rotate_drag_editor(state: editor): void {
     },
   )
 }
-

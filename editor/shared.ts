@@ -7,8 +7,7 @@ import { get_element_by_id_document } from "@/document/document"
 import { element_hit_at_point_editor } from "@/editor/hittest"
 import { screen_to_world_engine } from "@/engine/camera"
 import { editor_tool_select } from "@/editor/types"
-import { hit_selection_handle_editor } from "@/editor/hit"
-import { selection_bounds_editor } from "@/editor/selection"
+import { hit_selection_handles_editor, selection_handles_for_elements_editor } from "@/editor/hit"
 
 export function current_tool_impl_editor(state: editor): editor_tool {
   return state.tools.get(state.current_tool) ?? state.tools.get(editor_tool_select)!
@@ -52,11 +51,8 @@ export function update_hover_editor(state: editor): void {
 
 export function update_select_hover_editor(state: editor): void {
   const selected_ids = Array.from(state.selected_element_ids.values())
-  const selected_bounds = selection_bounds_editor(state.engine.document, selected_ids)
-  state.active_handle =
-    selected_bounds === null
-      ? null
-      : (hit_selection_handle_editor(selected_bounds, state.pointer_world)?.id ?? null)
+  const handles = selection_handles_for_elements_editor(state.engine.document, selected_ids)
+  state.active_handle = hit_selection_handles_editor(handles, state.pointer_world)?.id ?? null
   update_hover_editor(state)
 }
 
