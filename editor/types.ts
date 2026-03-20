@@ -46,6 +46,7 @@ export type editor_move_state = {
   current_world: vector2
   base_document: document
   moved_element_ids: string[]
+  selection_bounds: rectangle
 }
 
 export type editor_pending_move_state = {

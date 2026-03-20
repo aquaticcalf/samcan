@@ -9,9 +9,13 @@ export type editor_snap_result = {
   guides: rectangle[]
 }
 
+export type editor_snap_meta = {
+  subject_bounds?: rectangle
+}
+
 export type editor_snapper = (
   state: editor,
   point: vector2,
   context: editor_snap_context,
+  meta?: editor_snap_meta,
 ) => editor_snap_result | null
-

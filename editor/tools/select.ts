@@ -135,10 +135,15 @@ export function create_select_tool_editor(): editor_tool {
         state.marquee_state = marquee_state
       }
       if (state.drag_state.kind === "move") {
+        const raw: [number, number] = [state.pointer_world[0], state.pointer_world[1]]
+        const dx = raw[0] - state.drag_state.origin_world[0]
+        const dy = raw[1] - state.drag_state.origin_world[1]
+        const b = state.drag_state.selection_bounds
         state.drag_state.current_world = snap_point_editor(
           state,
-          [state.pointer_world[0], state.pointer_world[1]],
+          raw,
           "move",
+          { subject_bounds: [b[0] + dx, b[1] + dy, b[2], b[3]] },
         )
         return apply_move_drag_editor(state)
       }
