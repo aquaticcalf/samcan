@@ -2,7 +2,7 @@
 
 ## Objective
 
-Upgrade the scene model from placeholder primitives into a complete editor-oriented element system for the current `samcan` direction.
+Upgrade the scene model from placeholder primitives into a complete element system for the current `samcan` direction.
 
 ## Current Gaps
 

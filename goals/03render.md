@@ -2,7 +2,7 @@
 
 ## Objective
 
-Keep rendering fast enough for very large scenes while preserving correct behavior for transforms, images, strokes, and overlays in the current editor-oriented direction.
+Keep rendering fast enough for very large scenes while preserving correct behavior for transforms, images, strokes, and overlays in the current direction.
 
 ## Current Strengths
 
@@ -64,7 +64,7 @@ The render system must support transient overlays such as:
 - hover affordances
 - remote presence indicators
 
-These overlays should remain editor-controlled, not baked into document elements.
+These overlays should remain interaction-layer controlled, not baked into document elements.
 
 ## Image Rendering Expectations
 

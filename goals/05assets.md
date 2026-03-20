@@ -2,7 +2,7 @@
 
 ## Objective
 
-Build a real asset pipeline for images and any future binary resources needed by the current editor-focused direction.
+Build a real asset pipeline for images and any future binary resources needed by the current direction.
 
 ## Current State
 
@@ -56,7 +56,7 @@ The asset system should handle:
 - zero-size images
 - partial load failure
 
-The editor should degrade gracefully instead of throwing.
+The interaction layer should degrade gracefully instead of throwing.
 
 ## Future Extensions
 

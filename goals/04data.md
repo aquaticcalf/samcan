@@ -2,7 +2,7 @@
 
 ## Objective
 
-Define a stable scene, history, and persistence model for the current editor-focused direction without turning `samcan` into a single-purpose codebase.
+Define a stable scene, history, and persistence model for the current direction without turning `samcan` into a single-purpose codebase.
 
 ## Document Model
 
