@@ -3,8 +3,10 @@ export type {
   editor_clipboard_payload,
   editor_interaction_state,
   editor_key_input,
+  editor_plugin,
   editor_pointer_input,
   editor_tool,
+  editor_tool_id,
   editor_transaction,
 } from "@/editor/types"
 
@@ -37,7 +39,10 @@ export {
   pointer_up_editor,
   redo_action_editor,
   render_editor,
+  install_editor_plugin_editor,
+  register_editor_tool_editor,
   set_tool_editor,
+  uninstall_editor_plugin_editor,
   undo_action_editor,
 } from "@/editor/create"
 

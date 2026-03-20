@@ -14,6 +14,7 @@ export const editor_tool_line = 5
 export const editor_tool_arrow = 6
 export const editor_tool_text = 7
 export const editor_tool_image_place = 8
+export type editor_tool_id = number | string
 
 export type editor_pointer_input = {
   screen: vector2
@@ -85,7 +86,7 @@ export type editor_shape_state = {
   origin_world: vector2
   current_world: vector2
   element_id: string
-  shape_tool: number
+  shape_tool: editor_tool_id
 }
 
 export type editor_text_state = {
@@ -125,7 +126,7 @@ export type editor_transaction = {
 }
 
 export type editor_tool = {
-  id: number
+  id: editor_tool_id
   name: string
   pointer_down: (state: editor, input: editor_pointer_input) => void
   pointer_move: (state: editor, input: editor_pointer_input) => void
@@ -138,10 +139,15 @@ export type editor_tool = {
   overlay: (state: editor, drawer: renderer) => void
 }
 
+export type editor_plugin = {
+  id: string
+  tools: editor_tool[]
+}
+
 export type editor = {
   engine: engine
-  current_tool: number
-  previous_tool_before_hand: number | null
+  current_tool: editor_tool_id
+  previous_tool_before_hand: editor_tool_id | null
   selected_element_ids: Set<string>
   hovered_element_id: string | null
   active_handle: string | null
@@ -155,6 +161,7 @@ export type editor = {
   transient_guides: rectangle[]
   pointer_world: vector2
   pointer_screen: vector2
-  tools: Map<number, editor_tool>
+  tools: Map<editor_tool_id, editor_tool>
+  plugin_tools: Map<string, editor_tool_id[]>
   id_counter: number
 }
