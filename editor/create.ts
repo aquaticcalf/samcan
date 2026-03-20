@@ -1,7 +1,13 @@
 import type { draw_style } from "@/renderer/style"
 import type { vector2 } from "@/math/vector2"
 import type { rectangle } from "@/math/rectangle"
-import type { element, shape_element } from "@/document/element"
+import type {
+  element,
+  image_element,
+  shape_element,
+  stroke_element,
+  text_element,
+} from "@/document/element"
 import type { editor, editor_key_input, editor_pointer_input, editor_tool } from "@/editor/types"
 import type { document } from "@/document/document"
 import type { renderer } from "@/renderer/renderer"
@@ -17,7 +23,10 @@ import {
   create_shape_element,
   create_stroke_element,
   create_text_element,
+  element_type_image,
   element_type_shape,
+  element_type_stroke,
+  element_type_text,
   shape_type_arrow,
   shape_type_ellipse,
   shape_type_line,
@@ -45,6 +54,7 @@ import {
   redo_editor,
   undo_editor,
 } from "@/editor/history"
+import { hit_selection_handle_editor, selection_handles_editor } from "@/editor/hit"
 import { marquee_rectangle_editor, selection_bounds_editor } from "@/editor/selection"
 import { create_spline } from "@/math/spline"
 import { compute_stroke_bounds, process_stroke } from "@/stroke/process"
@@ -73,6 +83,16 @@ const overlay_marquee_style: draw_style = {
 const overlay_hover_style: draw_style = {
   fill: null,
   stroke: [0.2, 0.5, 1, 0.65],
+  stroke_width: 1,
+  line_cap: line_cap_round,
+  line_join: line_join_round,
+  miter_limit: 10,
+  alpha: 1,
+}
+
+const overlay_handle_style: draw_style = {
+  fill: [1, 1, 1, 1],
+  stroke: [0.2, 0.5, 1, 0.95],
   stroke_width: 1,
   line_cap: line_cap_round,
   line_join: line_join_round,
@@ -306,6 +326,13 @@ function draw_editor_overlay(state: editor, drawer: renderer): void {
   const selection_bounds = selection_bounds_editor(state.engine.document, selected_ids)
   if (selection_bounds !== null) {
     drawer.draw_rectangle(selection_bounds, overlay_selection_style)
+    const handles = selection_handles_editor(selection_bounds)
+    for (let i = 0; i < handles.length; i = i + 1) {
+      const handle = handles[i]
+      if (handle !== undefined) {
+        drawer.draw_rectangle(handle.bounds, overlay_handle_style)
+      }
+    }
   }
 
   if (state.marquee_state !== null) {
@@ -345,6 +372,57 @@ function create_select_tool_editor(): editor_tool {
     id: editor_tool_select,
     name: "select",
     pointer_down: (state, input) => {
+      const selected_ids = Array.from(state.selected_element_ids.values())
+      const selected_bounds = selection_bounds_editor(state.engine.document, selected_ids)
+      if (selected_bounds !== null) {
+        const handle_hit = hit_selection_handle_editor(selected_bounds, state.pointer_world)
+        if (handle_hit !== null) {
+          state.active_handle = handle_hit.id
+          if (handle_hit.id === "rotate") {
+            begin_transaction_editor(state, "rotate")
+            const center: vector2 = [
+              selected_bounds[0] + selected_bounds[2] / 2,
+              selected_bounds[1] + selected_bounds[3] / 2,
+            ]
+            state.drag_state = {
+              kind: "rotate",
+              origin_world: [state.pointer_world[0], state.pointer_world[1]],
+              current_world: [state.pointer_world[0], state.pointer_world[1]],
+              base_document: clone_document(state.engine.document),
+              rotated_element_ids: selected_ids,
+              selection_bounds: [
+                selected_bounds[0],
+                selected_bounds[1],
+                selected_bounds[2],
+                selected_bounds[3],
+              ],
+              center,
+              start_angle: angle_to_center_editor(center, state.pointer_world),
+            }
+            state.pointer_capture = true
+            return
+          }
+
+          begin_transaction_editor(state, "resize")
+          state.drag_state = {
+            kind: "resize",
+            origin_world: [state.pointer_world[0], state.pointer_world[1]],
+            current_world: [state.pointer_world[0], state.pointer_world[1]],
+            base_document: clone_document(state.engine.document),
+            resized_element_ids: selected_ids,
+            selection_bounds: [
+              selected_bounds[0],
+              selected_bounds[1],
+              selected_bounds[2],
+              selected_bounds[3],
+            ],
+            handle: handle_hit.id,
+          }
+          state.pointer_capture = true
+          return
+        }
+      }
+
       const hit = element_at_point_document(
         state.engine.document,
         state.pointer_world[0],
@@ -397,13 +475,25 @@ function create_select_tool_editor(): editor_tool {
     },
     pointer_move: (state) => {
       if (state.drag_state === null) {
-        update_hover_editor(state)
+        update_select_hover_editor(state)
         return
       }
 
       if (state.drag_state.kind === "move") {
         state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
         apply_move_drag_editor(state)
+        return
+      }
+
+      if (state.drag_state.kind === "resize") {
+        state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
+        apply_resize_drag_editor(state)
+        return
+      }
+
+      if (state.drag_state.kind === "rotate") {
+        state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
+        apply_rotate_drag_editor(state)
         return
       }
 
@@ -422,30 +512,68 @@ function create_select_tool_editor(): editor_tool {
         commit_transaction_editor(state)
       }
 
+      if (state.drag_state.kind === "resize") {
+        commit_transaction_editor(state)
+      }
+
+      if (state.drag_state.kind === "rotate") {
+        commit_transaction_editor(state)
+      }
+
       if (state.drag_state.kind === "marquee") {
         apply_marquee_selection_editor(state, state.drag_state)
       }
 
       state.drag_state = null
       state.marquee_state = null
+      state.active_handle = null
       state.pointer_capture = false
     },
     double_click: () => {},
     key_down: () => {},
     cancel: (state) => {
-      if (state.drag_state !== null && state.drag_state.kind === "move") {
+      if (
+        state.drag_state !== null &&
+        (state.drag_state.kind === "move" ||
+          state.drag_state.kind === "resize" ||
+          state.drag_state.kind === "rotate")
+      ) {
         cancel_transaction_editor(state)
       }
       state.drag_state = null
       state.marquee_state = null
+      state.active_handle = null
       state.pointer_capture = false
     },
     hover: (state) => {
-      update_hover_editor(state)
+      update_select_hover_editor(state)
     },
     cursor: (state) => {
       if (state.drag_state !== null && state.drag_state.kind === "move") {
         return "grabbing"
+      }
+      if (state.drag_state !== null && state.drag_state.kind === "resize") {
+        return "nwse-resize"
+      }
+      if (state.drag_state !== null && state.drag_state.kind === "rotate") {
+        return "crosshair"
+      }
+      if (state.active_handle === "rotate") {
+        return "crosshair"
+      }
+      if (
+        state.active_handle === "nw" ||
+        state.active_handle === "se" ||
+        state.active_handle === "ne" ||
+        state.active_handle === "sw"
+      ) {
+        return "nwse-resize"
+      }
+      if (state.active_handle === "n" || state.active_handle === "s") {
+        return "ns-resize"
+      }
+      if (state.active_handle === "e" || state.active_handle === "w") {
+        return "ew-resize"
       }
       return "default"
     },
@@ -835,6 +963,18 @@ function update_hover_editor(state: editor): void {
   state.hovered_element_id = hit?.id ?? null
 }
 
+function update_select_hover_editor(state: editor): void {
+  const selected_ids = Array.from(state.selected_element_ids.values())
+  const selected_bounds = selection_bounds_editor(state.engine.document, selected_ids)
+  if (selected_bounds !== null) {
+    const handle_hit = hit_selection_handle_editor(selected_bounds, state.pointer_world)
+    state.active_handle = handle_hit?.id ?? null
+  } else {
+    state.active_handle = null
+  }
+  update_hover_editor(state)
+}
+
 function apply_move_drag_editor(state: editor): void {
   if (state.drag_state === null || state.drag_state.kind !== "move") {
     return
@@ -859,20 +999,184 @@ function apply_move_drag_editor(state: editor): void {
 }
 
 function move_element_editor(el: element, dx: number, dy: number): element {
-  const moved = clone_element_editor(el)
-  moved.bounds = [el.bounds[0] + dx, el.bounds[1] + dy, el.bounds[2], el.bounds[3]]
+  return apply_transform_element_editor(el, (point) => [point[0] + dx, point[1] + dy])
+}
 
-  if (moved.type === element_type_shape) {
-    const shape = moved as shape_element
-    if (shape.start_point !== null) {
-      shape.start_point = [shape.start_point[0] + dx, shape.start_point[1] + dy]
-    }
-    if (shape.end_point !== null) {
-      shape.end_point = [shape.end_point[0] + dx, shape.end_point[1] + dy]
-    }
+function apply_resize_drag_editor(state: editor): void {
+  if (state.drag_state === null || state.drag_state.kind !== "resize") {
+    return
   }
 
-  return moved
+  const base_bounds = state.drag_state.selection_bounds
+  const left = base_bounds[0]
+  const right = base_bounds[0] + base_bounds[2]
+  const top = base_bounds[1]
+  const bottom = base_bounds[1] + base_bounds[3]
+  const handle = state.drag_state.handle
+
+  let x1 = left
+  let x2 = right
+  let y1 = top
+  let y2 = bottom
+
+  if (handle.includes("w")) {
+    x1 = state.drag_state.current_world[0]
+  }
+  if (handle.includes("e")) {
+    x2 = state.drag_state.current_world[0]
+  }
+  if (handle.includes("n")) {
+    y1 = state.drag_state.current_world[1]
+  }
+  if (handle.includes("s")) {
+    y2 = state.drag_state.current_world[1]
+  }
+
+  const new_left = Math.min(x1, x2)
+  const new_right = Math.max(x1, x2)
+  const new_top = Math.min(y1, y2)
+  const new_bottom = Math.max(y1, y2)
+
+  const base_width = Math.max(1e-4, right - left)
+  const base_height = Math.max(1e-4, bottom - top)
+  const sx = Math.max(1e-4, (new_right - new_left) / base_width)
+  const sy = Math.max(1e-4, (new_bottom - new_top) / base_height)
+
+  let doc = state.drag_state.base_document
+  for (let i = 0; i < state.drag_state.resized_element_ids.length; i = i + 1) {
+    const id = state.drag_state.resized_element_ids[i]
+    if (id === undefined) {
+      continue
+    }
+    const base_element = get_element_by_id_document(state.drag_state.base_document, id)
+    if (base_element === null) {
+      continue
+    }
+    const resized = apply_transform_element_editor(base_element, (point) => [
+      new_left + (point[0] - left) * sx,
+      new_top + (point[1] - top) * sy,
+    ])
+    doc = update_element_document(doc, id, resized)
+  }
+  state.engine.document = doc
+}
+
+function apply_rotate_drag_editor(state: editor): void {
+  if (state.drag_state === null || state.drag_state.kind !== "rotate") {
+    return
+  }
+
+  const current_angle = angle_to_center_editor(state.drag_state.center, state.drag_state.current_world)
+  const delta = current_angle - state.drag_state.start_angle
+  const sin_angle = Math.sin(delta)
+  const cos_angle = Math.cos(delta)
+  const center = state.drag_state.center
+
+  let doc = state.drag_state.base_document
+  for (let i = 0; i < state.drag_state.rotated_element_ids.length; i = i + 1) {
+    const id = state.drag_state.rotated_element_ids[i]
+    if (id === undefined) {
+      continue
+    }
+    const base_element = get_element_by_id_document(state.drag_state.base_document, id)
+    if (base_element === null) {
+      continue
+    }
+    const rotated = apply_transform_element_editor(base_element, (point) => {
+      const dx = point[0] - center[0]
+      const dy = point[1] - center[1]
+      return [
+        center[0] + dx * cos_angle - dy * sin_angle,
+        center[1] + dx * sin_angle + dy * cos_angle,
+      ]
+    })
+    doc = update_element_document(doc, id, rotated)
+  }
+  state.engine.document = doc
+}
+
+function angle_to_center_editor(center: vector2, point: vector2): number {
+  return Math.atan2(point[1] - center[1], point[0] - center[0])
+}
+
+function apply_transform_element_editor(
+  el: element,
+  map_point: (point: vector2) => vector2,
+): element {
+  if (el.type === element_type_stroke) {
+    const stroke = clone_element_editor(el) as stroke_element
+    stroke.points = stroke.points.map((point) => map_point(point))
+    stroke.simplified_points =
+      stroke.simplified_points === null
+        ? null
+        : stroke.simplified_points.map((point) => map_point(point))
+    const transformed_bounds: rectangle = [0, 0, 0, 0]
+    compute_stroke_bounds(stroke.points, stroke.width, transformed_bounds)
+    stroke.bounds = transformed_bounds
+    stroke.spline = null
+    return stroke
+  }
+
+  if (el.type === element_type_shape) {
+    const shape = clone_element_editor(el) as shape_element
+    if (shape.start_point !== null && shape.end_point !== null) {
+      shape.start_point = map_point(shape.start_point)
+      shape.end_point = map_point(shape.end_point)
+      shape.bounds = bounds_from_points_editor([shape.start_point, shape.end_point])
+    } else {
+      shape.bounds = transform_bounds_editor(shape.bounds, map_point)
+    }
+    return shape
+  }
+
+  if (el.type === element_type_image) {
+    const image = clone_element_editor(el) as image_element
+    image.bounds = transform_bounds_editor(image.bounds, map_point)
+    return image
+  }
+
+  if (el.type === element_type_text) {
+    const text = clone_element_editor(el) as text_element
+    text.bounds = transform_bounds_editor(text.bounds, map_point)
+    return text
+  }
+
+  return clone_element_editor(el)
+}
+
+function transform_bounds_editor(
+  bounds: rectangle,
+  map_point: (point: vector2) => vector2,
+): rectangle {
+  const p1 = map_point([bounds[0], bounds[1]])
+  const p2 = map_point([bounds[0] + bounds[2], bounds[1]])
+  const p3 = map_point([bounds[0], bounds[1] + bounds[3]])
+  const p4 = map_point([bounds[0] + bounds[2], bounds[1] + bounds[3]])
+  return bounds_from_points_editor([p1, p2, p3, p4])
+}
+
+function bounds_from_points_editor(points: vector2[]): rectangle {
+  let min_x = Infinity
+  let min_y = Infinity
+  let max_x = -Infinity
+  let max_y = -Infinity
+
+  for (let i = 0; i < points.length; i = i + 1) {
+    const point = points[i]
+    if (point === undefined) {
+      continue
+    }
+    min_x = Math.min(min_x, point[0])
+    min_y = Math.min(min_y, point[1])
+    max_x = Math.max(max_x, point[0])
+    max_y = Math.max(max_y, point[1])
+  }
+
+  if (min_x === Infinity) {
+    return [0, 0, 1, 1]
+  }
+
+  return [min_x, min_y, Math.max(1, max_x - min_x), Math.max(1, max_y - min_y)]
 }
 
 function apply_marquee_selection_editor(
@@ -969,6 +1273,22 @@ function insert_drawn_stroke_editor(state: editor, points: vector2[], pressure: 
 }
 
 function clone_element_editor(el: element): element {
+  if (el.type === element_type_stroke) {
+    const stroke = el as stroke_element
+    return {
+      ...stroke,
+      bounds: [stroke.bounds[0], stroke.bounds[1], stroke.bounds[2], stroke.bounds[3]],
+      points: stroke.points.map((point) => [point[0], point[1]]),
+      pressure: stroke.pressure === null ? null : [...stroke.pressure],
+      color: [stroke.color[0], stroke.color[1], stroke.color[2], stroke.color[3]],
+      simplified_points:
+        stroke.simplified_points === null
+          ? null
+          : stroke.simplified_points.map((point) => [point[0], point[1]]),
+      spline: stroke.spline,
+    }
+  }
+
   if (el.type === element_type_shape) {
     const shape = el as shape_element
     return {
@@ -992,31 +1312,15 @@ function clone_element_editor(el: element): element {
     }
   }
 
-  if ("points" in el) {
-    const stroke = el as any
-    return {
-      ...stroke,
-      bounds: [stroke.bounds[0], stroke.bounds[1], stroke.bounds[2], stroke.bounds[3]],
-      points: stroke.points.map((p: vector2) => [p[0], p[1]]),
-      pressure: stroke.pressure === null ? null : [...stroke.pressure],
-      color: [stroke.color[0], stroke.color[1], stroke.color[2], stroke.color[3]],
-      simplified_points:
-        stroke.simplified_points === null
-          ? null
-          : stroke.simplified_points.map((p: vector2) => [p[0], p[1]]),
-      spline: stroke.spline,
-    }
-  }
-
-  if ("src" in el) {
-    const image = el as any
+  if (el.type === element_type_image) {
+    const image = el as image_element
     return {
       ...image,
       bounds: [image.bounds[0], image.bounds[1], image.bounds[2], image.bounds[3]],
     }
   }
 
-  const text = el as any
+  const text = el as text_element
   return {
     ...text,
     bounds: [text.bounds[0], text.bounds[1], text.bounds[2], text.bounds[3]],
@@ -1054,8 +1358,8 @@ function insert_elements_with_offset_editor(
     if (new_id === undefined) {
       continue
     }
-    ;(clone as any).id = new_id
-    ;(clone as any).z_index = next_z_index_editor(doc)
+    clone.id = new_id
+    clone.z_index = next_z_index_editor(doc)
     doc = add_element_document(doc, clone)
     state.selected_element_ids.add(new_id)
   }
@@ -1141,4 +1445,3 @@ function cleanup_selection_editor(state: editor): void {
     }
   }
 }
-

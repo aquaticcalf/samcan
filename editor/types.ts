@@ -46,6 +46,27 @@ export type editor_move_state = {
   moved_element_ids: string[]
 }
 
+export type editor_resize_state = {
+  kind: "resize"
+  origin_world: vector2
+  current_world: vector2
+  base_document: document
+  resized_element_ids: string[]
+  selection_bounds: rectangle
+  handle: string
+}
+
+export type editor_rotate_state = {
+  kind: "rotate"
+  origin_world: vector2
+  current_world: vector2
+  base_document: document
+  rotated_element_ids: string[]
+  selection_bounds: rectangle
+  center: vector2
+  start_angle: number
+}
+
 export type editor_marquee_state = {
   kind: "marquee"
   origin_world: vector2
@@ -89,6 +110,8 @@ export type editor_draw_state = {
 
 export type editor_interaction_state =
   | editor_move_state
+  | editor_resize_state
+  | editor_rotate_state
   | editor_marquee_state
   | editor_pan_state
   | editor_shape_state
@@ -135,4 +158,3 @@ export type editor = {
   tools: Map<number, editor_tool>
   id_counter: number
 }
-
