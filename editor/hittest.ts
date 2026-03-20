@@ -1,0 +1,77 @@
+import type { document } from "@/document/document"
+import type { element, shape_element, stroke_element } from "@/document/element"
+import {
+  element_type_shape,
+  element_type_stroke,
+  shape_type_arrow,
+  shape_type_ellipse,
+  shape_type_line,
+} from "@/document/element"
+import {
+  contains_ellipse_editor,
+  contains_polyline_editor,
+  contains_with_padding_editor,
+  distance_point_to_segment_editor,
+} from "@/editor/hitmath"
+
+export function element_hit_at_point_editor(
+  doc: document,
+  x: number,
+  y: number,
+  padding: number = 4,
+): element | null {
+  let topmost: element | null = null
+  let top_z = -Infinity
+  for (const el of doc.elements.values()) {
+    if (!element_contains_point_editor(el, x, y, padding)) {
+      continue
+    }
+    if (el.z_index >= top_z) {
+      top_z = el.z_index
+      topmost = el
+    }
+  }
+  return topmost
+}
+
+function element_contains_point_editor(el: element, x: number, y: number, padding: number): boolean {
+  if (el.type === element_type_stroke) {
+    return stroke_contains_point_editor(el as stroke_element, x, y, padding)
+  }
+  if (el.type === element_type_shape) {
+    return shape_contains_point_editor(el as shape_element, x, y, padding)
+  }
+  return contains_with_padding_editor(el.bounds, x, y, padding)
+}
+
+function stroke_contains_point_editor(
+  stroke: stroke_element,
+  x: number,
+  y: number,
+  padding: number,
+): boolean {
+  const radius = Math.max(1, stroke.width / 2 + padding)
+  const points =
+    stroke.simplified_points !== null && stroke.simplified_points.length > 0
+      ? stroke.simplified_points
+      : stroke.points
+  return contains_polyline_editor(points, x, y, radius)
+}
+
+function shape_contains_point_editor(
+  shape: shape_element,
+  x: number,
+  y: number,
+  padding: number,
+): boolean {
+  if (shape.shape_type === shape_type_ellipse) {
+    return contains_ellipse_editor(shape.bounds, x, y, padding)
+  }
+  if (shape.shape_type === shape_type_line || shape.shape_type === shape_type_arrow) {
+    const a = shape.start_point ?? [shape.bounds[0], shape.bounds[1]]
+    const b = shape.end_point ?? [shape.bounds[0] + shape.bounds[2], shape.bounds[1] + shape.bounds[3]]
+    return distance_point_to_segment_editor(x, y, a[0], a[1], b[0], b[1]) <= Math.max(1, shape.stroke_width / 2 + padding)
+  }
+  return contains_with_padding_editor(shape.bounds, x, y, padding)
+}
+

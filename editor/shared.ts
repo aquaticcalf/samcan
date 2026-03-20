@@ -4,7 +4,7 @@ import type { rectangle } from "@/math/rectangle"
 import type { vector2 } from "@/math/vector2"
 import type { editor, editor_pointer_input, editor_tool, editor_tool_id } from "@/editor/types"
 import { get_element_by_id_document } from "@/document/document"
-import { element_at_point_document } from "@/document/query"
+import { element_hit_at_point_editor } from "@/editor/hittest"
 import { screen_to_world_engine } from "@/engine/camera"
 import { editor_tool_select } from "@/editor/types"
 import { hit_selection_handle_editor } from "@/editor/hit"
@@ -46,11 +46,7 @@ export function update_pointer_editor(state: editor, input: editor_pointer_input
 }
 
 export function update_hover_editor(state: editor): void {
-  const hit = element_at_point_document(
-    state.engine.document,
-    state.pointer_world[0],
-    state.pointer_world[1],
-  )
+  const hit = element_hit_at_point_editor(state.engine.document, state.pointer_world[0], state.pointer_world[1])
   state.hovered_element_id = hit?.id ?? null
 }
 
@@ -108,4 +104,3 @@ export function clone_ids_editor(elements: readonly element[]): string[] {
   }
   return ids
 }
-
