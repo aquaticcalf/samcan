@@ -16,6 +16,8 @@ export type renderer_config = {
   readonly path_cache_size: number
 }
 
+export type image_source = HTMLImageElement | HTMLCanvasElement
+
 export type renderer = {
   readonly kind: number
   readonly width: number
@@ -35,6 +37,7 @@ export type renderer = {
   draw_circle: (c: circle, s: draw_style) => void
   draw_line: (a: vector2, b: vector2, s: draw_style) => void
   draw_polyline: (points: readonly vector2[], s: draw_style) => void
+  draw_image: (image: image_source, r: rectangle, opacity: number, version?: number) => void
 
   clip_rectangle: (r: rectangle) => void
   clear: (c: color) => void
