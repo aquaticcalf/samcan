@@ -52,6 +52,8 @@ export function create_select_tool_editor(): editor_tool {
             resized_element_ids: selected_ids,
             selection_bounds: [selected_bounds![0], selected_bounds![1], selected_bounds![2], selected_bounds![3]],
             handle: handle_hit.id,
+            keep_aspect: false,
+            centered: false,
           }
         }
         state.pointer_capture = true
@@ -94,7 +96,7 @@ export function create_select_tool_editor(): editor_tool {
       state.marquee_state = marquee_state
       state.pointer_capture = true
     },
-    pointer_move: (state) => {
+    pointer_move: (state, input) => {
       if (state.drag_state === null) return update_select_hover_editor(state)
       if (state.drag_state.kind === "move") {
         state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
@@ -102,6 +104,8 @@ export function create_select_tool_editor(): editor_tool {
       }
       if (state.drag_state.kind === "resize") {
         state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
+        state.drag_state.keep_aspect = !!input.shift
+        state.drag_state.centered = !!input.alt
         return apply_resize_drag_editor(state)
       }
       if (state.drag_state.kind === "rotate") {

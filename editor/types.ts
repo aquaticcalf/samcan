@@ -55,6 +55,8 @@ export type editor_resize_state = {
   resized_element_ids: string[]
   selection_bounds: rectangle
   handle: string
+  keep_aspect: boolean
+  centered: boolean
 }
 
 export type editor_rotate_state = {

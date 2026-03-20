@@ -32,10 +32,38 @@ export function update_shape_preview_editor(
   const shape = clone_element_editor(el) as shape_element
   shape.bounds = rect
   if (shape.shape_type === shape_type_line || shape.shape_type === shape_type_arrow) {
+    const constrained = keep_square
+      ? constrain_line_angle_editor(drag_state.origin_world, drag_state.current_world)
+      : [drag_state.current_world[0], drag_state.current_world[1]] as vector2
+    const end_x = constrained[0]
+    const end_y = constrained[1]
+    if (end_x === undefined || end_y === undefined) {
+      return
+    }
     shape.start_point = [drag_state.origin_world[0], drag_state.origin_world[1]]
-    shape.end_point = [drag_state.current_world[0], drag_state.current_world[1]]
+    shape.end_point = [end_x, end_y]
+    const end_point = shape.end_point
+    shape.bounds = [
+      Math.min(shape.start_point[0], end_point[0]),
+      Math.min(shape.start_point[1], end_point[1]),
+      Math.max(1, Math.abs(end_point[0] - shape.start_point[0])),
+      Math.max(1, Math.abs(end_point[1] - shape.start_point[1])),
+    ]
   }
   state.engine.document = update_element_document(state.engine.document, el.id, shape)
+}
+
+function constrain_line_angle_editor(origin: vector2, target: vector2): vector2 {
+  const dx = target[0] - origin[0]
+  const dy = target[1] - origin[1]
+  const length = Math.hypot(dx, dy)
+  if (length === 0) {
+    return [target[0], target[1]]
+  }
+  const angle = Math.atan2(dy, dx)
+  const snap = Math.PI / 4
+  const snapped = Math.round(angle / snap) * snap
+  return [origin[0] + Math.cos(snapped) * length, origin[1] + Math.sin(snapped) * length]
 }
 
 export function update_box_resize_editor(
@@ -110,4 +138,3 @@ export function insert_elements_with_offset_editor(
   state.engine.document = doc
   return true
 }
-

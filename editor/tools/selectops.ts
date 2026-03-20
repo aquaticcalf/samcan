@@ -57,17 +57,46 @@ export function apply_resize_drag_editor(state: editor): void {
   const right = base[0] + base[2]
   const top = base[1]
   const bottom = base[1] + base[3]
+  const width = Math.max(1e-4, right - left)
+  const height = Math.max(1e-4, bottom - top)
   const c = state.drag_state.current_world
-  const x1 = state.drag_state.handle.includes("w") ? c[0] : left
-  const x2 = state.drag_state.handle.includes("e") ? c[0] : right
-  const y1 = state.drag_state.handle.includes("n") ? c[1] : top
-  const y2 = state.drag_state.handle.includes("s") ? c[1] : bottom
-  const nl = Math.min(x1, x2)
-  const nr = Math.max(x1, x2)
-  const nt = Math.min(y1, y2)
-  const nb = Math.max(y1, y2)
-  const sx = Math.max(1e-4, (nr - nl) / Math.max(1e-4, right - left))
-  const sy = Math.max(1e-4, (nb - nt) / Math.max(1e-4, bottom - top))
+  const handle = state.drag_state.handle
+  const centered = state.drag_state.centered
+  const keep_aspect = state.drag_state.keep_aspect
+  const anchor_x = centered
+    ? left + width / 2
+    : handle.includes("w")
+      ? right
+      : handle.includes("e")
+        ? left
+        : left + width / 2
+  const anchor_y = centered
+    ? top + height / 2
+    : handle.includes("n")
+      ? bottom
+      : handle.includes("s")
+        ? top
+        : top + height / 2
+
+  let sx = 1
+  let sy = 1
+  if (handle.includes("w")) sx = centered ? (Math.abs(c[0] - anchor_x) * 2) / width : (right - c[0]) / width
+  if (handle.includes("e")) sx = centered ? (Math.abs(c[0] - anchor_x) * 2) / width : (c[0] - left) / width
+  if (handle.includes("n")) sy = centered ? (Math.abs(c[1] - anchor_y) * 2) / height : (bottom - c[1]) / height
+  if (handle.includes("s")) sy = centered ? (Math.abs(c[1] - anchor_y) * 2) / height : (c[1] - top) / height
+  sx = Math.max(1e-4, sx)
+  sy = Math.max(1e-4, sy)
+
+  if (keep_aspect) {
+    const has_x = handle.includes("w") || handle.includes("e")
+    const has_y = handle.includes("n") || handle.includes("s")
+    const scale = !has_y ? sx : !has_x ? sy : Math.max(sx, sy)
+    sx = scale
+    sy = scale
+  }
+
+  const nl = anchor_x - (anchor_x - left) * sx
+  const nt = anchor_y - (anchor_y - top) * sy
   state.engine.document = transform_elements_editor(
     state.drag_state.base_document,
     state.drag_state.resized_element_ids,
