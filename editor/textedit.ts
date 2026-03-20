@@ -12,6 +12,7 @@ export function begin_text_edit_editor(state: editor, element_id: string): boole
     element_id,
     draft: element.content,
     original: element.content,
+    caret: element.content.length,
   }
   state.selected_element_ids.clear()
   state.selected_element_ids.add(element_id)
@@ -23,9 +24,7 @@ export function is_text_editing_editor(state: editor): boolean {
 }
 
 export function commit_text_edit_editor(state: editor): boolean {
-  if (state.text_edit === null) {
-    return false
-  }
+  if (state.text_edit === null) return false
   const editing = state.text_edit
   const element = get_element_by_id_document(state.engine.document, editing.element_id)
   if (element === null || element.type !== element_type_text) {
@@ -45,42 +44,75 @@ export function commit_text_edit_editor(state: editor): boolean {
 }
 
 export function cancel_text_edit_editor(state: editor): boolean {
-  if (state.text_edit === null) {
-    return false
-  }
+  if (state.text_edit === null) return false
   state.text_edit = null
   return true
 }
 
 export function handle_text_key_editor(state: editor, input: editor_key_input): boolean {
-  if (state.text_edit === null) {
-    return false
-  }
+  if (state.text_edit === null) return false
   const key = input.key
-  if (key === "Escape") {
-    cancel_text_edit_editor(state)
-    return true
-  }
-  if (key === "Enter" && !input.shift) {
-    commit_text_edit_editor(state)
-    return true
-  }
-  if (key === "Backspace") {
-    state.text_edit.draft = state.text_edit.draft.slice(0, -1)
-    return true
-  }
-  if (key === "Enter" && input.shift) {
-    state.text_edit.draft = `${state.text_edit.draft}\n`
-    return true
-  }
-  if (key === "Tab") {
-    state.text_edit.draft = `${state.text_edit.draft}\t`
-    return true
-  }
+  if (key === "Escape") return cancel_text_edit_editor(state)
+  if (key === "Enter" && !!input.ctrl) return commit_text_edit_editor(state)
+  if (key === "ArrowLeft") return move_caret_editor(state, -1)
+  if (key === "ArrowRight") return move_caret_editor(state, 1)
+  if (key === "Home") return set_caret_editor(state, 0)
+  if (key === "End") return set_caret_editor(state, state.text_edit.draft.length)
+  if (key === "Backspace") return backspace_editor(state)
+  if (key === "Delete") return delete_editor(state)
+  if (key === "Enter") return insert_text_editor(state, "\n")
+  if (key === "Tab") return insert_text_editor(state, "\t")
   if (!input.ctrl && !input.meta && !input.alt && key.length === 1) {
-    state.text_edit.draft = `${state.text_edit.draft}${key}`
-    return true
+    return insert_text_editor(state, key)
   }
-  return false
+  return true
+}
+
+function move_caret_editor(state: editor, delta: number): boolean {
+  if (state.text_edit === null) return false
+  const next = clamp_caret_editor(state.text_edit.caret + delta, state.text_edit.draft.length)
+  state.text_edit.caret = next
+  return true
+}
+
+function set_caret_editor(state: editor, value: number): boolean {
+  if (state.text_edit === null) return false
+  state.text_edit.caret = clamp_caret_editor(value, state.text_edit.draft.length)
+  return true
+}
+
+function backspace_editor(state: editor): boolean {
+  if (state.text_edit === null) return false
+  const caret = state.text_edit.caret
+  if (caret <= 0) return true
+  const before = state.text_edit.draft.slice(0, caret - 1)
+  const after = state.text_edit.draft.slice(caret)
+  state.text_edit.draft = `${before}${after}`
+  state.text_edit.caret = caret - 1
+  return true
+}
+
+function delete_editor(state: editor): boolean {
+  if (state.text_edit === null) return false
+  const caret = state.text_edit.caret
+  if (caret >= state.text_edit.draft.length) return true
+  const before = state.text_edit.draft.slice(0, caret)
+  const after = state.text_edit.draft.slice(caret + 1)
+  state.text_edit.draft = `${before}${after}`
+  return true
+}
+
+function insert_text_editor(state: editor, value: string): boolean {
+  if (state.text_edit === null) return false
+  const caret = state.text_edit.caret
+  const before = state.text_edit.draft.slice(0, caret)
+  const after = state.text_edit.draft.slice(caret)
+  state.text_edit.draft = `${before}${value}${after}`
+  state.text_edit.caret = caret + value.length
+  return true
+}
+
+function clamp_caret_editor(value: number, length: number): number {
+  return Math.max(0, Math.min(length, value))
 }
 

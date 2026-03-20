@@ -115,6 +115,7 @@ export type editor_text_edit_state = {
   element_id: string
   draft: string
   original: string
+  caret: number
 }
 
 export type editor_interaction_state =
