@@ -61,4 +61,8 @@ export {
   selection_handles_for_elements_editor,
 } from "@/editor/hit"
 export { element_hit_at_point_editor } from "@/editor/hittest"
-export { create_grid_snapper_editor, snap_point_editor } from "@/editor/snap"
+export {
+  create_element_smart_snapper_editor,
+  create_grid_snapper_editor,
+  snap_point_editor,
+} from "@/editor/snap"

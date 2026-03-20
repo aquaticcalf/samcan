@@ -56,3 +56,59 @@ export function create_grid_snapper_editor(
   }
 }
 
+export function create_element_smart_snapper_editor(tolerance: number = 6): editor_snapper {
+  const safe_tol = Math.max(0.1, tolerance)
+  return (state, point, context): editor_snap_result | null => {
+    if (context === "rotate") {
+      return null
+    }
+    const candidates_x: number[] = []
+    const candidates_y: number[] = []
+    for (const element of state.engine.document.elements.values()) {
+      if (state.selected_element_ids.has(element.id)) {
+        continue
+      }
+      const bounds = element.bounds
+      candidates_x.push(bounds[0], bounds[0] + bounds[2], bounds[0] + bounds[2] / 2)
+      candidates_y.push(bounds[1], bounds[1] + bounds[3], bounds[1] + bounds[3] / 2)
+    }
+
+    const snapped_x = closest_axis_snap_editor(point[0], candidates_x, safe_tol)
+    const snapped_y = closest_axis_snap_editor(point[1], candidates_y, safe_tol)
+    if (snapped_x === null && snapped_y === null) {
+      return null
+    }
+
+    const out_x = snapped_x ?? point[0]
+    const out_y = snapped_y ?? point[1]
+    const guides: rectangle[] = []
+    if (snapped_x !== null) {
+      guides.push([out_x - 0.25, -100000, 0.5, 200000])
+    }
+    if (snapped_y !== null) {
+      guides.push([-100000, out_y - 0.25, 200000, 0.5])
+    }
+    return { point: [out_x, out_y], guides }
+  }
+}
+
+function closest_axis_snap_editor(
+  value: number,
+  candidates: readonly number[],
+  tolerance: number,
+): number | null {
+  let best: number | null = null
+  let best_delta = Infinity
+  for (let i = 0; i < candidates.length; i = i + 1) {
+    const candidate = candidates[i]
+    if (candidate === undefined) {
+      continue
+    }
+    const delta = Math.abs(candidate - value)
+    if (delta <= tolerance && delta < best_delta) {
+      best_delta = delta
+      best = candidate
+    }
+  }
+  return best
+}

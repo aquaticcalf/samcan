@@ -22,6 +22,7 @@ import { handle_global_key_editor, normalize_key_editor } from "@/editor/keys"
 import { draw_editor_overlay } from "@/editor/overlay"
 import { create_tool_registry_editor, install_plugin_editor, register_tool_editor, uninstall_plugin_editor } from "@/editor/registry"
 import { current_tool_impl_editor, update_pointer_editor } from "@/editor/shared"
+import { create_element_smart_snapper_editor } from "@/editor/snap"
 import {
   begin_text_edit_editor,
   cancel_text_edit_editor,
@@ -57,7 +58,7 @@ export function create_editor(state: engine, options: editor_options = {}): edit
     pointer_screen: [0, 0],
     has_pointer_input: false,
     text_edit: null,
-    snappers: options.snappers ?? [],
+    snappers: options.snappers ?? [create_element_smart_snapper_editor()],
     tools: create_tool_registry_editor(),
     plugin_tools: new Map(),
     id_counter: 0,
