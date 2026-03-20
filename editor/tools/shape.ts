@@ -7,6 +7,7 @@ import {
 } from "@/document/element"
 import { begin_transaction_editor, cancel_transaction_editor, commit_transaction_editor } from "@/editor/history"
 import { update_shape_preview_editor } from "@/editor/ops"
+import { snap_point_editor } from "@/editor/snap"
 import {
   next_id_editor,
   next_z_index_editor,
@@ -51,7 +52,11 @@ export function create_shape_tool_editor(tool: editor_tool_id): editor_tool {
     },
     pointer_move: (state, input) => {
       if (state.drag_state === null || state.drag_state.kind !== "shape") return
-      state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
+      state.drag_state.current_world = snap_point_editor(
+        state,
+        [state.pointer_world[0], state.pointer_world[1]],
+        "shape",
+      )
       update_shape_preview_editor(state, state.drag_state, !!input.shift)
     },
     pointer_up: (state) => {
@@ -71,4 +76,3 @@ export function create_shape_tool_editor(tool: editor_tool_id): editor_tool {
     overlay: () => {},
   }
 }
-
