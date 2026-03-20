@@ -5,14 +5,12 @@ export type {
   editor_key_input,
   editor_text_edit_state,
   editor_plugin,
-  editor_snap_context,
-  editor_snap_result,
-  editor_snapper,
   editor_pointer_input,
   editor_tool,
   editor_tool_id,
   editor_transaction,
 } from "@/editor/types"
+export type { editor_snap_context, editor_snap_result, editor_snapper } from "@/editor/snaptypes"
 
 export {
   editor_tool_arrow,

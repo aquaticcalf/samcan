@@ -1,9 +1,7 @@
 import type {
   editor,
-  editor_snap_context,
-  editor_snap_result,
-  editor_snapper,
 } from "@/editor/types"
+import type { editor_snap_context, editor_snap_result, editor_snapper } from "@/editor/snaptypes"
 import type { rectangle } from "@/math/rectangle"
 import type { vector2 } from "@/math/vector2"
 

@@ -1,4 +1,5 @@
 import type { engine } from "@/engine/types"
+import type { editor_snapper } from "@/editor/snaptypes"
 import type { vector2 } from "@/math/vector2"
 import type { rectangle } from "@/math/rectangle"
 import type { renderer } from "@/renderer/renderer"
@@ -47,6 +48,13 @@ export type editor_move_state = {
   moved_element_ids: string[]
 }
 
+export type editor_pending_move_state = {
+  kind: "pending_move"
+  origin_world: vector2
+  origin_screen: vector2
+  selected_element_ids: string[]
+}
+
 export type editor_resize_state = {
   kind: "resize"
   origin_world: vector2
@@ -74,6 +82,13 @@ export type editor_marquee_state = {
   kind: "marquee"
   origin_world: vector2
   current_world: vector2
+  add_mode: boolean
+}
+
+export type editor_pending_marquee_state = {
+  kind: "pending_marquee"
+  origin_world: vector2
+  origin_screen: vector2
   add_mode: boolean
 }
 
@@ -119,9 +134,11 @@ export type editor_text_edit_state = {
 }
 
 export type editor_interaction_state =
+  | editor_pending_move_state
   | editor_move_state
   | editor_resize_state
   | editor_rotate_state
+  | editor_pending_marquee_state
   | editor_marquee_state
   | editor_pan_state
   | editor_shape_state
@@ -152,19 +169,6 @@ export type editor_plugin = {
   id: string
   tools: editor_tool[]
 }
-
-export type editor_snap_context = "move" | "resize" | "rotate" | "shape" | "text" | "image"
-
-export type editor_snap_result = {
-  point: vector2
-  guides: rectangle[]
-}
-
-export type editor_snapper = (
-  state: editor,
-  point: vector2,
-  context: editor_snap_context,
-) => editor_snap_result | null
 
 export type editor = {
   engine: engine

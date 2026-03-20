@@ -1,6 +1,5 @@
 import type { editor_tool } from "@/editor/types"
 import { clone_document } from "@/document/document"
-import { element_type_text } from "@/document/element"
 import { hit_selection_handles_editor, selection_handles_for_elements_editor } from "@/editor/hit"
 import { element_hit_at_point_editor } from "@/editor/hittest"
 import { cancel_transaction_editor, begin_transaction_editor, commit_transaction_editor } from "@/editor/history"
@@ -8,14 +7,19 @@ import { selection_bounds_editor } from "@/editor/selection"
 import { editor_tool_select } from "@/editor/types"
 import { update_select_hover_editor } from "@/editor/shared"
 import { snap_point_editor } from "@/editor/snap"
-import { begin_text_edit_editor } from "@/editor/textedit"
 import {
   apply_marquee_selection_editor,
   apply_move_drag_editor,
   apply_resize_drag_editor,
   apply_rotate_drag_editor,
+  exceeds_drag_threshold_editor,
   start_move_editor,
 } from "@/editor/tools/selectops"
+import {
+  cursor_select_editor,
+  handle_select_double_click_editor,
+  handle_select_pointer_up_reset_editor,
+} from "@/editor/tools/selectview"
 
 export function create_select_tool_editor(): editor_tool {
   return {
@@ -80,25 +84,56 @@ export function create_select_tool_editor(): editor_tool {
         }
         const selected = Array.from(state.selected_element_ids.values())
         if (selected.length > 0) {
-          begin_transaction_editor(state, "move")
-          start_move_editor(state, selected)
+          state.drag_state = {
+            kind: "pending_move",
+            origin_world: [state.pointer_world[0], state.pointer_world[1]],
+            origin_screen: [state.pointer_screen[0], state.pointer_screen[1]],
+            selected_element_ids: selected,
+          }
+          state.pointer_capture = true
         }
         return
       }
 
       if (!is_shift) state.selected_element_ids.clear()
-      const marquee_state = {
-        kind: "marquee" as const,
+      state.drag_state = {
+        kind: "pending_marquee",
         origin_world: [state.pointer_world[0], state.pointer_world[1]] as [number, number],
-        current_world: [state.pointer_world[0], state.pointer_world[1]] as [number, number],
+        origin_screen: [state.pointer_screen[0], state.pointer_screen[1]] as [number, number],
         add_mode: is_shift,
       }
-      state.drag_state = marquee_state
-      state.marquee_state = marquee_state
       state.pointer_capture = true
     },
     pointer_move: (state, input) => {
       if (state.drag_state === null) return update_select_hover_editor(state)
+      if (state.drag_state.kind === "pending_move") {
+        const should_start = exceeds_drag_threshold_editor(
+          state.drag_state.origin_screen,
+          state.pointer_screen,
+        )
+        if (!should_start) {
+          return
+        }
+        begin_transaction_editor(state, "move")
+        start_move_editor(state, state.drag_state.selected_element_ids)
+      }
+      if (state.drag_state.kind === "pending_marquee") {
+        const should_start = exceeds_drag_threshold_editor(
+          state.drag_state.origin_screen,
+          state.pointer_screen,
+        )
+        if (!should_start) {
+          return
+        }
+        const marquee_state = {
+          kind: "marquee" as const,
+          origin_world: [state.drag_state.origin_world[0], state.drag_state.origin_world[1]] as [number, number],
+          current_world: [state.pointer_world[0], state.pointer_world[1]] as [number, number],
+          add_mode: state.drag_state.add_mode,
+        }
+        state.drag_state = marquee_state
+        state.marquee_state = marquee_state
+      }
       if (state.drag_state.kind === "move") {
         state.drag_state.current_world = snap_point_editor(
           state,
@@ -127,25 +162,20 @@ export function create_select_tool_editor(): editor_tool {
       }
     },
     pointer_up: (state) => {
+      if (
+        state.drag_state !== null &&
+        (state.drag_state.kind === "pending_move" || state.drag_state.kind === "pending_marquee")
+      ) {
+        handle_select_pointer_up_reset_editor(state)
+        return
+      }
       if (state.drag_state !== null && state.drag_state.kind !== "marquee") commit_transaction_editor(state)
       if (state.drag_state !== null && state.drag_state.kind === "marquee") {
         apply_marquee_selection_editor(state, state.drag_state)
       }
-      state.drag_state = null
-      state.marquee_state = null
-      state.active_handle = null
-      state.pointer_capture = false
+      handle_select_pointer_up_reset_editor(state)
     },
-    double_click: (state) => {
-      const hit = element_hit_at_point_editor(
-        state.engine.document,
-        state.pointer_world[0],
-        state.pointer_world[1],
-      )
-      if (hit !== null && hit.type === element_type_text) {
-        begin_text_edit_editor(state, hit.id)
-      }
-    },
+    double_click: (state) => handle_select_double_click_editor(state),
     key_down: () => {},
     cancel: (state) => {
       if (
@@ -158,17 +188,7 @@ export function create_select_tool_editor(): editor_tool {
       state.pointer_capture = false
     },
     hover: (state) => update_select_hover_editor(state),
-    cursor: (state) => {
-      if (state.drag_state?.kind === "move") return "grabbing"
-      if (state.drag_state?.kind === "resize") return "nwse-resize"
-      if (state.drag_state?.kind === "rotate") return "crosshair"
-      if (state.active_handle === "rotate") return "crosshair"
-      if (state.active_handle === "start" || state.active_handle === "end") return "crosshair"
-      if (["nw", "se", "ne", "sw"].includes(state.active_handle ?? "")) return "nwse-resize"
-      if (["n", "s"].includes(state.active_handle ?? "")) return "ns-resize"
-      if (["e", "w"].includes(state.active_handle ?? "")) return "ew-resize"
-      return "default"
-    },
+    cursor: (state) => cursor_select_editor(state),
     overlay: () => {},
   }
 }

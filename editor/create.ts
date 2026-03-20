@@ -3,10 +3,10 @@ import type {
   editor_key_input,
   editor_plugin,
   editor_pointer_input,
-  editor_snapper,
   editor_tool,
   editor_tool_id,
 } from "@/editor/types"
+import type { editor_snapper } from "@/editor/snaptypes"
 import type { engine } from "@/engine/types"
 import { render_engine_with_overlay } from "@/engine/render"
 import {

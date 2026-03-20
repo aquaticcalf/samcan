@@ -9,6 +9,8 @@ import {
 } from "@/editor/transform"
 import { apply_line_endpoint_resize_editor } from "@/editor/tools/lineresize"
 
+const drag_threshold_screen_editor = 4
+
 export function start_move_editor(state: editor, ids: string[]): void {
   state.drag_state = {
     kind: "move",
@@ -18,6 +20,12 @@ export function start_move_editor(state: editor, ids: string[]): void {
     moved_element_ids: ids,
   }
   state.pointer_capture = true
+}
+
+export function exceeds_drag_threshold_editor(origin: vector2, current: vector2): boolean {
+  const dx = current[0] - origin[0]
+  const dy = current[1] - origin[1]
+  return dx * dx + dy * dy >= drag_threshold_screen_editor * drag_threshold_screen_editor
 }
 
 export function apply_move_drag_editor(state: editor): void {
