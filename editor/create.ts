@@ -3,6 +3,7 @@ import type {
   editor_key_input,
   editor_plugin,
   editor_pointer_input,
+  editor_snapper,
   editor_tool,
   editor_tool_id,
 } from "@/editor/types"
@@ -33,6 +34,7 @@ import { editor_tool_select } from "@/editor/types"
 type editor_options = {
   initial_tool?: editor_tool_id
   plugins?: editor_plugin[]
+  snappers?: editor_snapper[]
 }
 
 export function create_editor(state: engine, options: editor_options = {}): editor {
@@ -53,7 +55,9 @@ export function create_editor(state: engine, options: editor_options = {}): edit
     transient_guides: [],
     pointer_world: [0, 0],
     pointer_screen: [0, 0],
+    has_pointer_input: false,
     text_edit: null,
+    snappers: options.snappers ?? [],
     tools: create_tool_registry_editor(),
     plugin_tools: new Map(),
     id_counter: 0,
@@ -111,6 +115,7 @@ export function pointer_move_editor(state: editor, input: editor_pointer_input):
 export function pointer_up_editor(state: editor, input: editor_pointer_input): void {
   update_pointer_editor(state, input)
   current_tool_impl_editor(state).pointer_up(state, input)
+  state.transient_guides = []
 }
 
 export function hover_editor(state: editor, input: editor_pointer_input): void {

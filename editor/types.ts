@@ -152,6 +152,19 @@ export type editor_plugin = {
   tools: editor_tool[]
 }
 
+export type editor_snap_context = "move" | "resize" | "rotate" | "shape" | "text" | "image"
+
+export type editor_snap_result = {
+  point: vector2
+  guides: rectangle[]
+}
+
+export type editor_snapper = (
+  state: editor,
+  point: vector2,
+  context: editor_snap_context,
+) => editor_snap_result | null
+
 export type editor = {
   engine: engine
   current_tool: editor_tool_id
@@ -169,7 +182,9 @@ export type editor = {
   transient_guides: rectangle[]
   pointer_world: vector2
   pointer_screen: vector2
+  has_pointer_input: boolean
   text_edit: editor_text_edit_state | null
+  snappers: editor_snapper[]
   tools: Map<editor_tool_id, editor_tool>
   plugin_tools: Map<string, editor_tool_id[]>
   id_counter: number

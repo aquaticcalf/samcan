@@ -5,6 +5,9 @@ export type {
   editor_key_input,
   editor_text_edit_state,
   editor_plugin,
+  editor_snap_context,
+  editor_snap_result,
+  editor_snapper,
   editor_pointer_input,
   editor_tool,
   editor_tool_id,
@@ -58,3 +61,4 @@ export {
   selection_handles_for_elements_editor,
 } from "@/editor/hit"
 export { element_hit_at_point_editor } from "@/editor/hittest"
+export { create_grid_snapper_editor, snap_point_editor } from "@/editor/snap"

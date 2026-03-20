@@ -7,6 +7,7 @@ import { cancel_transaction_editor, begin_transaction_editor, commit_transaction
 import { selection_bounds_editor } from "@/editor/selection"
 import { editor_tool_select } from "@/editor/types"
 import { update_select_hover_editor } from "@/editor/shared"
+import { snap_point_editor } from "@/editor/snap"
 import { begin_text_edit_editor } from "@/editor/textedit"
 import {
   apply_marquee_selection_editor,
@@ -99,11 +100,19 @@ export function create_select_tool_editor(): editor_tool {
     pointer_move: (state, input) => {
       if (state.drag_state === null) return update_select_hover_editor(state)
       if (state.drag_state.kind === "move") {
-        state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
+        state.drag_state.current_world = snap_point_editor(
+          state,
+          [state.pointer_world[0], state.pointer_world[1]],
+          "move",
+        )
         return apply_move_drag_editor(state)
       }
       if (state.drag_state.kind === "resize") {
-        state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
+        state.drag_state.current_world = snap_point_editor(
+          state,
+          [state.pointer_world[0], state.pointer_world[1]],
+          "resize",
+        )
         state.drag_state.keep_aspect = !!input.shift
         state.drag_state.centered = !!input.alt
         return apply_resize_drag_editor(state)

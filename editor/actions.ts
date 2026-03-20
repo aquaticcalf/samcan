@@ -2,6 +2,7 @@ import type { element } from "@/document/element"
 import type { editor } from "@/editor/types"
 import type { vector2 } from "@/math/vector2"
 import { get_element_by_id_document, remove_element_document } from "@/document/document"
+import { screen_to_world_engine } from "@/engine/camera"
 import {
   begin_transaction_editor,
   cancel_transaction_editor,
@@ -40,7 +41,7 @@ export function cut_selection_editor(state: editor): boolean {
 
 export function paste_clipboard_editor(state: editor, world_anchor?: vector2): boolean {
   if (state.clipboard_payload === null || state.clipboard_payload.elements.length === 0) return false
-  const anchor = world_anchor ?? [state.pointer_world[0], state.pointer_world[1]]
+  const anchor = world_anchor ?? paste_anchor_editor(state)
   const dx = anchor[0] - state.clipboard_payload.anchor[0] + 16
   const dy = anchor[1] - state.clipboard_payload.anchor[1] + 16
   begin_transaction_editor(state, "paste")
@@ -55,6 +56,16 @@ export function paste_clipboard_editor(state: editor, world_anchor?: vector2): b
 
 export function duplicate_selection_editor(state: editor): boolean {
   return copy_selection_editor(state) ? paste_clipboard_editor(state, state.pointer_world) : false
+}
+
+function paste_anchor_editor(state: editor): vector2 {
+  if (state.has_pointer_input) {
+    return [state.pointer_world[0], state.pointer_world[1]]
+  }
+  const center_screen: vector2 = [state.engine.viewport[0] / 2, state.engine.viewport[1] / 2]
+  const center_world: vector2 = [0, 0]
+  screen_to_world_engine(state.engine, center_screen, center_world)
+  return center_world
 }
 
 export function delete_selection_editor(state: editor): boolean {
@@ -83,4 +94,3 @@ export function redo_action_editor(state: editor): boolean {
   if (ok) cleanup_selection_editor(state)
   return ok
 }
-

@@ -41,6 +41,7 @@ export function cleanup_selection_editor(state: editor): void {
 export function update_pointer_editor(state: editor, input: editor_pointer_input): void {
   state.pointer_screen[0] = input.screen[0]
   state.pointer_screen[1] = input.screen[1]
+  state.has_pointer_input = true
   screen_to_world_engine(state.engine, input.screen, state.pointer_world)
 }
 
@@ -50,6 +51,7 @@ export function update_hover_editor(state: editor): void {
 }
 
 export function update_select_hover_editor(state: editor): void {
+  state.transient_guides = []
   const selected_ids = Array.from(state.selected_element_ids.values())
   const handles = selection_handles_for_elements_editor(state.engine.document, selected_ids)
   state.active_handle = hit_selection_handles_editor(handles, state.pointer_world)?.id ?? null
