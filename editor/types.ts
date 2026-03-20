@@ -131,6 +131,8 @@ export type editor_text_edit_state = {
   draft: string
   original: string
   caret: number
+  anchor: number | null
+  preferred_column: number | null
 }
 
 export type editor_interaction_state =
