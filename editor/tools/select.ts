@@ -1,11 +1,13 @@
 import type { editor_tool } from "@/editor/types"
 import { clone_document } from "@/document/document"
+import { element_type_text } from "@/document/element"
 import { element_at_point_document } from "@/document/query"
 import { hit_selection_handle_editor } from "@/editor/hit"
 import { cancel_transaction_editor, begin_transaction_editor, commit_transaction_editor } from "@/editor/history"
 import { selection_bounds_editor } from "@/editor/selection"
 import { editor_tool_select } from "@/editor/types"
 import { update_select_hover_editor } from "@/editor/shared"
+import { begin_text_edit_editor } from "@/editor/textedit"
 import {
   apply_marquee_selection_editor,
   apply_move_drag_editor,
@@ -117,7 +119,12 @@ export function create_select_tool_editor(): editor_tool {
       state.active_handle = null
       state.pointer_capture = false
     },
-    double_click: () => {},
+    double_click: (state) => {
+      const hit = element_at_point_document(state.engine.document, state.pointer_world[0], state.pointer_world[1])
+      if (hit !== null && hit.type === element_type_text) {
+        begin_text_edit_editor(state, hit.id)
+      }
+    },
     key_down: () => {},
     cancel: (state) => {
       if (

@@ -5,6 +5,7 @@ import { begin_transaction_editor, cancel_transaction_editor, commit_transaction
 import { update_box_resize_editor } from "@/editor/ops"
 import { next_id_editor, next_z_index_editor } from "@/editor/shared"
 import { default_text_color } from "@/editor/styles"
+import { begin_text_edit_editor } from "@/editor/textedit"
 import { editor_tool_text } from "@/editor/types"
 
 export function create_text_tool_editor(): editor_tool {
@@ -39,7 +40,11 @@ export function create_text_tool_editor(): editor_tool {
       update_box_resize_editor(state, state.drag_state.element_id, state.drag_state.origin_world, state.drag_state.current_world)
     },
     pointer_up: (state) => {
-      if (state.drag_state?.kind === "text") commit_transaction_editor(state)
+      if (state.drag_state?.kind === "text") {
+        const element_id = state.drag_state.element_id
+        commit_transaction_editor(state)
+        begin_text_edit_editor(state, element_id)
+      }
       state.drag_state = null
       state.pointer_capture = false
     },
@@ -55,4 +60,3 @@ export function create_text_tool_editor(): editor_tool {
     overlay: () => {},
   }
 }
-

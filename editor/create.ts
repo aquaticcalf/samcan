@@ -21,6 +21,13 @@ import { handle_global_key_editor, normalize_key_editor } from "@/editor/keys"
 import { draw_editor_overlay } from "@/editor/overlay"
 import { create_tool_registry_editor, install_plugin_editor, register_tool_editor, uninstall_plugin_editor } from "@/editor/registry"
 import { current_tool_impl_editor, update_pointer_editor } from "@/editor/shared"
+import {
+  begin_text_edit_editor,
+  cancel_text_edit_editor,
+  commit_text_edit_editor,
+  handle_text_key_editor,
+  is_text_editing_editor,
+} from "@/editor/textedit"
 import { editor_tool_select } from "@/editor/types"
 
 type editor_options = {
@@ -46,6 +53,7 @@ export function create_editor(state: engine, options: editor_options = {}): edit
     transient_guides: [],
     pointer_world: [0, 0],
     pointer_screen: [0, 0],
+    text_edit: null,
     tools: create_tool_registry_editor(),
     plugin_tools: new Map(),
     id_counter: 0,
@@ -89,6 +97,9 @@ export function cursor_editor(state: editor): string {
 
 export function pointer_down_editor(state: editor, input: editor_pointer_input): void {
   update_pointer_editor(state, input)
+  if (is_text_editing_editor(state)) {
+    commit_text_edit_editor(state)
+  }
   current_tool_impl_editor(state).pointer_down(state, input)
 }
 
@@ -113,6 +124,8 @@ export function double_click_editor(state: editor, input: editor_pointer_input):
 }
 
 export function key_down_editor(state: editor, input: editor_key_input): void {
+  if (handle_text_key_editor(state, input)) return
+  if (is_text_editing_editor(state)) return
   if (!handle_global_key_editor(state, input)) current_tool_impl_editor(state).key_down(state, input)
 }
 
@@ -124,10 +137,14 @@ export function key_up_editor(state: editor, input: editor_key_input): void {
 }
 
 export function cancel_editor(state: editor): void {
+  if (cancel_text_edit_editor(state)) return
   current_tool_impl_editor(state).cancel(state)
 }
 
 export {
+  begin_text_edit_editor,
+  commit_text_edit_editor,
+  is_text_editing_editor,
   copy_selection_editor,
   cut_selection_editor,
   delete_selection_editor,
@@ -136,4 +153,3 @@ export {
   redo_action_editor,
   undo_action_editor,
 }
-

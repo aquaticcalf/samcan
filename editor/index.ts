@@ -3,6 +3,7 @@ export type {
   editor_clipboard_payload,
   editor_interaction_state,
   editor_key_input,
+  editor_text_edit_state,
   editor_plugin,
   editor_pointer_input,
   editor_tool,
@@ -24,6 +25,8 @@ export {
 
 export {
   cancel_editor,
+  begin_text_edit_editor,
+  commit_text_edit_editor,
   copy_selection_editor,
   create_editor,
   cursor_editor,
@@ -40,6 +43,7 @@ export {
   redo_action_editor,
   render_editor,
   install_editor_plugin_editor,
+  is_text_editing_editor,
   register_editor_tool_editor,
   set_tool_editor,
   uninstall_editor_plugin_editor,

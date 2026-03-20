@@ -109,6 +109,12 @@ export type editor_draw_state = {
   pressure: number[]
 }
 
+export type editor_text_edit_state = {
+  element_id: string
+  draft: string
+  original: string
+}
+
 export type editor_interaction_state =
   | editor_move_state
   | editor_resize_state
@@ -161,6 +167,7 @@ export type editor = {
   transient_guides: rectangle[]
   pointer_world: vector2
   pointer_screen: vector2
+  text_edit: editor_text_edit_state | null
   tools: Map<editor_tool_id, editor_tool>
   plugin_tools: Map<string, editor_tool_id[]>
   id_counter: number

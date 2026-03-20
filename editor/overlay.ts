@@ -15,6 +15,7 @@ export function draw_editor_overlay(state: editor, drawer: renderer): void {
   draw_selection_overlay_editor(state, drawer)
   draw_marquee_overlay_editor(state, drawer)
   draw_guides_overlay_editor(state, drawer)
+  draw_text_edit_overlay_editor(state, drawer)
 }
 
 function draw_hover_overlay_editor(state: editor, drawer: renderer): void {
@@ -65,3 +66,12 @@ function draw_guides_overlay_editor(state: editor, drawer: renderer): void {
   }
 }
 
+function draw_text_edit_overlay_editor(state: editor, drawer: renderer): void {
+  if (state.text_edit === null) {
+    return
+  }
+  const element = get_element_by_id_document(state.engine.document, state.text_edit.element_id)
+  if (element !== null) {
+    drawer.draw_rectangle(element.bounds, overlay_handle_style)
+  }
+}
