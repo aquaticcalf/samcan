@@ -119,7 +119,11 @@ export function apply_rotate_drag_editor(state: editor): void {
   if (state.drag_state === null || state.drag_state.kind !== "rotate") return
   const center = state.drag_state.center
   const current_angle = angle_to_center_editor(center, state.drag_state.current_world)
-  const delta = current_angle - state.drag_state.start_angle
+  let delta = current_angle - state.drag_state.start_angle
+  if (state.drag_state.snap_angle) {
+    const snap = Math.PI / 12
+    delta = Math.round(delta / snap) * snap
+  }
   const sin_angle = Math.sin(delta)
   const cos_angle = Math.cos(delta)
   state.engine.document = transform_elements_editor(

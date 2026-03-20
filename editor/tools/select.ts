@@ -47,6 +47,7 @@ export function create_select_tool_editor(): editor_tool {
             selection_bounds: [selected_bounds![0], selected_bounds![1], selected_bounds![2], selected_bounds![3]],
             center,
             start_angle: Math.atan2(state.pointer_world[1] - center[1], state.pointer_world[0] - center[0]),
+            snap_angle: false,
           }
         } else {
           state.drag_state = {
@@ -158,7 +159,7 @@ export function create_select_tool_editor(): editor_tool {
         return apply_resize_drag_editor(state)
       }
       if (state.drag_state.kind === "rotate") {
-        state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
+        state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]; state.drag_state.snap_angle = !!input.shift
         return apply_rotate_drag_editor(state)
       }
       if (state.drag_state.kind === "marquee") {

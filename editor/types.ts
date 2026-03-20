@@ -77,6 +77,7 @@ export type editor_rotate_state = {
   selection_bounds: rectangle
   center: vector2
   start_angle: number
+  snap_angle: boolean
 }
 
 export type editor_marquee_state = {

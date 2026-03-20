@@ -24,9 +24,9 @@ export function cursor_select_editor(state: editor): string {
   if (state.drag_state?.kind === "rotate") return "crosshair"
   if (state.active_handle === "rotate") return "crosshair"
   if (state.active_handle === "start" || state.active_handle === "end") return "crosshair"
-  if (["nw", "se", "ne", "sw"].includes(state.active_handle ?? "")) return "nwse-resize"
+  if (["nw", "se"].includes(state.active_handle ?? "")) return "nwse-resize"
+  if (["ne", "sw"].includes(state.active_handle ?? "")) return "nesw-resize"
   if (["n", "s"].includes(state.active_handle ?? "")) return "ns-resize"
   if (["e", "w"].includes(state.active_handle ?? "")) return "ew-resize"
   return "default"
 }
-
