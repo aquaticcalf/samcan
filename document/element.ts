@@ -51,6 +51,7 @@ export type image_element = {
   z_index: number
   layer_id: string
   group_id: string | null
+  asset_id: string | null
   src: string
   original_width: number
   original_height: number
@@ -150,6 +151,7 @@ export function create_image_element(
   original_height: number,
   opacity: number,
   group_id: string | null = null,
+  asset_id: string | null = null,
 ): image_element {
   return {
     type: element_type_image,
@@ -158,6 +160,7 @@ export function create_image_element(
     z_index,
     layer_id,
     group_id,
+    asset_id,
     src,
     original_width,
     original_height,
@@ -236,6 +239,7 @@ export function clone_element(el: element): element {
       image.original_height,
       image.opacity,
       image.group_id,
+      image.asset_id,
     )
     cloned.loaded = image.loaded
     cloned.load_error = image.load_error
@@ -339,6 +343,16 @@ export function update_image_loaded(
     loaded,
     load_error,
     bitmap,
+  }
+}
+
+export function update_image_asset_id(
+  el: image_element,
+  asset_id: string | null,
+): image_element {
+  return {
+    ...el,
+    asset_id,
   }
 }
 

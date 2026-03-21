@@ -1,5 +1,6 @@
 import type { document } from "@/document/document"
 import type { element } from "@/document/element"
+import { element_type_image } from "@/document/element"
 import type { engine, layer_render_info, overlay_draw } from "@/engine/types"
 import { elements_in_bounds_document } from "@/document/query"
 import { scratch_transform } from "@/engine/shared"
@@ -53,7 +54,11 @@ export function render_engine_with_overlay(state: engine, overlay: overlay_draw 
   for (let i = 0; i < renderable_elements.length; i = i + 1) {
     const el = renderable_elements[i]
     if (el !== undefined) {
-      render_element_engine(state.renderer, el)
+      const asset_src =
+        el.type === element_type_image && el.asset_id !== null
+          ? (state.document.assets.get(el.asset_id)?.src ?? null)
+          : null
+      render_element_engine(state.renderer, el, asset_src)
     }
   }
 

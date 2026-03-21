@@ -28,6 +28,8 @@ Completed recently:
 - entering text edit on double click now places caret from measured text layout hit point
 - text hit testing now uses measured laid-out glyph lines instead of pure element bounds
 - text edit overlay now draws measured caret and selection highlight spans
+- document-level image asset registry exists (`document.assets`)
+- image elements can reference assets by `asset_id`, with `src` as placement fallback
 
 Still missing:
 
@@ -60,7 +62,7 @@ Coverage now:
 - lines: implemented
 - arrows with arrowheads: implemented
 - text: partially implemented (render/edit yes, measured caret movement/edit-entry/hit/overlay yes, full layout-aware selection behavior not yet)
-- images: partially implemented (render/load/error yes, asset identity separation not yet)
+- images: partially implemented (render/load/error yes, first-pass asset identity separation yes)
 - frames: partially implemented
 - groups: partially implemented
 
@@ -131,7 +133,7 @@ Current image status:
 - preserved aspect ratio in placement bounds: done
 - load/error state behavior: done in renderer path
 - cropping model: not done
-- asset identity separate from scene placement: not done
+- asset identity separate from scene placement: partial
 
 ## Shapes
 
@@ -156,7 +158,7 @@ Current shape status:
 1. Expand grouping semantics (nested groups, isolation/lock interactions, group-level metadata).
 2. Add deeper frame semantics (membership, clipping, contain/move policy).
 3. Add text layout model used by both render and caret/selection/hit behavior.
-4. Move image identity to asset references (placement separate from asset lifecycle).
+4. Expand asset model beyond first-pass `asset_id` + `document.assets` (loading lifecycle and migration strategy).
 
 ## Future Model Extensions
 

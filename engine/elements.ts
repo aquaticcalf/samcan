@@ -35,7 +35,11 @@ const loaded_images_engine = new Map<string, loaded_image_entry>()
 const text_bitmap_cache_engine = new Map<string, HTMLCanvasElement>()
 const text_bitmap_cache_limit_engine = 128
 
-export function render_element_engine(drawer: renderer, el: element): void {
+export function render_element_engine(
+  drawer: renderer,
+  el: element,
+  asset_src: string | null = null,
+): void {
   if (el.type === element_type_stroke) {
     render_stroke_element_engine(drawer, el as stroke_element)
     return
@@ -47,7 +51,7 @@ export function render_element_engine(drawer: renderer, el: element): void {
   }
 
   if (el.type === element_type_image) {
-    render_image_element_engine(drawer, el as image_element)
+    render_image_element_engine(drawer, el as image_element, asset_src)
     return
   }
 
@@ -144,8 +148,12 @@ function render_shape_element_engine(drawer: renderer, el: shape_element): void 
   }
 }
 
-function render_image_element_engine(drawer: renderer, el: image_element): void {
-  const image = resolve_image_source_engine(el)
+function render_image_element_engine(
+  drawer: renderer,
+  el: image_element,
+  asset_src: string | null,
+): void {
+  const image = resolve_image_source_engine(el, asset_src)
   const opacity = Math.max(0, Math.min(1, el.opacity))
   if (image.status === "loaded" && image.source !== null) {
     drawer.draw_image(image.source, fit_image_bounds_engine(el.bounds, image.source), opacity)
@@ -205,11 +213,12 @@ function render_text_element_engine(drawer: renderer, el: text_element): void {
 
 function resolve_image_source_engine(
   el: image_element,
+  asset_src: string | null,
 ): { status: image_status; source: HTMLImageElement | ImageBitmap | null } {
   if (el.bitmap !== null) {
     return { status: "loaded", source: el.bitmap }
   }
-  const src = el.src.trim()
+  const src = (asset_src ?? el.src).trim()
   if (src.length === 0 || typeof Image === "undefined") {
     return { status: "empty", source: null }
   }

@@ -1,4 +1,5 @@
 import type { rectangle } from "@/math/rectangle"
+import type { image_asset } from "@/document/asset"
 import type { element } from "@/document/element"
 import type { layer } from "@/document/layer"
 import { add_element_id_to_layer, remove_element_id_from_layer } from "@/document/layer"
@@ -8,6 +9,7 @@ export type document = {
   elements: Map<string, element>
   layers: layer[]
   active_layer_id: string
+  assets: Map<string, image_asset>
   bounds: rectangle
   element_count: number
 }
@@ -18,6 +20,7 @@ export function create_document(id: string, active_layer_id: string): document {
     elements: new Map(),
     layers: [],
     active_layer_id,
+    assets: new Map(),
     bounds: [0, 0, 0, 0],
     element_count: 0,
   }
@@ -33,6 +36,7 @@ export function clone_document(doc: document): document {
     elements: new_elements,
     layers: doc.layers.map((l) => ({ ...l, element_ids: [...l.element_ids] })),
     active_layer_id: doc.active_layer_id,
+    assets: new Map(doc.assets),
     bounds: [doc.bounds[0], doc.bounds[1], doc.bounds[2], doc.bounds[3]],
     element_count: doc.element_count,
   }
@@ -52,6 +56,10 @@ export function layers_of_document(doc: document): readonly layer[] {
 
 export function active_layer_id_of_document(doc: document): string {
   return doc.active_layer_id
+}
+
+export function assets_of_document(doc: document): Map<string, image_asset> {
+  return doc.assets
 }
 
 export function bounds_of_document(doc: document): rectangle {
@@ -99,6 +107,7 @@ export function add_element_document(doc: document, el: element): document {
     elements: new_elements,
     layers: new_layers,
     active_layer_id: doc.active_layer_id,
+    assets: doc.assets,
     bounds: new_bounds,
     element_count: new_elements.size,
   }
@@ -127,6 +136,7 @@ export function remove_element_document(doc: document, element_id: string): docu
     elements: new_elements,
     layers: new_layers,
     active_layer_id: doc.active_layer_id,
+    assets: doc.assets,
     bounds: new_bounds,
     element_count: new_elements.size,
   }
@@ -169,6 +179,7 @@ export function update_element_document(
     elements: new_elements,
     layers: new_layers,
     active_layer_id: doc.active_layer_id,
+    assets: doc.assets,
     bounds: new_bounds,
     element_count: new_elements.size,
   }
@@ -185,6 +196,7 @@ export function add_layer_document(doc: document, layer: layer): document {
     elements: doc.elements,
     layers: [...doc.layers, layer],
     active_layer_id: doc.active_layer_id,
+    assets: doc.assets,
     bounds: doc.bounds,
     element_count: doc.element_count,
   }
@@ -223,6 +235,7 @@ export function remove_layer_document(doc: document, layer_id: string): document
     elements: new_elements,
     layers: new_layers,
     active_layer_id: new_active_layer_id,
+    assets: doc.assets,
     bounds: new_bounds,
     element_count: new_elements.size,
   }
@@ -255,6 +268,7 @@ export function reorder_layers_document(doc: document, layer_ids: string[]): doc
     elements: doc.elements,
     layers: ordered_layers,
     active_layer_id: doc.active_layer_id,
+    assets: doc.assets,
     bounds: doc.bounds,
     element_count: doc.element_count,
   }
@@ -271,6 +285,7 @@ export function set_active_layer_document(doc: document, layer_id: string): docu
     elements: doc.elements,
     layers: doc.layers,
     active_layer_id: layer_id,
+    assets: doc.assets,
     bounds: doc.bounds,
     element_count: doc.element_count,
   }
@@ -328,6 +343,7 @@ export function recalculate_bounds_document(doc: document): document {
     elements: doc.elements,
     layers: doc.layers,
     active_layer_id: doc.active_layer_id,
+    assets: doc.assets,
     bounds: new_bounds,
     element_count: doc.element_count,
   }
@@ -339,7 +355,31 @@ export function clear_document(doc: document): document {
     elements: new Map(),
     layers: doc.layers.map((l) => ({ ...l, element_ids: [] })),
     active_layer_id: doc.active_layer_id,
+    assets: doc.assets,
     bounds: [0, 0, 0, 0],
     element_count: 0,
+  }
+}
+
+export function add_image_asset_document(doc: document, asset: image_asset): document {
+  const assets = new Map(doc.assets)
+  assets.set(asset.id, { ...asset })
+  return {
+    ...doc,
+    assets,
+  }
+}
+
+export function get_image_asset_document(doc: document, asset_id: string): image_asset | null {
+  return doc.assets.get(asset_id) ?? null
+}
+
+export function remove_image_asset_document(doc: document, asset_id: string): document {
+  if (!doc.assets.has(asset_id)) return doc
+  const assets = new Map(doc.assets)
+  assets.delete(asset_id)
+  return {
+    ...doc,
+    assets,
   }
 }
