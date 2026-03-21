@@ -4,9 +4,23 @@ import type { rectangle } from "@/math/rectangle"
 import type { vector2 } from "@/math/vector2"
 import type { editor, editor_pointer_input, editor_tool, editor_tool_id } from "@/editor/types"
 import { get_element_by_id_document } from "@/document/document"
+import {
+  shape_type_arrow,
+  shape_type_ellipse,
+  shape_type_frame,
+  shape_type_line,
+  shape_type_rectangle,
+} from "@/document/element"
 import { element_hit_at_point_editor } from "@/editor/hittest"
 import { screen_to_world_engine } from "@/engine/camera"
-import { editor_tool_select } from "@/editor/types"
+import {
+  editor_tool_arrow,
+  editor_tool_ellipse,
+  editor_tool_frame,
+  editor_tool_line,
+  editor_tool_rectangle,
+  editor_tool_select,
+} from "@/editor/types"
 import { hit_selection_handles_editor, selection_handles_for_elements_editor } from "@/editor/hit"
 
 export function current_tool_impl_editor(state: editor): editor_tool {
@@ -78,18 +92,20 @@ export function rectangle_from_points_editor(
 }
 
 export function shape_name_for_tool_editor(tool: editor_tool_id): string {
-  if (tool === 3) return "rectangle"
-  if (tool === 4) return "ellipse"
-  if (tool === 5) return "line"
-  if (tool === 6) return "arrow"
+  if (tool === editor_tool_rectangle) return "rectangle"
+  if (tool === editor_tool_ellipse) return "ellipse"
+  if (tool === editor_tool_line) return "line"
+  if (tool === editor_tool_arrow) return "arrow"
+  if (tool === editor_tool_frame) return "frame"
   return "shape"
 }
 
 export function shape_type_for_tool_editor(tool: editor_tool_id): number {
-  if (tool === 3) return 0
-  if (tool === 4) return 1
-  if (tool === 5) return 2
-  return 3
+  if (tool === editor_tool_rectangle) return shape_type_rectangle
+  if (tool === editor_tool_ellipse) return shape_type_ellipse
+  if (tool === editor_tool_line) return shape_type_line
+  if (tool === editor_tool_arrow) return shape_type_arrow
+  return shape_type_frame
 }
 
 export function clone_ids_editor(elements: readonly element[]): string[] {
@@ -101,4 +117,31 @@ export function clone_ids_editor(elements: readonly element[]): string[] {
     }
   }
   return ids
+}
+
+export function grouped_ids_for_element_editor(doc: document, element_id: string): string[] {
+  const element = get_element_by_id_document(doc, element_id)
+  if (element === null || element.group_id === null) {
+    return element === null ? [] : [element_id]
+  }
+  const ids: string[] = []
+  for (const item of doc.elements.values()) {
+    if (item.group_id === element.group_id) ids.push(item.id)
+  }
+  return ids
+}
+
+export function expand_ids_with_groups_editor(doc: document, ids: readonly string[]): string[] {
+  const out = new Set<string>()
+  for (let i = 0; i < ids.length; i = i + 1) {
+    const id = ids[i]
+    if (id === undefined) continue
+    const group_ids = grouped_ids_for_element_editor(doc, id)
+    if (group_ids.length === 0) continue
+    for (let j = 0; j < group_ids.length; j = j + 1) {
+      const group_id = group_ids[j]
+      if (group_id !== undefined) out.add(group_id)
+    }
+  }
+  return Array.from(out)
 }

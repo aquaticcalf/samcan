@@ -14,6 +14,7 @@ export type stroke_element = {
   bounds: rectangle
   z_index: number
   layer_id: string
+  group_id: string | null
   points: vector2[]
   pressure: number[] | null
   color: color
@@ -26,6 +27,7 @@ export const shape_type_rectangle = 0
 export const shape_type_ellipse = 1
 export const shape_type_line = 2
 export const shape_type_arrow = 3
+export const shape_type_frame = 4
 
 export type shape_element = {
   type: typeof element_type_shape
@@ -33,6 +35,7 @@ export type shape_element = {
   bounds: rectangle
   z_index: number
   layer_id: string
+  group_id: string | null
   shape_type: number
   fill_color: color | null
   stroke_color: color | null
@@ -47,6 +50,7 @@ export type image_element = {
   bounds: rectangle
   z_index: number
   layer_id: string
+  group_id: string | null
   src: string
   original_width: number
   original_height: number
@@ -66,6 +70,7 @@ export type text_element = {
   bounds: rectangle
   z_index: number
   layer_id: string
+  group_id: string | null
   content: string
   font_family: string
   font_size: number
@@ -84,6 +89,7 @@ export function create_stroke_element(
   pressure: number[] | null,
   color: color,
   width: number,
+  group_id: string | null = null,
 ): stroke_element {
   return {
     type: element_type_stroke,
@@ -91,6 +97,7 @@ export function create_stroke_element(
     bounds: [bounds[0], bounds[1], bounds[2], bounds[3]],
     z_index,
     layer_id,
+    group_id,
     points: points.map((p) => [p[0], p[1]]),
     pressure: pressure === null ? null : [...pressure],
     color: [color[0], color[1], color[2], color[3]],
@@ -111,6 +118,7 @@ export function create_shape_element(
   stroke_width: number,
   start_point: vector2 | null,
   end_point: vector2 | null,
+  group_id: string | null = null,
 ): shape_element {
   return {
     type: element_type_shape,
@@ -118,6 +126,7 @@ export function create_shape_element(
     bounds: [bounds[0], bounds[1], bounds[2], bounds[3]],
     z_index,
     layer_id,
+    group_id,
     shape_type,
     fill_color:
       fill_color === null ? null : [fill_color[0], fill_color[1], fill_color[2], fill_color[3]],
@@ -140,6 +149,7 @@ export function create_image_element(
   original_width: number,
   original_height: number,
   opacity: number,
+  group_id: string | null = null,
 ): image_element {
   return {
     type: element_type_image,
@@ -147,6 +157,7 @@ export function create_image_element(
     bounds: [bounds[0], bounds[1], bounds[2], bounds[3]],
     z_index,
     layer_id,
+    group_id,
     src,
     original_width,
     original_height,
@@ -167,6 +178,7 @@ export function create_text_element(
   font_size: number,
   color: color,
   align: number,
+  group_id: string | null = null,
 ): text_element {
   return {
     type: element_type_text,
@@ -174,6 +186,7 @@ export function create_text_element(
     bounds: [bounds[0], bounds[1], bounds[2], bounds[3]],
     z_index,
     layer_id,
+    group_id,
     content,
     font_family,
     font_size,
@@ -194,6 +207,7 @@ export function clone_element(el: element): element {
       stroke.pressure,
       stroke.color,
       stroke.width,
+      stroke.group_id,
     )
   } else if (el.type === element_type_shape) {
     const shape = el as shape_element
@@ -208,6 +222,7 @@ export function clone_element(el: element): element {
       shape.stroke_width,
       shape.start_point,
       shape.end_point,
+      shape.group_id,
     )
   } else if (el.type === element_type_image) {
     const image = el as image_element
@@ -220,6 +235,7 @@ export function clone_element(el: element): element {
       image.original_width,
       image.original_height,
       image.opacity,
+      image.group_id,
     )
     cloned.loaded = image.loaded
     cloned.load_error = image.load_error
@@ -237,6 +253,7 @@ export function clone_element(el: element): element {
       text.font_size,
       text.color,
       text.align,
+      text.group_id,
     )
   }
 }
@@ -338,6 +355,9 @@ export function equals_element_identity(a: element, b: element): boolean {
   }
 
   if (a.z_index !== b.z_index || a.layer_id !== b.layer_id) {
+    return false
+  }
+  if (a.group_id !== b.group_id) {
     return false
   }
 

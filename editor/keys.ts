@@ -3,6 +3,7 @@ import {
   editor_tool_arrow,
   editor_tool_draw,
   editor_tool_ellipse,
+  editor_tool_frame,
   editor_tool_hand,
   editor_tool_image_place,
   editor_tool_line,
@@ -15,8 +16,10 @@ import {
   cut_selection_editor,
   delete_selection_editor,
   duplicate_selection_editor,
+  group_selection_editor,
   paste_clipboard_editor,
   redo_action_editor,
+  ungroup_selection_editor,
   undo_action_editor,
 } from "@/editor/actions"
 import { current_tool_impl_editor } from "@/editor/shared"
@@ -30,6 +33,8 @@ export function handle_global_key_editor(state: editor, input: editor_key_input)
   if (mod && normalized === "x") return cut_selection_editor(state)
   if (mod && normalized === "v") return paste_clipboard_editor(state)
   if (mod && normalized === "d") return duplicate_selection_editor(state)
+  if (mod && normalized === "g" && !!input.shift) return ungroup_selection_editor(state)
+  if (mod && normalized === "g") return group_selection_editor(state)
   if (normalized === "delete" || normalized === "backspace") return delete_selection_editor(state)
   if (normalized === "escape") {
     current_tool_impl_editor(state).cancel(state)
@@ -49,6 +54,7 @@ export function handle_global_key_editor(state: editor, input: editor_key_input)
   if (normalized === "e") return set_tool_shortcut_editor(state, editor_tool_ellipse)
   if (normalized === "l") return set_tool_shortcut_editor(state, editor_tool_line)
   if (normalized === "a") return set_tool_shortcut_editor(state, editor_tool_arrow)
+  if (normalized === "f") return set_tool_shortcut_editor(state, editor_tool_frame)
   if (normalized === "t") return set_tool_shortcut_editor(state, editor_tool_text)
   if (normalized === "i") return set_tool_shortcut_editor(state, editor_tool_image_place)
   return false

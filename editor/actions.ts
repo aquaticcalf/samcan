@@ -1,7 +1,7 @@
 import type { element } from "@/document/element"
 import type { editor } from "@/editor/types"
 import type { vector2 } from "@/math/vector2"
-import { get_element_by_id_document, remove_element_document } from "@/document/document"
+import { get_element_by_id_document, remove_element_document, update_element_document } from "@/document/document"
 import { screen_to_world_engine } from "@/engine/camera"
 import {
   begin_transaction_editor,
@@ -12,7 +12,7 @@ import {
 } from "@/editor/history"
 import { clone_element_editor } from "@/editor/clone"
 import { insert_elements_with_offset_editor } from "@/editor/ops"
-import { cleanup_selection_editor } from "@/editor/shared"
+import { cleanup_selection_editor, expand_ids_with_groups_editor, next_id_editor } from "@/editor/shared"
 import { selection_bounds_editor } from "@/editor/selection"
 
 export function copy_selection_editor(state: editor): boolean {
@@ -93,4 +93,56 @@ export function redo_action_editor(state: editor): boolean {
   const ok = redo_editor(state)
   if (ok) cleanup_selection_editor(state)
   return ok
+}
+
+export function group_selection_editor(state: editor): boolean {
+  const raw_ids = Array.from(state.selected_element_ids.values())
+  const ids = expand_ids_with_groups_editor(state.engine.document, raw_ids)
+  if (ids.length < 2) {
+    return false
+  }
+  begin_transaction_editor(state, "group")
+  const group_id = next_id_editor(state, "group")
+  let doc = state.engine.document
+  for (let i = 0; i < ids.length; i = i + 1) {
+    const id = ids[i]
+    if (id === undefined) continue
+    const element = get_element_by_id_document(doc, id)
+    if (element === null) continue
+    doc = update_element_document(doc, id, { ...element, group_id })
+  }
+  state.engine.document = doc
+  state.selected_element_ids.clear()
+  for (let i = 0; i < ids.length; i = i + 1) {
+    const id = ids[i]
+    if (id !== undefined) state.selected_element_ids.add(id)
+  }
+  commit_transaction_editor(state)
+  return true
+}
+
+export function ungroup_selection_editor(state: editor): boolean {
+  const raw_ids = Array.from(state.selected_element_ids.values())
+  const ids = expand_ids_with_groups_editor(state.engine.document, raw_ids)
+  if (ids.length === 0) {
+    return false
+  }
+  begin_transaction_editor(state, "ungroup")
+  let doc = state.engine.document
+  let changed = false
+  for (let i = 0; i < ids.length; i = i + 1) {
+    const id = ids[i]
+    if (id === undefined) continue
+    const element = get_element_by_id_document(doc, id)
+    if (element === null || element.group_id === null) continue
+    changed = true
+    doc = update_element_document(doc, id, { ...element, group_id: null })
+  }
+  if (!changed) {
+    cancel_transaction_editor(state)
+    return false
+  }
+  state.engine.document = doc
+  commit_transaction_editor(state)
+  return true
 }

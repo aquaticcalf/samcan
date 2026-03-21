@@ -3,6 +3,7 @@ import type { vector2 } from "@/math/vector2"
 import { clone_document } from "@/document/document"
 import { elements_in_bounds_document } from "@/document/query"
 import { marquee_rectangle_editor, selection_bounds_editor } from "@/editor/selection"
+import { expand_ids_with_groups_editor } from "@/editor/shared"
 import {
   angle_to_center_editor,
   transform_elements_editor,
@@ -54,9 +55,15 @@ export function apply_marquee_selection_editor(
   )
   if (!marquee_state.add_mode) state.selected_element_ids.clear()
   const in_bounds = elements_in_bounds_document(state.engine.document, rect)
+  const hit_ids: string[] = []
   for (let i = 0; i < in_bounds.length; i = i + 1) {
     const el = in_bounds[i]
-    if (el !== undefined) state.selected_element_ids.add(el.id)
+    if (el !== undefined) hit_ids.push(el.id)
+  }
+  const expanded = expand_ids_with_groups_editor(state.engine.document, hit_ids)
+  for (let i = 0; i < expanded.length; i = i + 1) {
+    const id = expanded[i]
+    if (id !== undefined) state.selected_element_ids.add(id)
   }
 }
 

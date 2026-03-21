@@ -16,6 +16,7 @@ export {
   editor_tool_arrow,
   editor_tool_draw,
   editor_tool_ellipse,
+  editor_tool_frame,
   editor_tool_hand,
   editor_tool_image_place,
   editor_tool_line,
@@ -34,6 +35,7 @@ export {
   cut_selection_editor,
   delete_selection_editor,
   double_click_editor,
+  group_selection_editor,
   hover_editor,
   key_down_editor,
   key_up_editor,
@@ -47,6 +49,7 @@ export {
   is_text_editing_editor,
   register_editor_tool_editor,
   set_tool_editor,
+  ungroup_selection_editor,
   uninstall_editor_plugin_editor,
   undo_action_editor,
 } from "@/editor/create"

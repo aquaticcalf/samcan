@@ -18,11 +18,16 @@ Completed recently:
 - ellipse rendering uses ellipse geometry (not circle fallback)
 - arrow rendering includes arrowheads (not plain line fallback)
 - arrow hit testing includes arrowhead segments
+- basic frame/container element model exists as `shape_type_frame`
+- frame tool exists (`f` shortcut) with render, hit, resize, and transform behavior
+- first-pass grouping model exists via `group_id` on all element types
+- group/ungroup actions exist (`Ctrl/Cmd+G`, `Shift+Ctrl/Cmd+G`)
+- selecting or marquee-hitting one member expands to whole group selection
 
 Still missing:
 
-- grouping model and group operations
-- frame/container element model and behavior
+- advanced group semantics (nested groups, lock/isolation behavior, group-level bounds cache)
+- deeper frame semantics (child membership, clipping policy, relayout rules)
 - connector model
 - text selection/caret tied to measured layout geometry
 - measured-text bounds as source-of-truth for text hit testing/layout
@@ -51,8 +56,8 @@ Coverage now:
 - arrows with arrowheads: implemented
 - text: partially implemented (render/edit yes, layout-aware caret/hit not yet)
 - images: partially implemented (render/load/error yes, asset identity separation not yet)
-- frames: not implemented
-- groups: not implemented
+- frames: partially implemented
+- groups: partially implemented
 
 Optional later additions:
 
@@ -143,8 +148,8 @@ Current shape status:
 
 ## Next Focus (In Order)
 
-1. Add frame/container element model + render + hit + resize semantics.
-2. Add grouping model (`group_id`) with selection/transform semantics.
+1. Expand grouping semantics (nested groups, isolation/lock interactions, group-level metadata).
+2. Add deeper frame semantics (membership, clipping, contain/move policy).
 3. Add text layout model used by both render and caret/selection/hit behavior.
 4. Move image identity to asset references (placement separate from asset lifecycle).
 

@@ -14,8 +14,10 @@ import {
   cut_selection_editor,
   delete_selection_editor,
   duplicate_selection_editor,
+  group_selection_editor,
   paste_clipboard_editor,
   redo_action_editor,
+  ungroup_selection_editor,
   undo_action_editor,
 } from "@/editor/actions"
 import { handle_global_key_editor, normalize_key_editor } from "@/editor/keys"
@@ -155,7 +157,9 @@ export {
   cut_selection_editor,
   delete_selection_editor,
   duplicate_selection_editor,
+  group_selection_editor,
   paste_clipboard_editor,
   redo_action_editor,
+  ungroup_selection_editor,
   undo_action_editor,
 }

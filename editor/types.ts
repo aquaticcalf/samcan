@@ -15,6 +15,7 @@ export const editor_tool_line = 5
 export const editor_tool_arrow = 6
 export const editor_tool_text = 7
 export const editor_tool_image_place = 8
+export const editor_tool_frame = 9
 export type editor_tool_id = number | string
 
 export type editor_pointer_input = {

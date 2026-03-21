@@ -5,7 +5,7 @@ import { element_hit_at_point_editor } from "@/editor/hittest"
 import { cancel_transaction_editor, begin_transaction_editor, commit_transaction_editor } from "@/editor/history"
 import { selection_bounds_editor } from "@/editor/selection"
 import { editor_tool_select } from "@/editor/types"
-import { update_select_hover_editor } from "@/editor/shared"
+import { expand_ids_with_groups_editor, grouped_ids_for_element_editor, update_select_hover_editor } from "@/editor/shared"
 import { snap_point_editor } from "@/editor/snap"
 import {
   apply_marquee_selection_editor,
@@ -73,17 +73,26 @@ export function create_select_tool_editor(): editor_tool {
       )
       const is_shift = !!input.shift
       if (hit !== null) {
+        const hit_ids = grouped_ids_for_element_editor(state.engine.document, hit.id)
         if (is_shift) {
-          if (state.selected_element_ids.has(hit.id)) {
-            state.selected_element_ids.delete(hit.id)
-          } else {
-            state.selected_element_ids.add(hit.id)
+          const all_selected = hit_ids.every((id) => state.selected_element_ids.has(id))
+          for (let i = 0; i < hit_ids.length; i = i + 1) {
+            const id = hit_ids[i]
+            if (id === undefined) continue
+            if (all_selected) state.selected_element_ids.delete(id)
+            else state.selected_element_ids.add(id)
           }
-        } else if (!state.selected_element_ids.has(hit.id) || state.selected_element_ids.size > 1) {
+        } else if (!state.selected_element_ids.has(hit.id) || state.selected_element_ids.size > hit_ids.length) {
           state.selected_element_ids.clear()
-          state.selected_element_ids.add(hit.id)
+          for (let i = 0; i < hit_ids.length; i = i + 1) {
+            const id = hit_ids[i]
+            if (id !== undefined) state.selected_element_ids.add(id)
+          }
         }
-        const selected = Array.from(state.selected_element_ids.values())
+        const selected = expand_ids_with_groups_editor(
+          state.engine.document,
+          Array.from(state.selected_element_ids.values()),
+        )
         if (selected.length > 0) {
           state.drag_state = {
             kind: "pending_move",

@@ -5,6 +5,7 @@ import {
   element_type_stroke,
   shape_type_arrow,
   shape_type_ellipse,
+  shape_type_frame,
   shape_type_line,
 } from "@/document/element"
 import {
@@ -80,6 +81,9 @@ function shape_contains_point_editor(
     }
     return false
   }
+  if (shape.shape_type === shape_type_frame) {
+    return frame_contains_point_editor(shape, x, y, padding)
+  }
   return contains_with_padding_editor(shape.bounds, x, y, padding)
 }
 
@@ -108,4 +112,32 @@ function arrowhead_contains_point_editor(
     distance_point_to_segment_editor(x, y, to[0], to[1], lx, ly) <= radius ||
     distance_point_to_segment_editor(x, y, to[0], to[1], rx, ry) <= radius
   )
+}
+
+function frame_contains_point_editor(
+  shape: shape_element,
+  x: number,
+  y: number,
+  padding: number,
+): boolean {
+  const bx = shape.bounds[0]
+  const by = shape.bounds[1]
+  const bw = Math.max(1, shape.bounds[2])
+  const bh = Math.max(1, shape.bounds[3])
+  const stroke = Math.max(1, shape.stroke_width + padding)
+  const header_height = Math.max(20, Math.min(36, bh * 0.18))
+  const in_outer = contains_with_padding_editor([bx, by, bw, bh], x, y, padding)
+  if (!in_outer) return false
+
+  const in_inner =
+    x >= bx + stroke &&
+    x <= bx + bw - stroke &&
+    y >= by + stroke &&
+    y <= by + bh - stroke
+  const in_header_band =
+    x >= bx - padding &&
+    x <= bx + bw + padding &&
+    y >= by - padding &&
+    y <= by + header_height + padding
+  return !in_inner || in_header_band
 }

@@ -3,6 +3,7 @@ import { add_element_document } from "@/document/document"
 import {
   create_shape_element,
   shape_type_ellipse,
+  shape_type_frame,
   shape_type_rectangle,
 } from "@/document/element"
 import { begin_transaction_editor, cancel_transaction_editor, commit_transaction_editor } from "@/editor/history"
@@ -21,18 +22,22 @@ export function create_shape_tool_editor(tool: editor_tool_id): editor_tool {
     id: tool,
     name: shape_name_for_tool_editor(tool),
     pointer_down: (state) => {
-      begin_transaction_editor(state, "shape")
+      begin_transaction_editor(state, shape_name_for_tool_editor(tool))
       const element_id = next_id_editor(state, "shape")
       const shape_type = shape_type_for_tool_editor(tool)
       const start: [number, number] = [state.pointer_world[0], state.pointer_world[1]]
-      const is_box = shape_type === shape_type_rectangle || shape_type === shape_type_ellipse
+      const is_box =
+        shape_type === shape_type_rectangle ||
+        shape_type === shape_type_ellipse ||
+        shape_type === shape_type_frame
+      const fill = shape_type === shape_type_frame ? null : default_shape_fill
       const shape = create_shape_element(
         element_id,
         [start[0], start[1], 1, 1],
         next_z_index_editor(state.engine.document),
         state.engine.document.active_layer_id,
         shape_type,
-        default_shape_fill,
+        fill,
         default_shape_stroke,
         1.5,
         is_box ? null : start,

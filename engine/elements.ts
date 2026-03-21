@@ -17,6 +17,7 @@ import {
   text_align_right,
   shape_type_arrow,
   shape_type_ellipse,
+  shape_type_frame,
   shape_type_line,
   shape_type_rectangle,
 } from "@/document/element"
@@ -94,6 +95,27 @@ function render_shape_element_engine(drawer: renderer, el: shape_element): void 
 
   if (el.shape_type === shape_type_rectangle) {
     drawer.draw_rectangle(el.bounds, style)
+    return
+  }
+
+  if (el.shape_type === shape_type_frame) {
+    const header_height = Math.max(20, Math.min(36, el.bounds[3] * 0.18))
+    const header_style: draw_style = {
+      fill: style.stroke,
+      stroke: style.stroke,
+      stroke_width: Math.max(1, style.stroke_width),
+      line_cap: style.line_cap,
+      line_join: style.line_join,
+      miter_limit: style.miter_limit,
+      alpha: 0.12,
+    }
+    const outline_style: draw_style = {
+      ...style,
+      fill: null,
+      alpha: 1,
+    }
+    drawer.draw_rectangle(el.bounds, outline_style)
+    drawer.draw_rectangle([el.bounds[0], el.bounds[1], el.bounds[2], header_height], header_style)
     return
   }
 
