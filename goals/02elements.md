@@ -24,6 +24,9 @@ Completed recently:
 - first-pass grouping model exists via `group_id` on all element types
 - group/ungroup actions exist (`Ctrl/Cmd+G`, `Shift+Ctrl/Cmd+G`)
 - selecting or marquee-hitting one member expands to whole group selection
+- text caret up/down movement now follows measured wrapped line geometry
+- entering text edit on double click now places caret from measured text layout hit point
+- text hit testing now uses measured laid-out glyph lines instead of pure element bounds
 
 Still missing:
 
@@ -31,7 +34,7 @@ Still missing:
 - deeper frame semantics (persistent child membership, clipping policy, relayout rules)
 - connector model
 - text selection/caret tied to measured layout geometry
-- measured-text bounds as source-of-truth for text hit testing/layout
+- measured-text bounds as source-of-truth for text hit testing/layout (partial)
 - optional shape labels
 
 ## Element Requirements
@@ -55,7 +58,7 @@ Coverage now:
 - ellipses: implemented
 - lines: implemented
 - arrows with arrowheads: implemented
-- text: partially implemented (render/edit yes, layout-aware caret/hit not yet)
+- text: partially implemented (render/edit yes, measured caret movement/edit-entry/hit yes, full layout-aware selection not yet)
 - images: partially implemented (render/load/error yes, asset identity separation not yet)
 - frames: partially implemented
 - groups: partially implemented
@@ -107,7 +110,7 @@ Current text status:
 - font family and size: done
 - line wrapping: done
 - measured bounds: partial
-- layout-tied caret/selection: not done
+- layout-tied caret/selection: partial
 
 Text should not be treated as a static rectangle for layout or hit testing.
 

@@ -1,8 +1,11 @@
 import type { document } from "@/document/document"
-import type { element, shape_element, stroke_element } from "@/document/element"
+import type { element, shape_element, stroke_element, text_element } from "@/document/element"
 import {
   element_type_shape,
   element_type_stroke,
+  element_type_text,
+  text_align_center,
+  text_align_right,
   shape_type_arrow,
   shape_type_ellipse,
   shape_type_frame,
@@ -14,6 +17,7 @@ import {
   contains_with_padding_editor,
   distance_point_to_segment_editor,
 } from "@/editor/hitmath"
+import { build_text_layout_editor } from "@/editor/textlayout"
 
 export function element_hit_at_point_editor(
   doc: document,
@@ -41,6 +45,9 @@ function element_contains_point_editor(el: element, x: number, y: number, paddin
   }
   if (el.type === element_type_shape) {
     return shape_contains_point_editor(el as shape_element, x, y, padding)
+  }
+  if (el.type === element_type_text) {
+    return text_contains_point_editor(el as text_element, x, y, padding)
   }
   return contains_with_padding_editor(el.bounds, x, y, padding)
 }
@@ -140,4 +147,39 @@ function frame_contains_point_editor(
     y >= by - padding &&
     y <= by + header_height + padding
   return !in_inner || in_header_band
+}
+
+function text_contains_point_editor(
+  text: text_element,
+  x: number,
+  y: number,
+  padding: number,
+): boolean {
+  if (!contains_with_padding_editor(text.bounds, x, y, padding)) return false
+  if (text.content.length === 0) return true
+
+  const layout = build_text_layout_editor(text, text.content)
+  const local_x = x - text.bounds[0]
+  const local_y = y - text.bounds[1]
+  const top = layout.padding
+  const bottom = text.bounds[3] - layout.padding
+  if (local_y < top - padding || local_y > bottom + padding) return false
+
+  for (let i = 0; i < layout.lines.length; i = i + 1) {
+    const line = layout.lines[i]
+    if (line === undefined) continue
+    const y0 = layout.padding + i * layout.line_height
+    const y1 = y0 + layout.line_height
+    if (local_y < y0 - padding || local_y > y1 + padding) continue
+    let x0 = layout.padding
+    if (text.align === text_align_center) {
+      x0 = text.bounds[2] * 0.5 - line.width * 0.5
+    } else if (text.align === text_align_right) {
+      x0 = text.bounds[2] - layout.padding - line.width
+    }
+    const x1 = x0 + line.width
+    if (local_x >= x0 - padding && local_x <= x1 + padding) return true
+  }
+
+  return false
 }

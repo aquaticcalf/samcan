@@ -2,6 +2,7 @@ import type { editor, editor_key_input } from "@/editor/types"
 import { get_element_by_id_document, update_element_document } from "@/document/document"
 import { element_type_text } from "@/document/element"
 import { begin_transaction_editor, commit_transaction_editor } from "@/editor/history"
+import { caret_index_from_point_editor } from "@/editor/textlayout"
 import {
   collapse_selection_if_needed_editor,
   delete_selection_text_editor,
@@ -10,16 +11,29 @@ import {
   update_anchor_editor,
 } from "@/editor/textops"
 
-export function begin_text_edit_editor(state: editor, element_id: string): boolean {
+export function begin_text_edit_editor(
+  state: editor,
+  element_id: string,
+  caret_from_world?: [number, number],
+): boolean {
   const element = get_element_by_id_document(state.engine.document, element_id)
   if (element === null || element.type !== element_type_text) {
     return false
   }
+  const initial_caret =
+    caret_from_world === undefined
+      ? element.content.length
+      : caret_index_from_point_editor(
+          element,
+          element.content,
+          caret_from_world[0],
+          caret_from_world[1],
+        )
   state.text_edit = {
     element_id,
     draft: element.content,
     original: element.content,
-    caret: element.content.length,
+    caret: initial_caret,
     anchor: null,
     preferred_column: null,
   }

@@ -1,35 +1,28 @@
 import type { editor } from "@/editor/types"
+import { get_element_by_id_document } from "@/document/document"
+import { element_type_text } from "@/document/element"
+import {
+  build_text_layout_editor,
+  line_caret_x_editor,
+  line_index_for_caret_editor,
+  nearest_caret_for_x_editor,
+} from "@/editor/textlayout"
 
 export function move_caret_line_editor(state: editor, direction: number, extend: boolean): boolean {
   if (state.text_edit === null) return false
+  const element = get_element_by_id_document(state.engine.document, state.text_edit.element_id)
+  if (element === null || element.type !== element_type_text) return false
   const previous_caret = state.text_edit.caret
-  const text = state.text_edit.draft
   const caret = state.text_edit.caret
-  const line_start = line_start_editor(text, caret)
-  const column = state.text_edit.preferred_column ?? caret - line_start
-  let target = caret
-  if (direction < 0) {
-    if (line_start === 0) {
-      target = 0
-    } else {
-      const prev_end = line_start - 1
-      const prev_start = line_start_editor(text, prev_end)
-      target = Math.min(prev_start + column, prev_end)
-    }
-  } else {
-    const line_end = line_end_editor(text, caret)
-    if (line_end >= text.length) {
-      target = text.length
-    } else {
-      const next_start = line_end + 1
-      const next_end = line_end_editor(text, next_start)
-      target = Math.min(next_start + column, next_end)
-    }
-  }
+  const layout = build_text_layout_editor(element, state.text_edit.draft)
+  const line_index = line_index_for_caret_editor(layout, caret)
+  const desired_x = state.text_edit.preferred_column ?? line_caret_x_editor(element, layout, line_index, caret)
+  const target_line = Math.max(0, Math.min(layout.lines.length - 1, line_index + (direction < 0 ? -1 : 1)))
+  const target = nearest_caret_for_x_editor(element, layout, target_line, desired_x)
   collapse_selection_if_needed_editor(state, direction < 0 ? "start" : "end", extend)
   state.text_edit.caret = target
   update_anchor_editor(state, extend, previous_caret)
-  state.text_edit.preferred_column = column
+  state.text_edit.preferred_column = desired_x
   return true
 }
 
@@ -75,14 +68,5 @@ export function update_anchor_editor(state: editor, extend: boolean, previous_ca
     return
   }
   state.text_edit.anchor = null
-}
-
-function line_start_editor(text: string, index: number): number {
-  return text.lastIndexOf("\n", Math.max(0, index - 1)) + 1
-}
-
-function line_end_editor(text: string, index: number): number {
-  const end = text.indexOf("\n", index)
-  return end === -1 ? text.length : end
 }
 
