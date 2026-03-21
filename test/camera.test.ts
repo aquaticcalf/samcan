@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test"
-import { create_camera } from "../camera/camera"
+import { create_camera } from "@/camera/camera"
 import {
   fit_camera_to_bounds,
   screen_to_world_camera,
   world_to_screen_camera,
-} from "../camera/projection"
+} from "@/camera/projection"
 
 describe("camera", () => {
   test("world/screen conversion roundtrip", () => {

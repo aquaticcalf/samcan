@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { sanitize_number_engine, sanitize_zoom_engine, visible_bounds_world_engine } from "../engine/camera"
+import {
+  sanitize_number_engine,
+  sanitize_zoom_engine,
+  visible_bounds_world_engine,
+} from "@/engine/camera"
 
 describe("engine", () => {
   test("sanitize helpers", () => {

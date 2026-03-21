@@ -4,7 +4,11 @@ import { element_hit_at_point_editor } from "@/editor/hittest"
 import { begin_text_edit_editor } from "@/editor/textedit"
 
 export function handle_select_double_click_editor(state: editor): void {
-  const hit = element_hit_at_point_editor(state.engine.document, state.pointer_world[0], state.pointer_world[1])
+  const hit = element_hit_at_point_editor(
+    state.engine.document,
+    state.pointer_world[0],
+    state.pointer_world[1],
+  )
   if (hit !== null && hit.type === element_type_text) {
     begin_text_edit_editor(state, hit.id, [state.pointer_world[0], state.pointer_world[1]])
   }

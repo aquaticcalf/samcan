@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { create_draw_style, equals_draw_style, with_alpha_draw_style } from "../renderer/style"
+import { create_draw_style, equals_draw_style, with_alpha_draw_style } from "@/renderer/style"
 import {
   command_count_of_path,
   from_circle_path,
   from_rectangle_path,
   hash_of_path,
   is_empty_path,
-} from "../renderer/path"
+} from "@/renderer/path"
 
 describe("renderer utils", () => {
   test("draw style helpers", () => {

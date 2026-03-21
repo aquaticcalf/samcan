@@ -6,7 +6,7 @@ import {
   query_point_spatial_index,
   query_range_spatial_index,
   remove_spatial_index,
-} from "../spatial/index"
+} from "@/spatial/index"
 
 describe("spatial", () => {
   test("insert/query/remove flow", () => {

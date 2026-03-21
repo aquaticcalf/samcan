@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { add_vector2, distance_vector2 } from "../math/vector2"
-import { intersection_rectangle } from "../math/rectangle"
-import { create_transform, invert_transform, transform_point_transform } from "../math/transform"
+import { add_vector2, distance_vector2 } from "@/math/vector2"
+import { intersection_rectangle } from "@/math/rectangle"
+import { create_transform, invert_transform, transform_point_transform } from "@/math/transform"
 
 describe("math", () => {
   test("vector2 basic operations", () => {

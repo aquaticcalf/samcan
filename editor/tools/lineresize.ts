@@ -48,11 +48,6 @@ export function apply_line_endpoint_resize_editor(state: editor): boolean {
     Math.max(1, Math.abs(shape.end_point[0] - shape.start_point[0])),
     Math.max(1, Math.abs(shape.end_point[1] - shape.start_point[1])),
   ]
-  state.engine.document = update_element_document(
-    state.drag_state.base_document,
-    element_id,
-    shape,
-  )
+  state.engine.document = update_element_document(state.drag_state.base_document, element_id, shape)
   return true
 }
-

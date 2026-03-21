@@ -1,6 +1,4 @@
-import type {
-  editor,
-} from "@/editor/types"
+import type { editor } from "@/editor/types"
 import type {
   editor_snap_context,
   editor_snap_meta,
@@ -79,10 +77,18 @@ export function create_element_smart_snapper_editor(tolerance: number = 6): edit
 
     const subject = meta?.subject_bounds
     const snapped_x = subject
-      ? closest_bounds_snap_delta_editor([subject[0], subject[0] + subject[2], subject[0] + subject[2] / 2], candidates_x, safe_tol)
+      ? closest_bounds_snap_delta_editor(
+          [subject[0], subject[0] + subject[2], subject[0] + subject[2] / 2],
+          candidates_x,
+          safe_tol,
+        )
       : closest_axis_snap_editor(point[0], candidates_x, safe_tol)
     const snapped_y = subject
-      ? closest_bounds_snap_delta_editor([subject[1], subject[1] + subject[3], subject[1] + subject[3] / 2], candidates_y, safe_tol)
+      ? closest_bounds_snap_delta_editor(
+          [subject[1], subject[1] + subject[3], subject[1] + subject[3] / 2],
+          candidates_y,
+          safe_tol,
+        )
       : closest_axis_snap_editor(point[1], candidates_y, safe_tol)
     if (snapped_x === null && snapped_y === null) {
       return null

@@ -2,11 +2,7 @@ import type { editor } from "@/editor/types"
 import type { renderer } from "@/renderer/renderer"
 import type { text_element } from "@/document/element"
 import { get_element_by_id_document } from "@/document/document"
-import {
-  element_type_text,
-  text_align_center,
-  text_align_right,
-} from "@/document/element"
+import { element_type_text, text_align_center, text_align_right } from "@/document/element"
 import { selection_handles_for_elements_editor } from "@/editor/hit"
 import { marquee_rectangle_editor, selection_bounds_editor } from "@/editor/selection"
 import { build_text_layout_editor, line_index_for_caret_editor } from "@/editor/textlayout"
@@ -26,7 +22,10 @@ export function draw_editor_overlay(state: editor, drawer: renderer): void {
 }
 
 function draw_hover_overlay_editor(state: editor, drawer: renderer): void {
-  if (state.hovered_element_id === null || state.selected_element_ids.has(state.hovered_element_id)) {
+  if (
+    state.hovered_element_id === null ||
+    state.selected_element_ids.has(state.hovered_element_id)
+  ) {
     return
   }
   const hovered = get_element_by_id_document(state.engine.document, state.hovered_element_id)
@@ -106,13 +105,14 @@ function draw_text_selection_editor(
     if (end <= line.start || start >= line.end) continue
     const local_start = Math.max(0, start - line.start)
     const local_end = Math.max(local_start, Math.min(line.text.length, end - line.start))
-    const x0 = line_x_offset_editor(element, layout, line.width) + measure_line_prefix_width_editor(line.text, local_start, element)
-    const x1 = line_x_offset_editor(element, layout, line.width) + measure_line_prefix_width_editor(line.text, local_end, element)
+    const x0 =
+      line_x_offset_editor(element, layout, line.width) +
+      measure_line_prefix_width_editor(line.text, local_start, element)
+    const x1 =
+      line_x_offset_editor(element, layout, line.width) +
+      measure_line_prefix_width_editor(line.text, local_end, element)
     const y = element.bounds[1] + layout.padding + i * layout.line_height
-    drawer.draw_rectangle(
-      [x0, y, Math.max(1, x1 - x0), layout.line_height],
-      overlay_marquee_style,
-    )
+    drawer.draw_rectangle([x0, y, Math.max(1, x1 - x0), layout.line_height], overlay_marquee_style)
   }
 }
 
@@ -162,8 +162,7 @@ function measure_line_prefix_width_editor(
 
 const selection_measure_canvas_editor =
   typeof document !== "undefined" ? document.createElement("canvas") : null
-const selection_measure_context_editor =
-  selection_measure_canvas_editor?.getContext("2d") ?? null
+const selection_measure_context_editor = selection_measure_canvas_editor?.getContext("2d") ?? null
 
 const text_caret_style_editor = {
   fill: [0.2, 0.5, 1, 0.95] as [number, number, number, number],

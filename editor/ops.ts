@@ -28,13 +28,17 @@ export function update_shape_preview_editor(
 ): void {
   const el = get_element_by_id_document(state.engine.document, drag_state.element_id)
   if (el === null || el.type !== element_type_shape) return
-  const rect = rectangle_from_points_editor(drag_state.origin_world, drag_state.current_world, keep_square)
+  const rect = rectangle_from_points_editor(
+    drag_state.origin_world,
+    drag_state.current_world,
+    keep_square,
+  )
   const shape = clone_element_editor(el) as shape_element
   shape.bounds = rect
   if (shape.shape_type === shape_type_line || shape.shape_type === shape_type_arrow) {
     const constrained = keep_square
       ? constrain_line_angle_editor(drag_state.origin_world, drag_state.current_world)
-      : [drag_state.current_world[0], drag_state.current_world[1]] as vector2
+      : ([drag_state.current_world[0], drag_state.current_world[1]] as vector2)
     const end_x = constrained[0]
     const end_y = constrained[1]
     if (end_x === undefined || end_y === undefined) {
@@ -80,16 +84,26 @@ export function update_box_resize_editor(
   state.engine.document = update_element_document(state.engine.document, element_id, updated)
 }
 
-export function insert_drawn_stroke_editor(state: editor, points: vector2[], pressure: number[]): void {
+export function insert_drawn_stroke_editor(
+  state: editor,
+  points: vector2[],
+  pressure: number[],
+): void {
   if (points.length === 0) return
   const simplified_out: vector2[] = Array.from({ length: points.length }, () => [0, 0] as vector2)
   const spline = create_spline()
-  const processed = process_stroke(points, pressure, {
-    color: default_stroke_color,
-    width: 2,
-    opacity: 1,
-    pressure_sensitivity: 0.5,
-  }, simplified_out, spline)
+  const processed = process_stroke(
+    points,
+    pressure,
+    {
+      color: default_stroke_color,
+      width: 2,
+      opacity: 1,
+      pressure_sensitivity: 0.5,
+    },
+    simplified_out,
+    spline,
+  )
   const stroke_bounds: rectangle = [0, 0, 0, 0]
   compute_stroke_bounds(points, 2, stroke_bounds)
   const element_id = next_id_editor(state, "stroke")

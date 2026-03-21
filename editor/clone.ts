@@ -5,11 +5,7 @@ import type {
   stroke_element,
   text_element,
 } from "@/document/element"
-import {
-  element_type_image,
-  element_type_shape,
-  element_type_stroke,
-} from "@/document/element"
+import { element_type_image, element_type_shape, element_type_stroke } from "@/document/element"
 
 export function clone_element_editor(el: element): element {
   if (el.type === element_type_stroke) {
@@ -66,4 +62,3 @@ export function clone_element_editor(el: element): element {
     color: [text.color[0], text.color[1], text.color[2], text.color[3]],
   }
 }
-

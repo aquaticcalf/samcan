@@ -6,11 +6,11 @@ import {
   create_document,
   get_image_asset_document,
   remove_image_asset_document,
-} from "../document/document"
-import { create_shape_element, shape_type_rectangle } from "../document/element"
-import { create_layer } from "../document/layer"
-import { element_at_point_document, elements_in_bounds_document } from "../document/query"
-import { create_image_asset } from "../document/asset"
+} from "@/document/document"
+import { create_shape_element, shape_type_rectangle } from "@/document/element"
+import { create_layer } from "@/document/layer"
+import { element_at_point_document, elements_in_bounds_document } from "@/document/query"
+import { create_image_asset } from "@/document/asset"
 
 describe("document", () => {
   test("add/query element", () => {

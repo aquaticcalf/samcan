@@ -16,8 +16,12 @@ export function move_caret_line_editor(state: editor, direction: number, extend:
   const caret = state.text_edit.caret
   const layout = build_text_layout_editor(element, state.text_edit.draft)
   const line_index = line_index_for_caret_editor(layout, caret)
-  const desired_x = state.text_edit.preferred_column ?? line_caret_x_editor(element, layout, line_index, caret)
-  const target_line = Math.max(0, Math.min(layout.lines.length - 1, line_index + (direction < 0 ? -1 : 1)))
+  const desired_x =
+    state.text_edit.preferred_column ?? line_caret_x_editor(element, layout, line_index, caret)
+  const target_line = Math.max(
+    0,
+    Math.min(layout.lines.length - 1, line_index + (direction < 0 ? -1 : 1)),
+  )
   const target = nearest_caret_for_x_editor(element, layout, target_line, desired_x)
   collapse_selection_if_needed_editor(state, direction < 0 ? "start" : "end", extend)
   state.text_edit.caret = target
@@ -69,4 +73,3 @@ export function update_anchor_editor(state: editor, extend: boolean, previous_ca
   }
   state.text_edit.anchor = null
 }
-

@@ -49,4 +49,3 @@ export function marquee_rectangle_editor(
   const height = Math.abs(current_y - origin_y)
   return [x, y, width, height]
 }
-

@@ -60,7 +60,11 @@ export function update_pointer_editor(state: editor, input: editor_pointer_input
 }
 
 export function update_hover_editor(state: editor): void {
-  const hit = element_hit_at_point_editor(state.engine.document, state.pointer_world[0], state.pointer_world[1])
+  const hit = element_hit_at_point_editor(
+    state.engine.document,
+    state.pointer_world[0],
+    state.pointer_world[1],
+  )
   state.hovered_element_id = hit?.id ?? null
 }
 
@@ -88,7 +92,12 @@ export function rectangle_from_points_editor(
     x2 = x1 + Math.sign(dx || 1) * size
     y2 = y1 + Math.sign(dy || 1) * size
   }
-  return [Math.min(x1, x2), Math.min(y1, y2), Math.max(1, Math.abs(x2 - x1)), Math.max(1, Math.abs(y2 - y1))]
+  return [
+    Math.min(x1, x2),
+    Math.min(y1, y2),
+    Math.max(1, Math.abs(x2 - x1)),
+    Math.max(1, Math.abs(y2 - y1)),
+  ]
 }
 
 export function shape_name_for_tool_editor(tool: editor_tool_id): string {

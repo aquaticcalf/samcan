@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import * as samcan from "../index"
+import * as samcan from "@/index"
 
 describe("root exports", () => {
   test("exposes representative APIs from major modules", () => {

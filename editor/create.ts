@@ -22,7 +22,12 @@ import {
 } from "@/editor/actions"
 import { handle_global_key_editor, normalize_key_editor } from "@/editor/keys"
 import { draw_editor_overlay } from "@/editor/overlay"
-import { create_tool_registry_editor, install_plugin_editor, register_tool_editor, uninstall_plugin_editor } from "@/editor/registry"
+import {
+  create_tool_registry_editor,
+  install_plugin_editor,
+  register_tool_editor,
+  uninstall_plugin_editor,
+} from "@/editor/registry"
 import { current_tool_impl_editor, update_pointer_editor } from "@/editor/shared"
 import { create_element_smart_snapper_editor } from "@/editor/snap"
 import {
@@ -134,7 +139,8 @@ export function double_click_editor(state: editor, input: editor_pointer_input):
 export function key_down_editor(state: editor, input: editor_key_input): void {
   if (handle_text_key_editor(state, input)) return
   if (is_text_editing_editor(state)) return
-  if (!handle_global_key_editor(state, input)) current_tool_impl_editor(state).key_down(state, input)
+  if (!handle_global_key_editor(state, input))
+    current_tool_impl_editor(state).key_down(state, input)
 }
 
 export function key_up_editor(state: editor, input: editor_key_input): void {

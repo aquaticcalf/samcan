@@ -1,7 +1,11 @@
 import type { editor_tool } from "@/editor/types"
 import { add_element_document } from "@/document/document"
 import { create_image_element } from "@/document/element"
-import { begin_transaction_editor, cancel_transaction_editor, commit_transaction_editor } from "@/editor/history"
+import {
+  begin_transaction_editor,
+  cancel_transaction_editor,
+  commit_transaction_editor,
+} from "@/editor/history"
 import { update_box_resize_editor } from "@/editor/ops"
 import { snap_point_editor } from "@/editor/snap"
 import { next_id_editor, next_z_index_editor } from "@/editor/shared"
@@ -39,7 +43,12 @@ export function create_image_tool_editor(): editor_tool {
         [state.pointer_world[0], state.pointer_world[1]],
         "image",
       )
-      update_box_resize_editor(state, state.drag_state.element_id, state.drag_state.origin_world, state.drag_state.current_world)
+      update_box_resize_editor(
+        state,
+        state.drag_state.element_id,
+        state.drag_state.origin_world,
+        state.drag_state.current_world,
+      )
     },
     pointer_up: (state) => {
       if (state.drag_state?.kind === "image") commit_transaction_editor(state)

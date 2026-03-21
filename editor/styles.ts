@@ -45,4 +45,3 @@ export const default_shape_fill: [number, number, number, number] = [0.95, 0.95,
 export const default_shape_stroke: [number, number, number, number] = [0.15, 0.15, 0.15, 1]
 export const default_text_color: [number, number, number, number] = [0.1, 0.1, 0.1, 1]
 export const default_stroke_color: [number, number, number, number] = [0.1, 0.1, 0.1, 1]
-

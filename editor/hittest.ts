@@ -39,7 +39,12 @@ export function element_hit_at_point_editor(
   return topmost
 }
 
-function element_contains_point_editor(el: element, x: number, y: number, padding: number): boolean {
+function element_contains_point_editor(
+  el: element,
+  x: number,
+  y: number,
+  padding: number,
+): boolean {
   if (el.type === element_type_stroke) {
     return stroke_contains_point_editor(el as stroke_element, x, y, padding)
   }
@@ -77,7 +82,10 @@ function shape_contains_point_editor(
   }
   if (shape.shape_type === shape_type_line || shape.shape_type === shape_type_arrow) {
     const a = shape.start_point ?? [shape.bounds[0], shape.bounds[1]]
-    const b = shape.end_point ?? [shape.bounds[0] + shape.bounds[2], shape.bounds[1] + shape.bounds[3]]
+    const b = shape.end_point ?? [
+      shape.bounds[0] + shape.bounds[2],
+      shape.bounds[1] + shape.bounds[3],
+    ]
     const radius = Math.max(1, shape.stroke_width / 2 + padding)
     if (distance_point_to_segment_editor(x, y, a[0], a[1], b[0], b[1]) <= radius) {
       return true
@@ -137,10 +145,7 @@ function frame_contains_point_editor(
   if (!in_outer) return false
 
   const in_inner =
-    x >= bx + stroke &&
-    x <= bx + bw - stroke &&
-    y >= by + stroke &&
-    y <= by + bh - stroke
+    x >= bx + stroke && x <= bx + bw - stroke && y >= by + stroke && y <= by + bh - stroke
   const in_header_band =
     x >= bx - padding &&
     x <= bx + bw + padding &&

@@ -346,10 +346,7 @@ export function update_image_loaded(
   }
 }
 
-export function update_image_asset_id(
-  el: image_element,
-  asset_id: string | null,
-): image_element {
+export function update_image_asset_id(el: image_element, asset_id: string | null): image_element {
   return {
     ...el,
     asset_id,

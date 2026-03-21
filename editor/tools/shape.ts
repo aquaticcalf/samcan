@@ -6,7 +6,11 @@ import {
   shape_type_frame,
   shape_type_rectangle,
 } from "@/document/element"
-import { begin_transaction_editor, cancel_transaction_editor, commit_transaction_editor } from "@/editor/history"
+import {
+  begin_transaction_editor,
+  cancel_transaction_editor,
+  commit_transaction_editor,
+} from "@/editor/history"
 import { update_shape_preview_editor } from "@/editor/ops"
 import { snap_point_editor } from "@/editor/snap"
 import {

@@ -64,4 +64,3 @@ export function redo_editor(state: editor): boolean {
   state.engine.document = next
   return true
 }
-

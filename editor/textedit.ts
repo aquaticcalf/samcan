@@ -83,7 +83,8 @@ export function handle_text_key_editor(state: editor, input: editor_key_input): 
   if (key === "ArrowDown") return move_caret_line_editor(state, 1, !!input.shift)
   if (key === "Home") return set_caret_editor(state, 0, !!input.shift)
   if (key === "End") return set_caret_editor(state, state.text_edit.draft.length, !!input.shift)
-  if ((key === "a" || key === "A") && (input.ctrl || input.meta)) return select_all_text_editor(state)
+  if ((key === "a" || key === "A") && (input.ctrl || input.meta))
+    return select_all_text_editor(state)
   if (key === "Backspace") return backspace_editor(state)
   if (key === "Delete") return delete_editor(state)
   if (key === "Enter") return insert_text_editor(state, "\n")
@@ -108,7 +109,11 @@ function move_caret_editor(state: editor, delta: number, extend: boolean): boole
 function set_caret_editor(state: editor, value: number, extend: boolean): boolean {
   if (state.text_edit === null) return false
   const previous_caret = state.text_edit.caret
-  collapse_selection_if_needed_editor(state, value <= state.text_edit.caret ? "start" : "end", extend)
+  collapse_selection_if_needed_editor(
+    state,
+    value <= state.text_edit.caret ? "start" : "end",
+    extend,
+  )
   state.text_edit.caret = clamp_caret_editor(value, state.text_edit.draft.length)
   update_anchor_editor(state, extend, previous_caret)
   state.text_edit.preferred_column = null

@@ -35,7 +35,11 @@ export function transform_elements_editor(
     if (id === undefined) continue
     const base_element = get_element_by_id_document(base_document, id)
     if (base_element === null) continue
-    doc = update_element_document(doc, id, apply_transform_element_editor(base_element, transform_point))
+    doc = update_element_document(
+      doc,
+      id,
+      apply_transform_element_editor(base_element, transform_point),
+    )
   }
   return doc
 }
@@ -48,7 +52,8 @@ function apply_transform_element_editor(
   el: element,
   map_point: (point: vector2) => vector2,
 ): element {
-  if (el.type === element_type_stroke) return transform_stroke_editor(el as stroke_element, map_point)
+  if (el.type === element_type_stroke)
+    return transform_stroke_editor(el as stroke_element, map_point)
   if (el.type === element_type_shape) return transform_shape_editor(el as shape_element, map_point)
   if (el.type === element_type_image) return transform_image_editor(el as image_element, map_point)
   if (el.type === element_type_text) return transform_text_editor(el as text_element, map_point)
@@ -134,4 +139,3 @@ function bounds_from_points_editor(points: vector2[]): rectangle {
   if (min_x === Infinity) return [0, 0, 1, 1]
   return [min_x, min_y, Math.max(1, max_x - min_x), Math.max(1, max_y - min_y)]
 }
-

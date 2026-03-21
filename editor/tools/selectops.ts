@@ -6,18 +6,16 @@ import { elements_in_bounds_document } from "@/document/query"
 import { element_type_shape, shape_type_frame } from "@/document/element"
 import { marquee_rectangle_editor, selection_bounds_editor } from "@/editor/selection"
 import { expand_ids_with_groups_editor } from "@/editor/shared"
-import {
-  angle_to_center_editor,
-  transform_elements_editor,
-} from "@/editor/transform"
+import { angle_to_center_editor, transform_elements_editor } from "@/editor/transform"
 import { apply_line_endpoint_resize_editor } from "@/editor/tools/lineresize"
 
 const drag_threshold_screen_editor = 4
 
 export function start_move_editor(state: editor, ids: string[]): void {
   const expanded_ids = expand_move_ids_for_frames_editor(state.engine.document.elements, ids)
-  const selection_bounds =
-    selection_bounds_editor(state.engine.document, expanded_ids) ?? [0, 0, 1, 1]
+  const selection_bounds = selection_bounds_editor(state.engine.document, expanded_ids) ?? [
+    0, 0, 1, 1,
+  ]
   state.drag_state = {
     kind: "move",
     origin_world: [state.pointer_world[0], state.pointer_world[1]],
@@ -101,10 +99,14 @@ export function apply_resize_drag_editor(state: editor): void {
 
   let sx = 1
   let sy = 1
-  if (handle.includes("w")) sx = centered ? (Math.abs(c[0] - anchor_x) * 2) / width : (right - c[0]) / width
-  if (handle.includes("e")) sx = centered ? (Math.abs(c[0] - anchor_x) * 2) / width : (c[0] - left) / width
-  if (handle.includes("n")) sy = centered ? (Math.abs(c[1] - anchor_y) * 2) / height : (bottom - c[1]) / height
-  if (handle.includes("s")) sy = centered ? (Math.abs(c[1] - anchor_y) * 2) / height : (c[1] - top) / height
+  if (handle.includes("w"))
+    sx = centered ? (Math.abs(c[0] - anchor_x) * 2) / width : (right - c[0]) / width
+  if (handle.includes("e"))
+    sx = centered ? (Math.abs(c[0] - anchor_x) * 2) / width : (c[0] - left) / width
+  if (handle.includes("n"))
+    sy = centered ? (Math.abs(c[1] - anchor_y) * 2) / height : (bottom - c[1]) / height
+  if (handle.includes("s"))
+    sy = centered ? (Math.abs(c[1] - anchor_y) * 2) / height : (c[1] - top) / height
   sx = Math.max(1e-4, sx)
   sy = Math.max(1e-4, sy)
 
@@ -142,7 +144,10 @@ export function apply_rotate_drag_editor(state: editor): void {
     (point) => {
       const dx = point[0] - center[0]
       const dy = point[1] - center[1]
-      return [center[0] + dx * cos_angle - dy * sin_angle, center[1] + dx * sin_angle + dy * cos_angle]
+      return [
+        center[0] + dx * cos_angle - dy * sin_angle,
+        center[1] + dx * sin_angle + dy * cos_angle,
+      ]
     },
   )
 }
@@ -191,9 +196,6 @@ function contains_point_in_bounds_editor(
   y: number,
 ): boolean {
   return (
-    x >= bounds[0] &&
-    x <= bounds[0] + bounds[2] &&
-    y >= bounds[1] &&
-    y <= bounds[1] + bounds[3]
+    x >= bounds[0] && x <= bounds[0] + bounds[2] && y >= bounds[1] && y <= bounds[1] + bounds[3]
   )
 }

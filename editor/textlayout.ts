@@ -18,10 +18,7 @@ const measure_canvas_editor =
   typeof document !== "undefined" ? document.createElement("canvas") : null
 const measure_context_editor = measure_canvas_editor?.getContext("2d") ?? null
 
-export function build_text_layout_editor(
-  el: text_element,
-  content: string,
-): text_layout {
+export function build_text_layout_editor(el: text_element, content: string): text_layout {
   const font_size = Math.max(1, el.font_size)
   const line_height = font_size * 1.3
   const padding = Math.max(4, Math.round(font_size * 0.35))
@@ -30,7 +27,12 @@ export function build_text_layout_editor(
   const lines: text_layout_line[] = []
   const ctx = measure_context_editor
   if (ctx === null) {
-    lines.push({ text: content, start: 0, end: content.length, width: content.length * font_size * 0.6 })
+    lines.push({
+      text: content,
+      start: 0,
+      end: content.length,
+      width: content.length * font_size * 0.6,
+    })
     return { lines, line_height, padding, max_text_width }
   }
 

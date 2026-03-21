@@ -75,4 +75,3 @@ export function contains_polyline_editor(
   }
   return false
 }
-

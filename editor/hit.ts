@@ -46,10 +46,7 @@ export function selection_handles_for_elements_editor(
   return element_specific_handles_editor(element, bounds)
 }
 
-function element_specific_handles_editor(
-  element: element,
-  bounds: rectangle,
-): selection_handle[] {
+function element_specific_handles_editor(element: element, bounds: rectangle): selection_handle[] {
   if (element.type === element_type_shape) {
     const shape = element as shape_element
     if (shape.shape_type === shape_type_line || shape.shape_type === shape_type_arrow) {

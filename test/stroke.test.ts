@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import { create_live_stroke, add_raw_point_live_stroke, finalize_live_stroke } from "../stroke/live"
-import { create_stroke_style } from "../stroke/stroke"
-import { compute_stroke_bounds, get_simplified_for_lod } from "../stroke/process"
-import { create_spline } from "../math/spline"
+import { create_live_stroke, add_raw_point_live_stroke, finalize_live_stroke } from "@/stroke/live"
+import { create_stroke_style } from "@/stroke/stroke"
+import { compute_stroke_bounds, get_simplified_for_lod } from "@/stroke/process"
+import { create_spline } from "@/math/spline"
 
 describe("stroke", () => {
   test("live stroke add/finalize", () => {

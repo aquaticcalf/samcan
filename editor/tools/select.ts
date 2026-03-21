@@ -2,10 +2,18 @@ import type { editor_tool } from "@/editor/types"
 import { clone_document } from "@/document/document"
 import { hit_selection_handles_editor, selection_handles_for_elements_editor } from "@/editor/hit"
 import { element_hit_at_point_editor } from "@/editor/hittest"
-import { cancel_transaction_editor, begin_transaction_editor, commit_transaction_editor } from "@/editor/history"
+import {
+  cancel_transaction_editor,
+  begin_transaction_editor,
+  commit_transaction_editor,
+} from "@/editor/history"
 import { selection_bounds_editor } from "@/editor/selection"
 import { editor_tool_select } from "@/editor/types"
-import { expand_ids_with_groups_editor, grouped_ids_for_element_editor, update_select_hover_editor } from "@/editor/shared"
+import {
+  expand_ids_with_groups_editor,
+  grouped_ids_for_element_editor,
+  update_select_hover_editor,
+} from "@/editor/shared"
 import { snap_point_editor } from "@/editor/snap"
 import {
   apply_marquee_selection_editor,
@@ -44,9 +52,17 @@ export function create_select_tool_editor(): editor_tool {
             current_world: [state.pointer_world[0], state.pointer_world[1]],
             base_document: clone_document(state.engine.document),
             rotated_element_ids: selected_ids,
-            selection_bounds: [selected_bounds![0], selected_bounds![1], selected_bounds![2], selected_bounds![3]],
+            selection_bounds: [
+              selected_bounds![0],
+              selected_bounds![1],
+              selected_bounds![2],
+              selected_bounds![3],
+            ],
             center,
-            start_angle: Math.atan2(state.pointer_world[1] - center[1], state.pointer_world[0] - center[0]),
+            start_angle: Math.atan2(
+              state.pointer_world[1] - center[1],
+              state.pointer_world[0] - center[0],
+            ),
             snap_angle: false,
           }
         } else {
@@ -56,7 +72,12 @@ export function create_select_tool_editor(): editor_tool {
             current_world: [state.pointer_world[0], state.pointer_world[1]],
             base_document: clone_document(state.engine.document),
             resized_element_ids: selected_ids,
-            selection_bounds: [selected_bounds![0], selected_bounds![1], selected_bounds![2], selected_bounds![3]],
+            selection_bounds: [
+              selected_bounds![0],
+              selected_bounds![1],
+              selected_bounds![2],
+              selected_bounds![3],
+            ],
             handle: handle_hit.id,
             keep_aspect: false,
             centered: false,
@@ -82,7 +103,10 @@ export function create_select_tool_editor(): editor_tool {
             if (all_selected) state.selected_element_ids.delete(id)
             else state.selected_element_ids.add(id)
           }
-        } else if (!state.selected_element_ids.has(hit.id) || state.selected_element_ids.size > hit_ids.length) {
+        } else if (
+          !state.selected_element_ids.has(hit.id) ||
+          state.selected_element_ids.size > hit_ids.length
+        ) {
           state.selected_element_ids.clear()
           for (let i = 0; i < hit_ids.length; i = i + 1) {
             const id = hit_ids[i]
@@ -137,7 +161,10 @@ export function create_select_tool_editor(): editor_tool {
         }
         const marquee_state = {
           kind: "marquee" as const,
-          origin_world: [state.drag_state.origin_world[0], state.drag_state.origin_world[1]] as [number, number],
+          origin_world: [state.drag_state.origin_world[0], state.drag_state.origin_world[1]] as [
+            number,
+            number,
+          ],
           current_world: [state.pointer_world[0], state.pointer_world[1]] as [number, number],
           add_mode: state.drag_state.add_mode,
         }
@@ -149,12 +176,9 @@ export function create_select_tool_editor(): editor_tool {
         const dx = raw[0] - state.drag_state.origin_world[0]
         const dy = raw[1] - state.drag_state.origin_world[1]
         const b = state.drag_state.selection_bounds
-        state.drag_state.current_world = snap_point_editor(
-          state,
-          raw,
-          "move",
-          { subject_bounds: [b[0] + dx, b[1] + dy, b[2], b[3]] },
-        )
+        state.drag_state.current_world = snap_point_editor(state, raw, "move", {
+          subject_bounds: [b[0] + dx, b[1] + dy, b[2], b[3]],
+        })
         return apply_move_drag_editor(state)
       }
       if (state.drag_state.kind === "resize") {
@@ -168,7 +192,8 @@ export function create_select_tool_editor(): editor_tool {
         return apply_resize_drag_editor(state)
       }
       if (state.drag_state.kind === "rotate") {
-        state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]; state.drag_state.snap_angle = !!input.shift
+        state.drag_state.current_world = [state.pointer_world[0], state.pointer_world[1]]
+        state.drag_state.snap_angle = !!input.shift
         return apply_rotate_drag_editor(state)
       }
       if (state.drag_state.kind === "marquee") {
@@ -184,7 +209,8 @@ export function create_select_tool_editor(): editor_tool {
         handle_select_pointer_up_reset_editor(state)
         return
       }
-      if (state.drag_state !== null && state.drag_state.kind !== "marquee") commit_transaction_editor(state)
+      if (state.drag_state !== null && state.drag_state.kind !== "marquee")
+        commit_transaction_editor(state)
       if (state.drag_state !== null && state.drag_state.kind === "marquee") {
         apply_marquee_selection_editor(state, state.drag_state)
       }
@@ -195,8 +221,11 @@ export function create_select_tool_editor(): editor_tool {
     cancel: (state) => {
       if (
         state.drag_state !== null &&
-        (state.drag_state.kind === "move" || state.drag_state.kind === "resize" || state.drag_state.kind === "rotate")
-      ) cancel_transaction_editor(state)
+        (state.drag_state.kind === "move" ||
+          state.drag_state.kind === "resize" ||
+          state.drag_state.kind === "rotate")
+      )
+        cancel_transaction_editor(state)
       state.drag_state = null
       state.marquee_state = null
       state.active_handle = null

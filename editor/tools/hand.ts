@@ -37,4 +37,3 @@ export function create_hand_tool_editor(): editor_tool {
     overlay: () => {},
   }
 }
-

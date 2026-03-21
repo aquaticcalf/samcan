@@ -1,7 +1,11 @@
 import type { element } from "@/document/element"
 import type { editor } from "@/editor/types"
 import type { vector2 } from "@/math/vector2"
-import { get_element_by_id_document, remove_element_document, update_element_document } from "@/document/document"
+import {
+  get_element_by_id_document,
+  remove_element_document,
+  update_element_document,
+} from "@/document/document"
 import { screen_to_world_engine } from "@/engine/camera"
 import {
   begin_transaction_editor,
@@ -12,7 +16,11 @@ import {
 } from "@/editor/history"
 import { clone_element_editor } from "@/editor/clone"
 import { insert_elements_with_offset_editor } from "@/editor/ops"
-import { cleanup_selection_editor, expand_ids_with_groups_editor, next_id_editor } from "@/editor/shared"
+import {
+  cleanup_selection_editor,
+  expand_ids_with_groups_editor,
+  next_id_editor,
+} from "@/editor/shared"
 import { selection_bounds_editor } from "@/editor/selection"
 
 export function copy_selection_editor(state: editor): boolean {
@@ -40,7 +48,8 @@ export function cut_selection_editor(state: editor): boolean {
 }
 
 export function paste_clipboard_editor(state: editor, world_anchor?: vector2): boolean {
-  if (state.clipboard_payload === null || state.clipboard_payload.elements.length === 0) return false
+  if (state.clipboard_payload === null || state.clipboard_payload.elements.length === 0)
+    return false
   const anchor = world_anchor ?? paste_anchor_editor(state)
   const dx = anchor[0] - state.clipboard_payload.anchor[0] + 16
   const dy = anchor[1] - state.clipboard_payload.anchor[1] + 16

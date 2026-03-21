@@ -1,5 +1,9 @@
 import type { editor_tool } from "@/editor/types"
-import { begin_transaction_editor, cancel_transaction_editor, commit_transaction_editor } from "@/editor/history"
+import {
+  begin_transaction_editor,
+  cancel_transaction_editor,
+  commit_transaction_editor,
+} from "@/editor/history"
 import { insert_drawn_stroke_editor } from "@/editor/ops"
 import { overlay_hover_style } from "@/editor/styles"
 import { editor_tool_draw } from "@/editor/types"
@@ -46,4 +50,3 @@ export function create_draw_tool_editor(): editor_tool {
     },
   }
 }
-

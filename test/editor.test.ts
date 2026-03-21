@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { contains_ellipse_editor, distance_point_to_segment_editor } from "../editor/hitmath"
-import { build_text_layout_editor, caret_index_from_point_editor } from "../editor/textlayout"
-import { create_text_element, text_align_left } from "../document/element"
+import { contains_ellipse_editor, distance_point_to_segment_editor } from "@/editor/hitmath"
+import { build_text_layout_editor, caret_index_from_point_editor } from "@/editor/textlayout"
+import { create_text_element, text_align_left } from "@/document/element"
 
 describe("editor", () => {
   test("hit math primitives", () => {
