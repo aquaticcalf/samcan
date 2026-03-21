@@ -1,7 +1,9 @@
 import type { editor } from "@/editor/types"
 import type { vector2 } from "@/math/vector2"
+import type { element } from "@/document/element"
 import { clone_document } from "@/document/document"
 import { elements_in_bounds_document } from "@/document/query"
+import { element_type_shape, shape_type_frame } from "@/document/element"
 import { marquee_rectangle_editor, selection_bounds_editor } from "@/editor/selection"
 import { expand_ids_with_groups_editor } from "@/editor/shared"
 import {
@@ -13,14 +15,15 @@ import { apply_line_endpoint_resize_editor } from "@/editor/tools/lineresize"
 const drag_threshold_screen_editor = 4
 
 export function start_move_editor(state: editor, ids: string[]): void {
+  const expanded_ids = expand_move_ids_for_frames_editor(state.engine.document.elements, ids)
   const selection_bounds =
-    selection_bounds_editor(state.engine.document, ids) ?? [0, 0, 1, 1]
+    selection_bounds_editor(state.engine.document, expanded_ids) ?? [0, 0, 1, 1]
   state.drag_state = {
     kind: "move",
     origin_world: [state.pointer_world[0], state.pointer_world[1]],
     current_world: [state.pointer_world[0], state.pointer_world[1]],
     base_document: clone_document(state.engine.document),
-    moved_element_ids: ids,
+    moved_element_ids: expanded_ids,
     selection_bounds,
   }
   state.pointer_capture = true
@@ -141,5 +144,56 @@ export function apply_rotate_drag_editor(state: editor): void {
       const dy = point[1] - center[1]
       return [center[0] + dx * cos_angle - dy * sin_angle, center[1] + dx * sin_angle + dy * cos_angle]
     },
+  )
+}
+
+function expand_move_ids_for_frames_editor(
+  elements: Map<string, element>,
+  selected_ids: readonly string[],
+): string[] {
+  const out = new Set<string>()
+  const selected_frames: element[] = []
+
+  for (let i = 0; i < selected_ids.length; i = i + 1) {
+    const id = selected_ids[i]
+    if (id === undefined) continue
+    const element = elements.get(id)
+    if (element === undefined) continue
+    out.add(id)
+    if (element.type === element_type_shape && element.shape_type === shape_type_frame) {
+      selected_frames.push(element)
+    }
+  }
+  if (selected_frames.length === 0) {
+    return Array.from(out)
+  }
+
+  for (const element of elements.values()) {
+    if (out.has(element.id)) continue
+    const cx = element.bounds[0] + element.bounds[2] / 2
+    const cy = element.bounds[1] + element.bounds[3] / 2
+    for (let i = 0; i < selected_frames.length; i = i + 1) {
+      const frame = selected_frames[i]
+      if (frame === undefined) continue
+      if (contains_point_in_bounds_editor(frame.bounds, cx, cy)) {
+        out.add(element.id)
+        break
+      }
+    }
+  }
+
+  return Array.from(out)
+}
+
+function contains_point_in_bounds_editor(
+  bounds: [number, number, number, number],
+  x: number,
+  y: number,
+): boolean {
+  return (
+    x >= bounds[0] &&
+    x <= bounds[0] + bounds[2] &&
+    y >= bounds[1] &&
+    y <= bounds[1] + bounds[3]
   )
 }

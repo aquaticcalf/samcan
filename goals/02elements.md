@@ -20,6 +20,7 @@ Completed recently:
 - arrow hit testing includes arrowhead segments
 - basic frame/container element model exists as `shape_type_frame`
 - frame tool exists (`f` shortcut) with render, hit, resize, and transform behavior
+- moving a selected frame now carries enclosed elements (center-point contain policy)
 - first-pass grouping model exists via `group_id` on all element types
 - group/ungroup actions exist (`Ctrl/Cmd+G`, `Shift+Ctrl/Cmd+G`)
 - selecting or marquee-hitting one member expands to whole group selection
@@ -27,7 +28,7 @@ Completed recently:
 Still missing:
 
 - advanced group semantics (nested groups, lock/isolation behavior, group-level bounds cache)
-- deeper frame semantics (child membership, clipping policy, relayout rules)
+- deeper frame semantics (persistent child membership, clipping policy, relayout rules)
 - connector model
 - text selection/caret tied to measured layout geometry
 - measured-text bounds as source-of-truth for text hit testing/layout
