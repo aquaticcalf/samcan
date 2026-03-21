@@ -6,7 +6,7 @@ Build a real asset pipeline for images and any future binary resources needed by
 
 ## Current State
 
-The current element model contains `src`, dimensions, and some load flags, but the runtime behavior is still incomplete. The renderer can draw images, yet the engine still treats image elements like placeholders.
+The current element model contains `src`, dimensions, and some load flags, but runtime behavior is still incomplete. The renderer can draw images, yet scene-level asset lifecycle is not fully wired.
 
 ## Required Capabilities
 
@@ -56,7 +56,7 @@ The asset system should handle:
 - zero-size images
 - partial load failure
 
-The interaction layer should degrade gracefully instead of throwing.
+The runtime should degrade gracefully instead of throwing.
 
 ## Future Extensions
 

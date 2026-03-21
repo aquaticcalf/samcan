@@ -22,6 +22,7 @@ The next rendering milestones should be:
 - render actual text elements
 - keep transform behavior consistent across all element types
 - preserve correctness for mutable image sources
+- keep overlay rendering deterministic under snapping/selection updates
 
 ## Important Constraints
 
@@ -64,7 +65,7 @@ The render system must support transient overlays such as:
 - hover affordances
 - remote presence indicators
 
-These overlays should remain interaction-layer controlled, not baked into document elements.
+These overlays should remain transient and controlled by the interaction layer, not baked into document elements.
 
 ## Image Rendering Expectations
 

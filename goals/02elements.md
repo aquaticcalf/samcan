@@ -2,11 +2,11 @@
 
 ## Objective
 
-Upgrade the scene model from placeholder primitives into a complete element system for the current `samcan` direction.
+Upgrade the scene model from placeholder primitives into fully-rendered, geometry-correct element types.
 
 ## Current Gaps
 
-Current problems in the existing element model:
+Current problems:
 
 - `image_element` renders as a rectangle placeholder
 - `text_element` renders as a rectangle placeholder
@@ -18,7 +18,7 @@ Current problems in the existing element model:
 
 ## Element Requirements
 
-The project should eventually support at least:
+The project should support at least:
 
 - freehand strokes
 - rectangles
@@ -60,9 +60,9 @@ Text work should include:
 - font family and size
 - measured bounds
 - line wrapping
-- selection and caret behavior
+- selection and caret behavior tied to measured text layout
 
-Text editing should eventually use a dedicated editing mode rather than pretending text is a static shape.
+Text should not be treated as a static rectangle for layout or hit testing.
 
 ## Images
 
@@ -96,4 +96,4 @@ Likely future fields:
 - `style`
 - `label`
 
-These should be added carefully, with a migration strategy in `goals/data.md`.
+These should be added carefully, with a migration strategy in `goals/04data.md`.

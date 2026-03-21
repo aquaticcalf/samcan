@@ -2,7 +2,7 @@
 
 ## Objective
 
-Define a stable scene, history, and persistence model for the current direction without turning `samcan` into a single-purpose codebase.
+Define a stable persistence and schema model on top of the existing scene/history foundation without turning `samcan` into a single-purpose codebase.
 
 ## Document Model
 
@@ -17,7 +17,7 @@ The current immutable `document` model is a good start. Keep that direction. The
 
 ## History Model
 
-Undo and redo should not be implemented as random document snapshots triggered from UI code. Use a clear transaction model with:
+Undo and redo should continue to use a clear transaction model with:
 
 - transaction start
 - transaction update
@@ -75,5 +75,5 @@ The data layer is ready for long-term use when:
 - documents can be serialized and loaded reliably
 - schema versioning exists
 - migrations are testable
-- undo and redo are transaction-based
+- undo and redo remain transaction-based
 - asset references survive save and load correctly

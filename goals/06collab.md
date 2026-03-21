@@ -2,11 +2,11 @@
 
 ## Objective
 
-Prepare the project for real-time multi-user editing in the current direction, but only after local semantics are stable.
+Prepare the project for real-time multi-user editing in the current direction, after local semantics, persistence, and asset identity are stable.
 
 ## Sequence
 
-Collaboration should not be started first. The local interaction layer must already have:
+Collaboration should not be started first. The local stack must already have:
 
 - stable document model
 - stable selection and transform semantics

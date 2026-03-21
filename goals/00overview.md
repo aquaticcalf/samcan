@@ -2,9 +2,10 @@
 
 ## Purpose
 
-This directory defines the current temporary product-direction goals for `samcan`. `samcan` is a general canvas and scene library, not a whiteboard-only codebase. These notes describe the current near-term direction for building a powerful canvas experience on top of that generic foundation.
+This directory defines the current temporary product-direction goals for `samcan`.
+The interaction layer is now in place, so the next phase focuses on making scene content, persistence, assets, and collaboration production-ready.
 
-The project already has a solid low-level core:
+`samcan` already has a strong base:
 
 - immutable document and layer model
 - camera and viewport math
@@ -12,7 +13,12 @@ The project already has a solid low-level core:
 - canvas and WebGL renderers
 - spatial query helpers
 
-The missing work for this temporary direction is mostly element depth, persistence, assets, and collaboration.
+The missing work is now concentrated in:
+
+- element rendering depth and geometry correctness
+- durable persistence and migration
+- asset identity and loading lifecycle
+- collaboration protocol and merge semantics
 
 ## Current State
 
@@ -26,8 +32,8 @@ The current repository is strongest in these areas:
 
 The current repository is weakest in these areas:
 
-- no persistence format or migrations
-- no collaboration protocol
+- no stable persistence format or migration flow
+- no collaboration protocol or sync strategy
 - image and text elements are still placeholders at render time
 
 ## Work Order
@@ -41,13 +47,23 @@ The recommended order is:
 
 ## Non-Goals For Early Iterations
 
-These should not block the first serious milestone:
+These should not block the next serious milestone:
 
 - server-backed collaboration
 - perfect export
 - full plugin system
 - advanced presentation mode
 - arbitrary embeddable widgets
+
+## Next Milestone
+
+The next milestone should deliver:
+
+- real text rendering and measurement
+- real image rendering and load/error states
+- versioned save/load with migrations
+- stable autosave and crash recovery
+- asset identity separated from placement data
 
 ## Files In This Directory
 
