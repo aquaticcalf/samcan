@@ -27,6 +27,7 @@ Completed recently:
 - text caret up/down movement now follows measured wrapped line geometry
 - entering text edit on double click now places caret from measured text layout hit point
 - text hit testing now uses measured laid-out glyph lines instead of pure element bounds
+- text edit overlay now draws measured caret and selection highlight spans
 
 Still missing:
 
@@ -58,7 +59,7 @@ Coverage now:
 - ellipses: implemented
 - lines: implemented
 - arrows with arrowheads: implemented
-- text: partially implemented (render/edit yes, measured caret movement/edit-entry/hit yes, full layout-aware selection not yet)
+- text: partially implemented (render/edit yes, measured caret movement/edit-entry/hit/overlay yes, full layout-aware selection behavior not yet)
 - images: partially implemented (render/load/error yes, asset identity separation not yet)
 - frames: partially implemented
 - groups: partially implemented
