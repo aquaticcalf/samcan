@@ -52,7 +52,8 @@ export type image_element = {
   original_height: number
   opacity: number
   loaded: boolean
-  bitmap: ImageBitmap | null
+  load_error: boolean
+  bitmap: ImageBitmap | HTMLImageElement | null
 }
 
 export const text_align_left = 0
@@ -151,6 +152,7 @@ export function create_image_element(
     original_height,
     opacity,
     loaded: false,
+    load_error: false,
     bitmap: null,
   }
 }
@@ -220,6 +222,7 @@ export function clone_element(el: element): element {
       image.opacity,
     )
     cloned.loaded = image.loaded
+    cloned.load_error = image.load_error
     cloned.bitmap = image.bitmap
     return cloned
   } else {
@@ -311,11 +314,13 @@ export function update_stroke_spline(
 export function update_image_loaded(
   el: image_element,
   loaded: boolean,
-  bitmap: ImageBitmap | null,
+  bitmap: ImageBitmap | HTMLImageElement | null,
+  load_error: boolean = false,
 ): image_element {
   return {
     ...el,
     loaded,
+    load_error,
     bitmap,
   }
 }

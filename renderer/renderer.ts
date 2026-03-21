@@ -16,7 +16,7 @@ export type renderer_config = {
   readonly path_cache_size: number
 }
 
-export type image_source = HTMLImageElement | HTMLCanvasElement
+export type image_source = HTMLImageElement | HTMLCanvasElement | ImageBitmap
 
 export type renderer = {
   readonly kind: number

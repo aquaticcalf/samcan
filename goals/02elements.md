@@ -4,17 +4,29 @@
 
 Upgrade the scene model from placeholder primitives into fully-rendered, geometry-correct element types.
 
-## Current Gaps
+## Status Snapshot
 
-Current problems:
+This file is intended to reflect current reality in code.
 
-- `image_element` renders as a rectangle placeholder
-- `text_element` renders as a rectangle placeholder
-- ellipse shapes are treated like circles
-- arrows are treated like plain lines
-- there is no grouping
-- there is no frame or container element
-- there is no connector model
+Completed recently:
+
+- `image_element` renders real bitmaps (not rectangle-only placeholders)
+- image render includes lazy load lifecycle and an explicit error visual state
+- image draw preserves source aspect ratio inside placement bounds
+- `text_element` renders real glyphs (not rectangle-only placeholders)
+- text render supports alignment and line wrapping
+- ellipse rendering uses ellipse geometry (not circle fallback)
+- arrow rendering includes arrowheads (not plain line fallback)
+- arrow hit testing includes arrowhead segments
+
+Still missing:
+
+- grouping model and group operations
+- frame/container element model and behavior
+- connector model
+- text selection/caret tied to measured layout geometry
+- measured-text bounds as source-of-truth for text hit testing/layout
+- optional shape labels
 
 ## Element Requirements
 
@@ -29,6 +41,18 @@ The project should support at least:
 - images
 - frames
 - groups
+
+Coverage now:
+
+- freehand strokes: implemented
+- rectangles: implemented
+- ellipses: implemented
+- lines: implemented
+- arrows with arrowheads: implemented
+- text: partially implemented (render/edit yes, layout-aware caret/hit not yet)
+- images: partially implemented (render/load/error yes, asset identity separation not yet)
+- frames: not implemented
+- groups: not implemented
 
 Optional later additions:
 
@@ -48,6 +72,13 @@ Each element type should define:
 - rotation semantics
 - render semantics
 
+Current geometry notes:
+
+- strokes: point/polyline-based rendering and hit testing exists
+- lines/arrows: endpoint geometry and endpoint resize exist
+- arrows: head geometry now participates in both render and hit testing
+- text/images: still primarily box-based for editor interaction semantics
+
 Do not rely on bounds alone for every operation. Strokes, arrows, and text all need richer geometry than a single rectangle.
 
 ## Text
@@ -62,6 +93,16 @@ Text work should include:
 - line wrapping
 - selection and caret behavior tied to measured text layout
 
+Current text status:
+
+- actual glyph rendering: done
+- editable content: done
+- alignment: done
+- font family and size: done
+- line wrapping: done
+- measured bounds: partial
+- layout-tied caret/selection: not done
+
 Text should not be treated as a static rectangle for layout or hit testing.
 
 ## Images
@@ -74,6 +115,14 @@ Image work should include:
 - load state and error state
 - asset identity separate from scene placement
 
+Current image status:
+
+- actual bitmap rendering: done
+- preserved aspect ratio in placement bounds: done
+- load/error state behavior: done in renderer path
+- cropping model: not done
+- asset identity separate from scene placement: not done
+
 ## Shapes
 
 Shape rendering should include:
@@ -83,6 +132,21 @@ Shape rendering should include:
 - arrowheads
 - optional labels
 - rounded corners if desired later
+
+Current shape status:
+
+- proper ellipse geometry: done
+- proper line endpoints: done
+- arrowheads: done
+- optional labels: not done
+- rounded corners: not done
+
+## Next Focus (In Order)
+
+1. Add frame/container element model + render + hit + resize semantics.
+2. Add grouping model (`group_id`) with selection/transform semantics.
+3. Add text layout model used by both render and caret/selection/hit behavior.
+4. Move image identity to asset references (placement separate from asset lifecycle).
 
 ## Future Model Extensions
 

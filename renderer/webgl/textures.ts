@@ -124,6 +124,9 @@ function image_source_key_webgl(image: image_source): string | null {
   if (image instanceof HTMLImageElement) {
     return image.currentSrc || image.src || null
   }
+  if (typeof ImageBitmap !== "undefined" && image instanceof ImageBitmap) {
+    return `bitmap:${image.width}x${image.height}`
+  }
 
   return null
 }

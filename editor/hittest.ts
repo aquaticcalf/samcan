@@ -70,8 +70,42 @@ function shape_contains_point_editor(
   if (shape.shape_type === shape_type_line || shape.shape_type === shape_type_arrow) {
     const a = shape.start_point ?? [shape.bounds[0], shape.bounds[1]]
     const b = shape.end_point ?? [shape.bounds[0] + shape.bounds[2], shape.bounds[1] + shape.bounds[3]]
-    return distance_point_to_segment_editor(x, y, a[0], a[1], b[0], b[1]) <= Math.max(1, shape.stroke_width / 2 + padding)
+    const radius = Math.max(1, shape.stroke_width / 2 + padding)
+    if (distance_point_to_segment_editor(x, y, a[0], a[1], b[0], b[1]) <= radius) {
+      return true
+    }
+    if (shape.shape_type === shape_type_arrow) {
+      const hit_head = arrowhead_contains_point_editor(a, b, x, y, radius)
+      if (hit_head) return true
+    }
+    return false
   }
   return contains_with_padding_editor(shape.bounds, x, y, padding)
 }
 
+function arrowhead_contains_point_editor(
+  from: [number, number],
+  to: [number, number],
+  x: number,
+  y: number,
+  radius: number,
+): boolean {
+  const dx = to[0] - from[0]
+  const dy = to[1] - from[1]
+  const len = Math.hypot(dx, dy)
+  if (len < 0.0001) return false
+  const ux = dx / len
+  const uy = dy / len
+  const size = Math.max(8, radius * 4)
+  const wing_angle = Math.PI / 7
+  const cos = Math.cos(wing_angle)
+  const sin = Math.sin(wing_angle)
+  const lx = to[0] - (ux * cos - uy * sin) * size
+  const ly = to[1] - (uy * cos + ux * sin) * size
+  const rx = to[0] - (ux * cos + uy * sin) * size
+  const ry = to[1] - (uy * cos - ux * sin) * size
+  return (
+    distance_point_to_segment_editor(x, y, to[0], to[1], lx, ly) <= radius ||
+    distance_point_to_segment_editor(x, y, to[0], to[1], rx, ry) <= radius
+  )
+}
