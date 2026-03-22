@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { create_vector2, add_vector2, distance_vector2 } from "@/math/vector2"
 
-
 describe("math", () => {
   test("vector2 > construction", () => {
     const new_vector = create_vector2(1, 2)
