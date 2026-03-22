@@ -4,7 +4,7 @@
   "author": "aquaticcalf",
   "type": "module",
   "scripts": {
-    "fix": "oxfmt && oxlint --fix && tsc --noEmit",
+    "fix": "oxfmt -c config/oxfmt.json && oxlint -c config/oxlint.json --fix && tsc --noEmit",
     "prepare": "husky"
   },
   "devDependencies": {
