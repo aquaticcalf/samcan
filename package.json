@@ -114,7 +114,7 @@
     "build": "bunup",
     "dev": "bunup --watch",
     "fix": "oxfmt -c config/oxfmt.json && oxlint -c config/oxlint.json --fix && tsc --noEmit",
-    "prepare": "husky"
+    "prepare": "bunx husky"
   },
   "devDependencies": {
     "@types/bun": "^1.3.8",
