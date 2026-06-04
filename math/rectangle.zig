@@ -39,6 +39,20 @@ pub fn bottomleft(r: Rectangle) vector2.Vector2 {
     return .{ r.position[0], r.position[1] + r.size[1] };
 }
 
+pub fn translate(r: Rectangle, dx: f32, dy: f32) Rectangle {
+    var final: Rectangle = undefined;
+    final.position = .{ r.position[0] + dx, r.position + dy };
+    final.size = r.size;
+    return final;
+}
+
+pub fn scale(r: Rectangle, multiplier: f32) Rectangle {
+    var final: Rectangle = undefined;
+    final.position = r.position;
+    final.size = .{ r.size[0] * multiplier, r.size[1] * multiplier };
+    return final;
+}
+
 test "create" {
     const r = create(1, 2, 3, 4);
     try std.testing.expectEqual(@as(f32, 1), r.position[0]);
@@ -91,4 +105,22 @@ test "coordinates" {
     const bl = bottomleft(r);
     try std.testing.expectEqual(@as(f32, 1), bl[0]);
     try std.testing.expectEqual(@as(f32, 6), bl[1]);
+}
+
+test "translate" {
+    const r = create(1, 2, 3, 4);
+    const t = translate(r, 5, 6);
+    try std.testing.expectEqual(@as(f32, 6), t.position[0]);
+    try std.testing.expectEqual(@as(f32, 8), t.position[1]);
+    try std.testing.expectEqual(@as(f32, 3), t.size[0]);
+    try std.testing.expectEqual(@as(f32, 4), t.size[1]);
+}
+
+test "scale" {
+    const r = create(1, 2, 3, 4);
+    const s = scale(r, 2);
+    try std.testing.expectEqual(@as(f32, 1), s.position[0]);
+    try std.testing.expectEqual(@as(f32, 2), s.position[1]);
+    try std.testing.expectEqual(@as(f32, 6), s.size[0]);
+    try std.testing.expectEqual(@as(f32, 8), s.size[1]);
 }
