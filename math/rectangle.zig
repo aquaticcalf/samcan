@@ -15,12 +15,14 @@ pub fn fromVectors(position: vector2.Vector2, size: vector2.Vector2) Rectangle {
 }
 
 pub fn clone(r: Rectangle) Rectangle {
-    return .{ r.position, r.size };
+    return .{ .position = r.position, .size = r.size };
 }
 
-pub fn fromCenter(center: vector2.Vector2, size: vector2.Vector2, out: Rectangle) void {
-    out.position = .{ center[0] - size[0] / 2, center[1] - size[1] / 2 };
-    out.size = size;
+pub fn fromCenter(center: vector2.Vector2, size: vector2.Vector2) Rectangle {
+    var final: Rectangle = undefined;
+    final.position = .{ center[0] - size[0] / 2, center[1] - size[1] / 2 };
+    final.size = size;
+    return final;
 }
 
 pub fn topleft(r: Rectangle) vector2.Vector2 {
@@ -41,7 +43,7 @@ pub fn bottomleft(r: Rectangle) vector2.Vector2 {
 
 pub fn translate(r: Rectangle, dx: f32, dy: f32) Rectangle {
     var final: Rectangle = undefined;
-    final.position = .{ r.position[0] + dx, r.position + dy };
+    final.position = .{ r.position[0] + dx, r.position[1] + dy };
     final.size = r.size;
     return final;
 }
@@ -79,8 +81,7 @@ test "clone" {
 }
 
 test "fromCenter" {
-    var r: Rectangle = undefined;
-    fromCenter(.{ 10, 20 }, .{ 4, 6 }, &r);
+    const r = fromCenter(.{ 10, 20 }, .{ 4, 6 });
     try std.testing.expectEqual(@as(f32, 8), r.position[0]);
     try std.testing.expectEqual(@as(f32, 17), r.position[1]);
     try std.testing.expectEqual(@as(f32, 4), r.size[0]);
