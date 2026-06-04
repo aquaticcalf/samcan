@@ -18,9 +18,9 @@ pub fn clone(r: Rectangle) Rectangle {
     return .{ r.position, r.size };
 }
 
-pub fn fromCenter(center: vector2.Vector2, dimensions: vector2.Vector2, out: Rectangle) void {
-    out.position = .{ center[0] - dimensions[0] / 2, center[1] - dimensions[1] / 2 };
-    out.size = .{dimensions};
+pub fn fromCenter(center: vector2.Vector2, size: vector2.Vector2, out: Rectangle) void {
+    out.position = .{ center[0] - size[0] / 2, center[1] - size[1] / 2 };
+    out.size = size;
 }
 
 test "create" {
