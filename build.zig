@@ -9,6 +9,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    _ = math_mod;
 
     const exe = b.addExecutable(.{
         .name = "samcan",
@@ -27,5 +28,10 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "run tests");
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = exe.root_module })).step);
-    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = math_mod })).step);
+    const math_test = b.addModule("math_test", .{
+        .root_source_file = b.path("math/test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = math_test })).step);
 }
