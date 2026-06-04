@@ -1,6 +1,11 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
+    const math_mod = b.addModule("math", .{
+        .root_source_file = b.path("math/index.zig"),
+    });
+    _ = math_mod;
+
     const exe = b.addExecutable(.{
         .name = "samcan",
         .root_module = b.createModule(.{
