@@ -66,6 +66,9 @@ main :: proc() {
         if input.save_as_requested {
             platform.show_save_dialog(&app_window)
         }
+        if input.export_svg_requested {
+            platform.show_svg_dialog(&app_window)
+        }
 
         dialog_kind, dialog_path, dialog_ready := platform.take_dialog_result(&app_window)
         if dialog_ready && dialog_path != "" {
@@ -96,6 +99,13 @@ main :: proc() {
                     fmt.printf("save failed: %s\n", dialog_path)
                     delete(dialog_path)
                 }
+            case .EXPORT_SVG:
+                if editor.save_svg(&app_editor, dialog_path) {
+                    fmt.printf("exported %s\n", dialog_path)
+                } else {
+                    fmt.printf("svg export failed: %s\n", dialog_path)
+                }
+                delete(dialog_path)
             }
         }
 

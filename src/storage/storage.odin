@@ -2,6 +2,7 @@ package storage
 
 import "core:encoding/json"
 import "core:fmt"
+import "core:math"
 import "core:os"
 import "core:strings"
 
@@ -81,6 +82,189 @@ save :: proc(path: string, doc: ^document.document) -> bool {
         return false
     }
     return true
+}
+
+save_svg :: proc(path: string, doc: ^document.document) -> bool {
+    min_x, min_y, max_x, max_y := document_bounds(doc)
+    padding: f32 = 20.0
+    min_x -= padding
+    min_y -= padding
+    max_x += padding
+    max_y += padding
+    width := max(1.0, max_x - min_x)
+    height := max(1.0, max_y - min_y)
+
+    builder, builder_error := strings.builder_make()
+    if builder_error != nil {
+        return false
+    }
+    defer strings.builder_destroy(&builder)
+
+    fmt.sbprintf(
+        &builder,
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"%f %f %f %f\" width=\"%f\" height=\"%f\">\n",
+        min_x,
+        min_y,
+        width,
+        height,
+        width,
+        height,
+    )
+    for element in doc.elements {
+        append_svg_element(&builder, element)
+    }
+    strings.write_string(&builder, "</svg>\n")
+
+    svg := strings.to_string(builder)
+    temporary_path := fmt.tprintf("%s.tmp", path)
+    if err := os.write_entire_file_from_string(temporary_path, svg); err != nil {
+        return false
+    }
+    if err := os.rename(temporary_path, path); err != nil {
+        _ = os.remove(temporary_path)
+        return false
+    }
+    return true
+}
+
+document_bounds :: proc(doc: ^document.document) -> (min_x, min_y, max_x, max_y: f32) {
+    if len(doc.elements) == 0 {
+        return -320, -200, 320, 200
+    }
+    first := doc.elements[0]
+    min_x = first.x
+    min_y = first.y
+    max_x = first.x + first.width
+    max_y = first.y + first.height
+    for element in doc.elements[1:] {
+        min_x = min(min_x, element.x)
+        min_y = min(min_y, element.y)
+        max_x = max(max_x, element.x + element.width)
+        max_y = max(max_y, element.y + element.height)
+        for point in element.points {
+            min_x = min(min_x, point[0])
+            min_y = min(min_y, point[1])
+            max_x = max(max_x, point[0])
+            max_y = max(max_y, point[1])
+        }
+    }
+    return
+}
+
+append_svg_element :: proc(builder: ^strings.Builder, element: document.element) {
+    stroke := format_color(element.stroke)
+    fill := format_color(element.fill)
+    if fill == "transparent" {
+        fill = "none"
+    }
+    if stroke == "transparent" {
+        stroke = "none"
+    }
+    opacity := max(0.0, min(1.0, element.opacity))
+    switch element.kind {
+    case .rectangle:
+        fmt.sbprintf(
+            builder,
+            "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\" />\n",
+            element.x, element.y, element.width, element.height, fill, stroke, element.stroke_width, opacity,
+        )
+    case .ellipse:
+        fmt.sbprintf(
+            builder,
+            "<ellipse cx=\"%f\" cy=\"%f\" rx=\"%f\" ry=\"%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\" />\n",
+            element.x + element.width * 0.5,
+            element.y + element.height * 0.5,
+            element.width * 0.5,
+            element.height * 0.5,
+            fill,
+            stroke,
+            element.stroke_width,
+            opacity,
+        )
+    case .diamond:
+        fmt.sbprintf(
+            builder,
+            "<polygon points=\"%f,%f %f,%f %f,%f %f,%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\" />\n",
+            element.x + element.width * 0.5, element.y,
+            element.x + element.width, element.y + element.height * 0.5,
+            element.x + element.width * 0.5, element.y + element.height,
+            element.x, element.y + element.height * 0.5,
+            fill, stroke, element.stroke_width, opacity,
+        )
+    case .line, .arrow:
+        fmt.sbprintf(
+            builder,
+            "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" stroke=\"%s\" stroke-width=\"%f\" stroke-linecap=\"round\" opacity=\"%f\" />\n",
+            element.x, element.y, element.x + element.width, element.y + element.height,
+            stroke, element.stroke_width, opacity,
+        )
+        if element.kind == .arrow {
+            append_svg_arrowhead(builder, element, stroke, opacity)
+        }
+    case .freehand:
+        if len(element.points) > 0 {
+            strings.write_string(builder, "<polyline points=\"")
+            for point in element.points {
+                fmt.sbprintf(builder, "%f,%f ", point[0], point[1])
+            }
+            fmt.sbprintf(
+                builder,
+                "\" fill=\"none\" stroke=\"%s\" stroke-width=\"%f\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"%f\" />\n",
+                stroke, element.stroke_width, opacity,
+            )
+        }
+    case .text:
+        fmt.sbprintf(
+            builder,
+            "<text x=\"%f\" y=\"%f\" font-family=\"Excalifont\" font-size=\"%f\" fill=\"%s\" opacity=\"%f\" dominant-baseline=\"hanging\">",
+            element.x, element.y, element.font_size, fill, opacity,
+        )
+        append_svg_text(builder, element.text)
+        strings.write_string(builder, "</text>\n")
+    }
+}
+
+append_svg_arrowhead :: proc(builder: ^strings.Builder, element: document.element, stroke: string, opacity: f32) {
+    start: [2]f32 = {element.x, element.y}
+    finish: [2]f32 = {element.x + element.width, element.y + element.height}
+    delta := finish - start
+    length := math.sqrt(delta[0] * delta[0] + delta[1] * delta[1])
+    if length <= 0 {
+        return
+    }
+    direction := delta / length
+    normal: [2]f32 = {-direction[1], direction[0]}
+    base := finish - direction * 14.0
+    left := base + normal * 7.0
+    right := base - normal * 7.0
+    fmt.sbprintf(
+        builder,
+        "<polygon points=\"%f,%f %f,%f %f,%f\" fill=\"%s\" opacity=\"%f\" />\n",
+        finish[0], finish[1], left[0], left[1], right[0], right[1], stroke, opacity,
+    )
+}
+
+append_svg_text :: proc(builder: ^strings.Builder, text: string) {
+    for character in text {
+        switch character {
+        case '&':
+            strings.write_string(builder, "&amp;")
+        case '<':
+            strings.write_string(builder, "&lt;")
+        case '>':
+            strings.write_string(builder, "&gt;")
+        case '"':
+            strings.write_string(builder, "&quot;")
+        case '\'':
+            strings.write_string(builder, "&apos;")
+        case '\n':
+            strings.write_string(builder, "&#10;")
+        case:
+            written, write_error := strings.write_rune(builder, character)
+            _ = written
+            _ = write_error
+        }
+    }
 }
 
 load :: proc(path: string) -> (doc: document.document, ok: bool) {

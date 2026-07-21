@@ -12,6 +12,7 @@ dialog_kind :: enum {
     NONE,
     OPEN,
     SAVE,
+    EXPORT_SVG,
 }
 
 dialog_state :: struct {
@@ -46,6 +47,7 @@ frame_input :: struct {
     save_requested: bool,
     open_requested: bool,
     save_as_requested: bool,
+    export_svg_requested: bool,
     undo_requested: bool,
     redo_requested: bool,
     delete_requested: bool,
@@ -138,6 +140,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.save_requested = false
     input.open_requested = false
     input.save_as_requested = false
+    input.export_svg_requested = false
     input.undo_requested = false
     input.redo_requested = false
     input.delete_requested = false
@@ -203,6 +206,9 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
                 } else {
                     input.save_requested = true
                 }
+            }
+            if event.key.key == SDL.K_E && (event.key.mod & SDL.KMOD_CTRL) != {} {
+                input.export_svg_requested = true
             }
             if event.key.key == SDL.K_O && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.open_requested = true
@@ -346,6 +352,10 @@ show_save_dialog :: proc(window: ^window) -> bool {
     return show_dialog(window, .SAVE)
 }
 
+show_svg_dialog :: proc(window: ^window) -> bool {
+    return show_dialog(window, .EXPORT_SVG)
+}
+
 show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
     if window.dialog.pending {
         return false
@@ -356,6 +366,18 @@ show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
     window.dialog.pending = true
     window.dialog.result_ready = false
     window.dialog.kind = kind
+
+    if kind == .EXPORT_SVG {
+        window.dialog.filter_name = cstring("svg")
+        window.dialog.filter_pattern = cstring("*.svg")
+    } else {
+        window.dialog.filter_name = cstring("excalidraw")
+        window.dialog.filter_pattern = cstring("*.excalidraw")
+    }
+    window.dialog.filter = SDL.DialogFileFilter{
+        name = window.dialog.filter_name,
+        pattern = window.dialog.filter_pattern,
+    }
 
     switch kind {
     case .NONE:
@@ -370,7 +392,7 @@ show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
             nil,
             false,
         )
-    case .SAVE:
+    case .SAVE, .EXPORT_SVG:
         SDL.ShowSaveFileDialog(
             file_dialog_callback,
             rawptr(window),

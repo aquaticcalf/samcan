@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:os"
+import "core:strings"
 
 import document "../src/document"
 import storage "../src/storage"
@@ -23,7 +24,7 @@ main :: proc() {
         &original,
         5,
         10,
-        "hello",
+        "hello & <",
         {0.12, 0.12, 0.12, 1.0},
         28,
         5,
@@ -38,6 +39,15 @@ main :: proc() {
     document.append_point(&original, freehand, {10, -5})
 
     assert(storage.save(path, &original), "could not save storage smoke fixture")
+
+    svg_path := "build/storage-smoke.svg"
+    assert(storage.save_svg(svg_path, &original), "could not save svg smoke fixture")
+    svg_data, svg_error := os.read_entire_file(svg_path, context.allocator)
+    assert(svg_error == nil, "could not read svg smoke fixture")
+    assert(len(svg_data) > 0, "svg smoke fixture was empty")
+    assert(strings.contains(string(svg_data), "<svg"), "svg fixture did not contain a root element")
+    assert(strings.contains(string(svg_data), "&amp;"), "svg text was not escaped")
+    delete(svg_data)
 
     loaded, ok := storage.load(path)
     assert(ok, "could not load storage smoke fixture")
@@ -59,8 +69,8 @@ main :: proc() {
     assert(loaded.elements[3].kind == .line, "line kind did not round-trip")
     assert(loaded.elements[4].kind == .arrow, "arrow kind did not round-trip")
     assert(loaded.elements[5].kind == .text, "text kind did not round-trip")
-    assert(loaded.elements[5].text == "hello", "text content did not round-trip")
-    assert(loaded.elements[5].original_text == "hello", "original text did not round-trip")
+    assert(loaded.elements[5].text == "hello & <", "text content did not round-trip")
+    assert(loaded.elements[5].original_text == "hello & <", "original text did not round-trip")
     assert(loaded.elements[5].font_size == 28, "font size did not round-trip")
     assert(loaded.elements[5].font_family == 5, "font family did not round-trip")
     assert(loaded.elements[5].text_align == .center, "text alignment did not round-trip")
@@ -71,5 +81,6 @@ main :: proc() {
     assert(len(loaded.elements[6].points) == 3, "freehand points did not round-trip")
 
     _ = os.remove(path)
+    _ = os.remove(svg_path)
     fmt.println("storage smoke passed")
 }

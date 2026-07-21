@@ -33,6 +33,7 @@ toolbar_action :: enum {
     open,
     save,
     grid,
+    export_svg,
 }
 
 toolbar_button_width :: f32(38.0)
@@ -123,6 +124,10 @@ load :: proc(editor: ^state, path: string) -> bool {
 
 save :: proc(editor: ^state, path: string) -> bool {
     return storage.save(path, &editor.document)
+}
+
+save_svg :: proc(editor: ^state, path: string) -> bool {
+    return storage.save_svg(path, &editor.document)
 }
 
 resize :: proc(editor: ^state, width, height: f32) {
@@ -408,6 +413,8 @@ handle_toolbar_action :: proc(editor: ^state, input: ^platform.frame_input, acti
         input.open_requested = true
     case .save:
         input.save_requested = true
+    case .export_svg:
+        input.export_svg_requested = true
     case .grid:
         editor.show_grid = !editor.show_grid
     case .none:

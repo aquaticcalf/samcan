@@ -531,9 +531,9 @@ append_ui_text :: proc(renderer: ^renderer, view: viewport.viewport, text: strin
 }
 
 append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid: bool) {
-    toolbar_width: f32 = 13.0 * 38.0 + 12.0 * 4.0
+    toolbar_width: f32 = 14.0 * 38.0 + 13.0 * 4.0
     append_ui_rect(&renderer.vertices, view, 4, 4, 4 + toolbar_width, 44, {0.86, 0.86, 0.86, 1.0})
-    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s", "#"}
+    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s", "#", "x"}
     for index in 0 ..< len(labels) {
         left: f32 = 8.0 + f32(index) * (38.0 + 4.0)
         active := index == 0 && select_mode
