@@ -22,6 +22,7 @@ element_kind :: enum {
     text,
     freehand,
     image,
+    frame,
 }
 
 text_align :: enum {
@@ -59,6 +60,7 @@ image_asset :: struct {
 element :: struct {
     id:     u64,
     group_id: u64,
+    frame_id: u64,
     locked: bool,
     kind:   element_kind,
     x:      f32,
@@ -82,6 +84,8 @@ element :: struct {
     auto_resize: bool,
     line_height: f32,
     image_id: string,
+    link: string,
+    crop: [4]f32,
     start_binding_id: u64,
     end_binding_id: u64,
     points: [dynamic][2]f32,
@@ -116,6 +120,9 @@ clone :: proc(source: ^document) -> document {
         if source_element.image_id != "" {
             element.image_id = strings.clone(source_element.image_id)
         }
+        if source_element.link != "" {
+            element.link = strings.clone(source_element.link)
+        }
         if len(source_element.points) > 0 {
             element.points = make([dynamic][2]f32, 0)
             for point in source_element.points {
@@ -145,6 +152,7 @@ same :: proc(left, right: ^document) -> bool {
         right_element := right.elements[index]
         if left_element.id != right_element.id ||
             left_element.group_id != right_element.group_id ||
+            left_element.frame_id != right_element.frame_id ||
             left_element.locked != right_element.locked ||
             left_element.kind != right_element.kind ||
             left_element.x != right_element.x ||
@@ -168,6 +176,8 @@ same :: proc(left, right: ^document) -> bool {
             left_element.auto_resize != right_element.auto_resize ||
             left_element.line_height != right_element.line_height ||
             left_element.image_id != right_element.image_id ||
+            left_element.link != right_element.link ||
+            left_element.crop != right_element.crop ||
             left_element.start_binding_id != right_element.start_binding_id ||
             left_element.end_binding_id != right_element.end_binding_id ||
             len(left_element.points) != len(right_element.points) {
@@ -196,6 +206,7 @@ destroy :: proc(doc: ^document) {
         delete(element.text)
         delete(element.original_text)
         delete(element.image_id)
+        delete(element.link)
         delete(element.points)
     }
     delete(doc.elements)
@@ -217,11 +228,15 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
     if kind == .line || kind == .arrow || kind == .freehand {
         background = {0, 0, 0, 0}
         stroke = fill
+    } else if kind == .frame {
+        background = {0, 0, 0, 0}
+        stroke = fill
     }
 
     append(&doc.elements, element{
         id = id,
         group_id = 0,
+        frame_id = 0,
         locked = false,
         kind = kind,
         x = x,
@@ -244,6 +259,9 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
         vertical_align = .top,
         auto_resize = true,
         line_height = default_line_height,
+        image_id = "",
+        link = "",
+        crop = {0, 0, 1, 1},
         points = nil,
     })
     return len(doc.elements) - 1
@@ -327,6 +345,13 @@ add_image :: proc(doc: ^document, x, y, width, height: f32, image_id: string) ->
     return index
 }
 
+add_frame :: proc(doc: ^document, x, y, width, height: f32, stroke: color = {0.20, 0.42, 0.82, 1.0}) -> int {
+    index := add(doc, .frame, x, y, width, height, stroke)
+    doc.elements[index].fill_style = .none
+    doc.elements[index].stroke_width = 2.0
+    return index
+}
+
 add_freehand :: proc(doc: ^document, x, y: f32, fill: color) -> int {
     index := add(doc, .freehand, x, y, 0, 0, fill)
     append(&doc.elements[index].points, [2]f32{x, y})
@@ -355,6 +380,9 @@ append_element_copy :: proc(doc: ^document, source: element, delta_x, delta_y: f
     }
     if source.image_id != "" {
         copy.image_id = strings.clone(source.image_id)
+    }
+    if source.link != "" {
+        copy.link = strings.clone(source.link)
     }
     if len(source.points) > 0 {
         copy.points = make([dynamic][2]f32, 0)
@@ -422,6 +450,11 @@ append_document :: proc(doc: ^document, source: ^document, delta_x, delta_y: f32
             doc.elements[target_index].end_binding_id = target_id
         } else {
             doc.elements[target_index].end_binding_id = 0
+        }
+        if target_id, found := id_map[source_element.frame_id]; found {
+            doc.elements[target_index].frame_id = target_id
+        } else {
+            doc.elements[target_index].frame_id = 0
         }
     }
     return indices

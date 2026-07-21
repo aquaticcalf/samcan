@@ -441,7 +441,7 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
     bottom := element.y + element.height
 
     switch element.kind {
-    case .rectangle:
+    case .rectangle, .frame:
         top_left_world := rotate_point(element, {left, top})
         top_right_world := rotate_point(element, {right, top})
         bottom_right_world := rotate_point(element, {right, bottom})
@@ -452,7 +452,7 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         bottom_left := screen_to_clip(view, bottom_left_world)
 
         fill := element_color(element.fill, element.opacity)
-        if fill[3] > 0 && element.fill_style != .none {
+        if element.kind != .frame && fill[3] > 0 && element.fill_style != .none {
             append_triangle(vertices, top_left, top_right, bottom_right, fill)
             append_triangle(vertices, top_left, bottom_right, bottom_left, fill)
         }
@@ -759,6 +759,7 @@ append_ui_text :: proc(renderer: ^renderer, view: viewport.viewport, text: strin
 ui_icon :: enum {
     selection,
     rectangle,
+    frame,
     ellipse,
     diamond,
     line,
@@ -847,6 +848,15 @@ append_ui_icon :: proc(renderer: ^renderer, view: viewport.viewport, icon: ui_ic
         line(renderer, view, left, top, 14, 13, 20, 11, color)
     case .rectangle:
         append_ui_outline_rect(renderer, view, left + 4, top + 4, left + 28, top + 28, color, 1.6)
+    case .frame:
+        line(renderer, view, left, top, 5, 10, 5, 5, color)
+        line(renderer, view, left, top, 5, 5, 10, 5, color)
+        line(renderer, view, left, top, 22, 5, 27, 5, color)
+        line(renderer, view, left, top, 27, 5, 27, 10, color)
+        line(renderer, view, left, top, 5, 22, 5, 27, color)
+        line(renderer, view, left, top, 5, 27, 10, 27, color)
+        line(renderer, view, left, top, 22, 27, 27, 27, color)
+        line(renderer, view, left, top, 27, 27, 27, 22, color)
     case .ellipse:
         append_ui_circle(renderer, view, p(left, top, 16, 16), 11, color, 1.6)
     case .diamond:
@@ -1014,19 +1024,20 @@ append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode
     append_ui_text(renderer, view, "offline", view.width - 100, 17, text_color)
 
     rail_background := toolbar_background
-    append_ui_rect(&renderer.vertices, view, 6, 60, 54, 60 + 9.0 * 42.0 + 8.0, rail_background)
-    tool_icons := [?]ui_icon{.selection, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freedraw, .eraser}
+    append_ui_rect(&renderer.vertices, view, 6, 60, 54, 60 + 10.0 * 42.0 + 8.0, rail_background)
+    tool_icons := [?]ui_icon{.selection, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freedraw, .eraser, .frame}
     for index in 0 ..< len(tool_icons) {
         top := 64.0 + f32(index) * 42.0
         active := index == 0 && select_mode
-        if index > 0 && index < 8 && !select_mode {
+        if index > 0 && index < 10 && !select_mode {
             active = (index == 1 && active_kind == .rectangle) ||
                 (index == 2 && active_kind == .ellipse) ||
                 (index == 3 && active_kind == .diamond) ||
                 (index == 4 && active_kind == .line) ||
                 (index == 5 && active_kind == .arrow) ||
                 (index == 6 && active_kind == .text) ||
-                (index == 7 && active_kind == .freehand)
+                (index == 7 && active_kind == .freehand) ||
+                (index == 9 && active_kind == .frame)
         }
         if index == 8 {
             active = eraser_mode
@@ -1256,7 +1267,7 @@ append_selection_overlay :: proc(vertices: ^[dynamic]vertex, element: document.e
     thickness: f32 = 2.0 / view.zoom
 
     switch element.kind {
-    case .rectangle:
+    case .rectangle, .frame:
         top_left := rotate_point(element, {left, top})
         top_right := rotate_point(element, {right, top})
         bottom_right := rotate_point(element, {right, bottom})

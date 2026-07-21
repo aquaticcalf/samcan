@@ -29,6 +29,7 @@ toolbar_action :: enum {
     text,
     freehand,
     eraser,
+    frame,
     undo,
     redo,
     open,
@@ -564,6 +565,11 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.select_mode = false
         editor.erasing = true
     }
+    if input.tool_frame_requested {
+        editor.select_mode = false
+        editor.active_kind = .frame
+        editor.erasing = false
+    }
     if input.toggle_grid_requested {
         editor.show_grid = !editor.show_grid
     }
@@ -907,7 +913,7 @@ toolbar_action_at :: proc(point: [2]f32) -> toolbar_action {
     if point[0] >= tool_rail_x && point[0] <= tool_rail_x + tool_rail_button_size {
         if point[1] >= tool_rail_y {
             index := int((point[1] - tool_rail_y) / (tool_rail_button_size + tool_rail_gap))
-            actions := [?]toolbar_action{.select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand, .eraser}
+            actions := [?]toolbar_action{.select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand, .eraser, .frame}
             if index >= 0 && index < len(actions) {
                 button_top := tool_rail_y + f32(index) * (tool_rail_button_size + tool_rail_gap)
                 if point[1] <= button_top + tool_rail_button_size {
@@ -960,6 +966,10 @@ handle_toolbar_action :: proc(editor: ^state, input: ^platform.frame_input, acti
     case .eraser:
         editor.select_mode = false
         editor.erasing = true
+    case .frame:
+        editor.select_mode = false
+        editor.active_kind = .frame
+        editor.erasing = false
     case .undo:
         finish_transaction(editor)
         _ = history_pkg.undo(&editor.history, &editor.document)
@@ -1373,7 +1383,7 @@ contains :: proc(element: doc.element, point: [2]f32) -> bool {
             }
         }
         return false
-    case .rectangle, .text, .image:
+    case .rectangle, .text, .image, .frame:
         return local_point[0] >= element.x && local_point[0] <= element.x + element.width &&
             local_point[1] >= element.y && local_point[1] <= element.y + element.height
     }

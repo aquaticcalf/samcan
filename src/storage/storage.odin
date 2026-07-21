@@ -30,7 +30,9 @@ scene_element :: struct {
     text:           string,
     originalText:   string,
     groupIds:       [dynamic]string,
+    frameId:        string,
     fileId:         string,
+    link:           string,
     startBindingId: string,
     endBindingId:   string,
     locked:         bool,
@@ -411,7 +413,7 @@ append_svg_element :: proc(builder: ^strings.Builder, element: document.element,
         fmt.sbprintf(builder, "<g transform=\"rotate(%f %f %f)\">\n", degrees, center_x, center_y)
     }
     switch element.kind {
-    case .rectangle:
+    case .rectangle, .frame:
         fmt.sbprintf(
             builder,
             "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\"%s />\n",
@@ -619,7 +621,16 @@ document_from_scene :: proc(file: ^scene_file) -> (doc: document.document, ok: b
             if len(element.groupIds) > 0 {
                 doc.elements[index].group_id = group_id_from_string(element.groupIds[0])
             }
-            doc.elements[index].locked = element.locked
+        doc.elements[index].locked = element.locked
+            if element.frameId != "" {
+                source_id := group_id_from_string(element.frameId)
+                if target_id, found := source_ids[source_id]; found {
+                    doc.elements[index].frame_id = target_id
+                }
+            }
+            if element.link != "" {
+                doc.elements[index].link = strings.clone(element.link)
+            }
             continue
         }
         if kind == .freehand {
@@ -663,6 +674,15 @@ document_from_scene :: proc(file: ^scene_file) -> (doc: document.document, ok: b
             doc.elements[index].group_id = group_id_from_string(element.groupIds[0])
         }
         doc.elements[index].locked = element.locked
+        if element.frameId != "" {
+            source_id := group_id_from_string(element.frameId)
+            if target_id, found := source_ids[source_id]; found {
+                doc.elements[index].frame_id = target_id
+            }
+        }
+        if element.link != "" {
+            doc.elements[index].link = strings.clone(element.link)
+        }
         if kind == .image && element.fileId != "" {
             doc.elements[index].image_id = strings.clone(element.fileId)
         }
@@ -720,7 +740,9 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             text = strings.clone(element.text),
             originalText = strings.clone(element.original_text),
             groupIds = make([dynamic]string, 0),
+            frameId = "",
             fileId = strings.clone(element.image_id),
+            link = strings.clone(element.link),
             startBindingId = start_binding_id,
             endBindingId = end_binding_id,
             locked = element.locked,
@@ -746,6 +768,9 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
         })
         if element.group_id != 0 {
             append(&file.elements[len(file.elements) - 1].groupIds, fmt.tprintf("%d", element.group_id))
+        }
+        if element.frame_id != 0 {
+            file.elements[len(file.elements) - 1].frameId = fmt.tprintf("%d", element.frame_id)
         }
         for point in element.points {
             append(&file.elements[len(file.elements) - 1].points, [2]f64{f64(point[0]), f64(point[1])})
@@ -781,6 +806,8 @@ element_type_name :: proc(kind: document.element_kind) -> string {
         return "freedraw"
     case .image:
         return "image"
+    case .frame:
+        return "frame"
     }
     return "rectangle"
 }
@@ -803,6 +830,8 @@ element_kind_from_name :: proc(name: string) -> (document.element_kind, bool) {
         return .freehand, true
     case "image":
         return .image, true
+    case "frame":
+        return .frame, true
     }
     return .rectangle, false
 }
