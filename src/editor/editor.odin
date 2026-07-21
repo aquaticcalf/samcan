@@ -35,6 +35,7 @@ toolbar_action :: enum {
     grid,
     export_svg,
     import_image,
+    theme,
 }
 
 toolbar_button_width :: f32(38.0)
@@ -48,6 +49,7 @@ state :: struct {
     clipboard:       doc.document,
     viewport:        viewport.viewport,
     show_grid:       bool,
+    dark_mode:       bool,
     drawing:         bool,
     active_rect:     int,
     active_kind:     doc.element_kind,
@@ -76,6 +78,7 @@ new :: proc(width, height: f32) -> state {
         clipboard = doc.new(),
         viewport = viewport.new(width, height),
         show_grid = false,
+        dark_mode = false,
         active_rect = -1,
         active_kind = .rectangle,
         select_mode = true,
@@ -192,6 +195,11 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
 
     if editor.text_editing {
         update_text(editor, input)
+        return
+    }
+
+    if input.toggle_theme_requested {
+        editor.dark_mode = !editor.dark_mode
         return
     }
 
@@ -577,7 +585,7 @@ toolbar_action_at :: proc(point: [2]f32) -> toolbar_action {
     }
     actions := [?]toolbar_action{
         .select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand,
-        .undo, .redo, .open, .save, .grid, .export_svg, .import_image,
+        .undo, .redo, .open, .save, .grid, .export_svg, .import_image, .theme,
     }
     if index >= len(actions) {
         return .none
@@ -628,6 +636,8 @@ handle_toolbar_action :: proc(editor: ^state, input: ^platform.frame_input, acti
         input.export_svg_requested = true
     case .import_image:
         input.import_image_requested = true
+    case .theme:
+        editor.dark_mode = !editor.dark_mode
     case .grid:
         editor.show_grid = !editor.show_grid
     case .none:

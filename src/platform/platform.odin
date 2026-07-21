@@ -50,6 +50,7 @@ frame_input :: struct {
     save_as_requested: bool,
     export_svg_requested: bool,
     import_image_requested: bool,
+    toggle_theme_requested: bool,
     zoom_reset_requested: bool,
     zoom_to_content_requested: bool,
     zoom_to_selection_requested: bool,
@@ -158,6 +159,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.save_as_requested = false
     input.export_svg_requested = false
     input.import_image_requested = false
+    input.toggle_theme_requested = false
     input.zoom_reset_requested = false
     input.zoom_to_content_requested = false
     input.zoom_to_selection_requested = false
@@ -276,7 +278,11 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
                 input.enter_requested = true
             }
             if event.key.key == SDL.K_D && (event.key.mod & SDL.KMOD_CTRL) != {} {
-                input.duplicate_requested = true
+                if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                    input.toggle_theme_requested = true
+                } else {
+                    input.duplicate_requested = true
+                }
             }
             if event.key.key == SDL.K_C && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.copy_requested = true
@@ -428,9 +434,13 @@ destroy_input :: proc(input: ^frame_input) {
     input.text_input = ""
 }
 
-begin_frame :: proc(window: ^window) {
+begin_frame :: proc(window: ^window, dark_mode: bool = false) {
     gl.Viewport(0, 0, window.width, window.height)
-    gl.ClearColor(0.97, 0.97, 0.97, 1.0)
+    if dark_mode {
+        gl.ClearColor(0.08, 0.08, 0.10, 1.0)
+    } else {
+        gl.ClearColor(0.97, 0.97, 0.97, 1.0)
+    }
     gl.Clear(u32(gl.GL_Enum.COLOR_BUFFER_BIT))
 }
 

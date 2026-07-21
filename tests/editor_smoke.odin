@@ -38,6 +38,15 @@ main :: proc() {
     assert(editor.viewport.zoom == 1.0, "zoom reset did not restore 100 percent")
 
     input = {}
+    input.toggle_theme_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.dark_mode, "theme toggle did not enable dark mode")
+    input = {}
+    input.toggle_theme_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(!editor.dark_mode, "theme toggle did not restore light mode")
+
+    input = {}
     input.mouse = {400, 300}
     input.buttons[platform.MOUSE_BUTTON_LEFT] = true
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true

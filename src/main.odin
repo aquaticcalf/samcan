@@ -147,7 +147,7 @@ main :: proc() {
             }
         }
 
-        platform.begin_frame(&app_window)
+        platform.begin_frame(&app_window, app_editor.dark_mode)
         renderer.draw(
             &canvas_renderer,
             &app_editor.document,
@@ -160,6 +160,7 @@ main :: proc() {
             app_editor.select_mode,
             app_editor.active_kind,
             app_editor.show_grid,
+            app_editor.dark_mode,
         )
         platform.end_frame(&app_window)
     }

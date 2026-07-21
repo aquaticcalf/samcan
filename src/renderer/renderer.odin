@@ -744,10 +744,14 @@ append_ui_text :: proc(renderer: ^renderer, view: viewport.viewport, text: strin
     }
 }
 
-append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid: bool) {
-    toolbar_width: f32 = 15.0 * 38.0 + 14.0 * 4.0
-    append_ui_rect(&renderer.vertices, view, 4, 4, 4 + toolbar_width, 44, {0.86, 0.86, 0.86, 1.0})
-    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s", "#", "x", "i"}
+append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid, dark_mode: bool) {
+    toolbar_width: f32 = 16.0 * 38.0 + 15.0 * 4.0
+    toolbar_background: [4]f32 = {0.86, 0.86, 0.86, 1.0}
+    if dark_mode {
+        toolbar_background = {0.16, 0.16, 0.18, 1.0}
+    }
+    append_ui_rect(&renderer.vertices, view, 4, 4, 4 + toolbar_width, 44, toolbar_background)
+    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s", "#", "x", "i", "m"}
     for index in 0 ..< len(labels) {
         left: f32 = 8.0 + f32(index) * (38.0 + 4.0)
         active := index == 0 && select_mode
@@ -763,12 +767,20 @@ append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode
         if index == 12 {
             active = show_grid
         }
+        if index == 15 {
+            active = dark_mode
+        }
         background: [4]f32 = {0.96, 0.96, 0.96, 1.0}
+        text_color: [4]f32 = {0.10, 0.10, 0.10, 1.0}
+        if dark_mode {
+            background = {0.24, 0.24, 0.27, 1.0}
+            text_color = {0.92, 0.92, 0.94, 1.0}
+        }
         if active {
             background = {0.60, 0.78, 1.0, 1.0}
         }
         append_ui_rect(&renderer.vertices, view, left, 8, left + 38, 40, background)
-        append_ui_text(renderer, view, labels[index], left + 7, 8, {0.10, 0.10, 0.10, 1.0})
+        append_ui_text(renderer, view, labels[index], left + 7, 8, text_color)
     }
 }
 
@@ -994,6 +1006,7 @@ draw :: proc(
     toolbar_select_mode: bool = true,
     toolbar_kind: document.element_kind = .rectangle,
     show_grid: bool = false,
+    dark_mode: bool = false,
 ) {
     clear(&renderer.vertices)
     clear(&renderer.text_vertices)
@@ -1036,7 +1049,7 @@ draw :: proc(
         append_segment(&renderer.vertices, view, {left, bottom}, {left, top}, lasso_color, thickness)
     }
 
-    append_toolbar(renderer, view, toolbar_select_mode, toolbar_kind, show_grid)
+    append_toolbar(renderer, view, toolbar_select_mode, toolbar_kind, show_grid, dark_mode)
 
     if len(renderer.vertices) > 0 {
         gl.UseProgram(renderer.program)
