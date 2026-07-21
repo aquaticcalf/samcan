@@ -18,6 +18,28 @@ interaction_kind :: enum {
     resize_bottom_left,
 }
 
+toolbar_action :: enum {
+    none,
+    select,
+    rectangle,
+    ellipse,
+    diamond,
+    line,
+    arrow,
+    text,
+    freehand,
+    undo,
+    redo,
+    open,
+    save,
+}
+
+toolbar_button_width :: f32(38.0)
+toolbar_button_gap :: f32(4.0)
+toolbar_x :: f32(8.0)
+toolbar_y :: f32(8.0)
+toolbar_height :: f32(32.0)
+
 state :: struct {
     document:        doc.document,
     clipboard:       doc.document,
@@ -120,6 +142,14 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
     if editor.text_editing {
         update_text(editor, input)
         return
+    }
+
+    if input.pressed[platform.MOUSE_BUTTON_LEFT] {
+        action := toolbar_action_at(input.mouse)
+        if action != .none {
+            handle_toolbar_action(editor, input, action)
+            return
+        }
     }
 
     if editor.selected >= 0 && len(editor.selected_items) == 0 {
@@ -312,6 +342,68 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         }
         editor.active_rect = -1
         finish_transaction(editor)
+    }
+}
+
+toolbar_action_at :: proc(point: [2]f32) -> toolbar_action {
+    if point[1] < toolbar_y || point[1] > toolbar_y + toolbar_height {
+        return .none
+    }
+    index := int((point[0] - toolbar_x) / (toolbar_button_width + toolbar_button_gap))
+    if index < 0 {
+        return .none
+    }
+    actions := [?]toolbar_action{
+        .select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand,
+        .undo, .redo, .open, .save,
+    }
+    if index >= len(actions) {
+        return .none
+    }
+    button_left := toolbar_x + f32(index) * (toolbar_button_width + toolbar_button_gap)
+    if point[0] < button_left || point[0] > button_left + toolbar_button_width {
+        return .none
+    }
+    return actions[index]
+}
+
+handle_toolbar_action :: proc(editor: ^state, input: ^platform.frame_input, action: toolbar_action) {
+    switch action {
+    case .select:
+        editor.select_mode = true
+    case .rectangle:
+        editor.select_mode = false
+        editor.active_kind = .rectangle
+    case .ellipse:
+        editor.select_mode = false
+        editor.active_kind = .ellipse
+    case .diamond:
+        editor.select_mode = false
+        editor.active_kind = .diamond
+    case .line:
+        editor.select_mode = false
+        editor.active_kind = .line
+    case .arrow:
+        editor.select_mode = false
+        editor.active_kind = .arrow
+    case .text:
+        editor.select_mode = false
+        editor.active_kind = .text
+    case .freehand:
+        editor.select_mode = false
+        editor.active_kind = .freehand
+    case .undo:
+        finish_transaction(editor)
+        _ = history_pkg.undo(&editor.history, &editor.document)
+    case .redo:
+        finish_transaction(editor)
+        _ = history_pkg.redo(&editor.history, &editor.document)
+    case .open:
+        input.open_requested = true
+    case .save:
+        input.save_requested = true
+    case .none:
+        return
     }
 }
 

@@ -12,6 +12,18 @@ main :: proc() {
     doc.add_rectangle(&editor.document, -50, -40, 100, 80, {0.2, 0.4, 0.6, 1.0})
 
     input: platform.frame_input
+    input.mouse = {55, 20}
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(!editor.select_mode && editor.active_kind == .rectangle, "toolbar rectangle button did not activate")
+
+    input = {}
+    input.mouse = {20, 20}
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.select_mode, "toolbar select button did not activate")
+
+    input = {}
     input.mouse = {400, 300}
     input.buttons[platform.MOUSE_BUTTON_LEFT] = true
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true

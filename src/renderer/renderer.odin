@@ -452,6 +452,89 @@ append_text_line :: proc(
     }
 }
 
+screen_to_clip_ui :: proc(view: viewport.viewport, point: [2]f32) -> [2]f32 {
+    return {
+        (point[0] / view.width) * 2.0 - 1.0,
+        1.0 - (point[1] / view.height) * 2.0,
+    }
+}
+
+append_ui_rect :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, left, top, right, bottom: f32, color: [4]f32) {
+    append_triangle(
+        vertices,
+        screen_to_clip_ui(view, {left, top}),
+        screen_to_clip_ui(view, {right, top}),
+        screen_to_clip_ui(view, {right, bottom}),
+        color,
+    )
+    append_triangle(
+        vertices,
+        screen_to_clip_ui(view, {left, top}),
+        screen_to_clip_ui(view, {right, bottom}),
+        screen_to_clip_ui(view, {left, bottom}),
+        color,
+    )
+}
+
+append_ui_text :: proc(renderer: ^renderer, view: viewport.viewport, text: string, left, top: f32, color: [4]f32) {
+    if !renderer.text_font.ready {
+        return
+    }
+    x: f32 = 0
+    y := renderer.text_font.baseline
+    for character in text {
+        if character < 32 || character > 127 {
+            continue
+        }
+        quad: stb.aligned_quad
+        stb.GetBakedQuad(
+            &renderer.text_font.chars[0],
+            512,
+            512,
+            c.int(character - 32),
+            &x,
+            &y,
+            &quad,
+            true,
+        )
+        top_left := screen_to_clip_ui(view, {left + quad.x0, top + quad.y0})
+        top_right := screen_to_clip_ui(view, {left + quad.x1, top + quad.y0})
+        bottom_right := screen_to_clip_ui(view, {left + quad.x1, top + quad.y1})
+        bottom_left := screen_to_clip_ui(view, {left + quad.x0, top + quad.y1})
+        append_text_vertex(&renderer.text_vertices, top_left, {quad.s0, quad.t0}, color)
+        append_text_vertex(&renderer.text_vertices, top_right, {quad.s1, quad.t0}, color)
+        append_text_vertex(&renderer.text_vertices, bottom_right, {quad.s1, quad.t1}, color)
+        append_text_vertex(&renderer.text_vertices, top_left, {quad.s0, quad.t0}, color)
+        append_text_vertex(&renderer.text_vertices, bottom_right, {quad.s1, quad.t1}, color)
+        append_text_vertex(&renderer.text_vertices, bottom_left, {quad.s0, quad.t1}, color)
+    }
+}
+
+append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind) {
+    toolbar_width: f32 = 12.0 * 38.0 + 11.0 * 4.0
+    append_ui_rect(&renderer.vertices, view, 4, 4, 4 + toolbar_width, 44, {0.86, 0.86, 0.86, 1.0})
+    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s"}
+    for index in 0 ..< len(labels) {
+        left: f32 = 8.0 + f32(index) * (38.0 + 4.0)
+        active := index == 0 && select_mode
+        if index > 0 && index < 8 && !select_mode {
+            active = (index == 1 && active_kind == .rectangle) ||
+                (index == 2 && active_kind == .ellipse) ||
+                (index == 3 && active_kind == .diamond) ||
+                (index == 4 && active_kind == .line) ||
+                (index == 5 && active_kind == .arrow) ||
+                (index == 6 && active_kind == .text) ||
+                (index == 7 && active_kind == .freehand)
+        }
+        background: [4]f32 = {0.96, 0.96, 0.96, 1.0}
+        if active {
+            background = {0.60, 0.78, 1.0, 1.0}
+        }
+        append_ui_rect(&renderer.vertices, view, left, 8, left + 38, 40, background)
+        append_ui_text(renderer, view, labels[index], left + 7, 8, {0.10, 0.10, 0.10, 1.0})
+    }
+}
+
 append_segment :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, a, b: [2]f32, color: [4]f32, thickness: f32) {
     delta := b - a
     length := math.sqrt(delta[0] * delta[0] + delta[1] * delta[1])
@@ -584,6 +667,8 @@ draw :: proc(
     lassoing: bool = false,
     lasso_start: [2]f32 = {},
     lasso_current: [2]f32 = {},
+    toolbar_select_mode: bool = true,
+    toolbar_kind: document.element_kind = .rectangle,
 ) {
     clear(&renderer.vertices)
     clear(&renderer.text_vertices)
@@ -618,6 +703,8 @@ draw :: proc(
         append_segment(&renderer.vertices, view, {right, bottom}, {left, bottom}, lasso_color, thickness)
         append_segment(&renderer.vertices, view, {left, bottom}, {left, top}, lasso_color, thickness)
     }
+
+    append_toolbar(renderer, view, toolbar_select_mode, toolbar_kind)
 
     if len(renderer.vertices) > 0 {
         gl.UseProgram(renderer.program)
