@@ -72,6 +72,22 @@ file_data :: struct {
     status:        string,
 }
 
+library_item :: struct {
+    id:       string,
+    status:   string,
+    elements: [dynamic]scene_element,
+    created:  i64,
+    name:     string,
+}
+
+library_file :: struct {
+    type:        string,
+    version:     i32,
+    source:      string,
+    library:     [dynamic][dynamic]scene_element,
+    libraryItems:[dynamic]library_item,
+}
+
 save :: proc(path: string, doc: ^document.document) -> bool {
     file := scene_from_document(doc)
     defer destroy_scene(&file)
@@ -91,6 +107,95 @@ save :: proc(path: string, doc: ^document.document) -> bool {
         return false
     }
     return true
+}
+
+load_library :: proc(path: string) -> (items: [dynamic]library_item, ok: bool) {
+    data, read_error := os.read_entire_file(path, context.allocator)
+    if read_error != nil {
+        return
+    }
+    defer delete(data)
+
+    file: library_file
+    if unmarshal_error := json.unmarshal(data, &file); unmarshal_error != nil {
+        destroy_library_file(&file)
+        return
+    }
+    defer destroy_library_file(&file)
+
+    if file.type != "" && file.type != "excalidrawlib" {
+        return
+    }
+    items = make([dynamic]library_item, 0)
+    for source_item in file.libraryItems {
+        append(&items, clone_library_item(source_item))
+    }
+    if len(items) == 0 {
+        for index in 0 ..< len(file.library) {
+            source_elements := file.library[index]
+            append(&items, library_item{
+                id = strings.clone(fmt.tprintf("legacy-%d", index)),
+                status = strings.clone("unpublished"),
+                elements = clone_scene_elements(source_elements[:]),
+                created = 0,
+                name = strings.clone(fmt.tprintf("library item %d", index + 1)),
+            })
+        }
+    }
+    ok = true
+    return
+}
+
+save_library :: proc(path: string, items: []library_item) -> bool {
+    file := library_file{
+        type = "excalidrawlib",
+        version = 2,
+        source = "samcan",
+        libraryItems = make([dynamic]library_item, 0, len(items)),
+    }
+    defer destroy_library_file(&file)
+    for item in items {
+        append(&file.libraryItems, clone_library_item(item))
+    }
+
+    data, marshal_error := json.marshal(file, json.Marshal_Options{pretty = true})
+    if marshal_error != nil {
+        return false
+    }
+    defer delete(data)
+
+    temporary_path := fmt.tprintf("%s.tmp", path)
+    if err := os.write_entire_file(temporary_path, data); err != nil {
+        return false
+    }
+    if err := os.rename(temporary_path, path); err != nil {
+        _ = os.remove(temporary_path)
+        return false
+    }
+    return true
+}
+
+library_item_from_document :: proc(doc: ^document.document, name: string = "") -> library_item {
+    scene := scene_from_document(doc)
+    defer destroy_scene(&scene)
+    item_name := name
+    if item_name == "" {
+        item_name = "samcan library item"
+    }
+    return library_item{
+        id = strings.clone("samcan-item"),
+        status = strings.clone("unpublished"),
+        elements = clone_scene_elements(scene.elements[:]),
+        created = 0,
+        name = strings.clone(item_name),
+    }
+}
+
+destroy_library_items :: proc(items: ^[dynamic]library_item) {
+    for &item in items {
+        destroy_library_item(&item)
+    }
+    delete(items^)
 }
 
 import_image :: proc(doc: ^document.document, path: string, center_x, center_y: f32) -> bool {
@@ -727,6 +832,79 @@ destroy_scene :: proc(file: ^scene_file) {
     }
     delete(file.elements)
     delete(file.files)
+}
+
+clone_scene_elements :: proc(source: []scene_element) -> [dynamic]scene_element {
+    result := make([dynamic]scene_element, 0, len(source))
+    for element in source {
+        append(&result, clone_scene_element(element))
+    }
+    return result
+}
+
+clone_scene_element :: proc(source: scene_element) -> scene_element {
+    result := source
+    result.id = strings.clone(source.id)
+    result.text = strings.clone(source.text)
+    result.originalText = strings.clone(source.originalText)
+    result.fileId = strings.clone(source.fileId)
+    result.startBindingId = strings.clone(source.startBindingId)
+    result.endBindingId = strings.clone(source.endBindingId)
+    result.groupIds = make([dynamic]string, 0, len(source.groupIds))
+    for group_id in source.groupIds {
+        append(&result.groupIds, strings.clone(group_id))
+    }
+    result.points = make([dynamic][2]f64, 0, len(source.points))
+    for point in source.points {
+        append(&result.points, point)
+    }
+    return result
+}
+
+clone_library_item :: proc(source: library_item) -> library_item {
+    return library_item{
+        id = strings.clone(source.id),
+        status = strings.clone(source.status),
+        elements = clone_scene_elements(source.elements[:]),
+        created = source.created,
+        name = strings.clone(source.name),
+    }
+}
+
+destroy_library_item :: proc(item: ^library_item) {
+    delete(item.id)
+    delete(item.status)
+    delete(item.name)
+    for &element in item.elements {
+        delete(element.text)
+        delete(element.originalText)
+        delete(element.groupIds)
+        delete(element.fileId)
+        delete(element.startBindingId)
+        delete(element.endBindingId)
+        delete(element.points)
+    }
+    delete(item.elements)
+}
+
+destroy_library_file :: proc(file: ^library_file) {
+    for &item in file.libraryItems {
+        destroy_library_item(&item)
+    }
+    delete(file.libraryItems)
+    for group in file.library {
+        for &element in group {
+            delete(element.text)
+            delete(element.originalText)
+            delete(element.groupIds)
+            delete(element.fileId)
+            delete(element.startBindingId)
+            delete(element.endBindingId)
+            delete(element.points)
+        }
+        delete(group)
+    }
+    delete(file.library)
 }
 
 group_id_from_string :: proc(value: string) -> u64 {
