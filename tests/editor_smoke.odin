@@ -24,6 +24,11 @@ main :: proc() {
     assert(editor.select_mode, "toolbar select button did not activate")
 
     input = {}
+    input.toggle_grid_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.show_grid, "grid shortcut did not enable the grid")
+
+    input = {}
     input.mouse = {400, 300}
     input.buttons[platform.MOUSE_BUTTON_LEFT] = true
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true

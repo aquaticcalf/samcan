@@ -348,6 +348,26 @@ element_color :: proc(value: document.color, opacity: f32) -> document.color {
     return result
 }
 
+append_grid :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport) {
+    world_top_left := viewport.screen_to_world(view, {0, 0})
+    world_bottom_right := viewport.screen_to_world(view, {view.width, view.height})
+    step: f32 = 20.0
+    first_x := int(math.floor(world_top_left[0] / step)) - 1
+    last_x := int(math.ceil(world_bottom_right[0] / step)) + 1
+    first_y := int(math.floor(world_top_left[1] / step)) - 1
+    last_y := int(math.ceil(world_bottom_right[1] / step)) + 1
+    grid_color: [4]f32 = {0.88, 0.88, 0.88, 1.0}
+    thickness: f32 = 1.0 / view.zoom
+    for index := first_x; index <= last_x; index += 1 {
+        x := f32(index) * step
+        append_segment(vertices, view, {x, world_top_left[1]}, {x, world_bottom_right[1]}, grid_color, thickness)
+    }
+    for index := first_y; index <= last_y; index += 1 {
+        y := f32(index) * step
+        append_segment(vertices, view, {world_top_left[0], y}, {world_bottom_right[0], y}, grid_color, thickness)
+    }
+}
+
 append_text_vertex :: proc(vertices: ^[dynamic]text_vertex, position, uv: [2]f32, color: [4]f32) {
     append(vertices, text_vertex{position = position, uv = uv, color = color})
 }
@@ -510,10 +530,10 @@ append_ui_text :: proc(renderer: ^renderer, view: viewport.viewport, text: strin
     }
 }
 
-append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind) {
-    toolbar_width: f32 = 12.0 * 38.0 + 11.0 * 4.0
+append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid: bool) {
+    toolbar_width: f32 = 13.0 * 38.0 + 12.0 * 4.0
     append_ui_rect(&renderer.vertices, view, 4, 4, 4 + toolbar_width, 44, {0.86, 0.86, 0.86, 1.0})
-    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s"}
+    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s", "#"}
     for index in 0 ..< len(labels) {
         left: f32 = 8.0 + f32(index) * (38.0 + 4.0)
         active := index == 0 && select_mode
@@ -525,6 +545,9 @@ append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode
                 (index == 5 && active_kind == .arrow) ||
                 (index == 6 && active_kind == .text) ||
                 (index == 7 && active_kind == .freehand)
+        }
+        if index == 12 {
+            active = show_grid
         }
         background: [4]f32 = {0.96, 0.96, 0.96, 1.0}
         if active {
@@ -669,9 +692,14 @@ draw :: proc(
     lasso_current: [2]f32 = {},
     toolbar_select_mode: bool = true,
     toolbar_kind: document.element_kind = .rectangle,
+    show_grid: bool = false,
 ) {
     clear(&renderer.vertices)
     clear(&renderer.text_vertices)
+
+    if show_grid {
+        append_grid(&renderer.vertices, view)
+    }
 
     for element in doc.elements {
         if element.kind == .text {
@@ -704,7 +732,7 @@ draw :: proc(
         append_segment(&renderer.vertices, view, {left, bottom}, {left, top}, lasso_color, thickness)
     }
 
-    append_toolbar(renderer, view, toolbar_select_mode, toolbar_kind)
+    append_toolbar(renderer, view, toolbar_select_mode, toolbar_kind, show_grid)
 
     if len(renderer.vertices) > 0 {
         gl.UseProgram(renderer.program)

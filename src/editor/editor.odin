@@ -32,6 +32,7 @@ toolbar_action :: enum {
     redo,
     open,
     save,
+    grid,
 }
 
 toolbar_button_width :: f32(38.0)
@@ -44,6 +45,7 @@ state :: struct {
     document:        doc.document,
     clipboard:       doc.document,
     viewport:        viewport.viewport,
+    show_grid:       bool,
     drawing:         bool,
     active_rect:     int,
     active_kind:     doc.element_kind,
@@ -71,6 +73,7 @@ new :: proc(width, height: f32) -> state {
         document = doc.new(),
         clipboard = doc.new(),
         viewport = viewport.new(width, height),
+        show_grid = false,
         active_rect = -1,
         active_kind = .rectangle,
         select_mode = true,
@@ -267,6 +270,9 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.select_mode = false
         editor.active_kind = .freehand
     }
+    if input.toggle_grid_requested {
+        editor.show_grid = !editor.show_grid
+    }
 
     if input.wheel != 0 {
         factor: f32 = 1.1
@@ -355,7 +361,7 @@ toolbar_action_at :: proc(point: [2]f32) -> toolbar_action {
     }
     actions := [?]toolbar_action{
         .select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand,
-        .undo, .redo, .open, .save,
+        .undo, .redo, .open, .save, .grid,
     }
     if index >= len(actions) {
         return .none
@@ -402,6 +408,8 @@ handle_toolbar_action :: proc(editor: ^state, input: ^platform.frame_input, acti
         input.open_requested = true
     case .save:
         input.save_requested = true
+    case .grid:
+        editor.show_grid = !editor.show_grid
     case .none:
         return
     }

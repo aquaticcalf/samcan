@@ -121,6 +121,7 @@ main :: proc() {
             app_editor.lasso_current,
             app_editor.select_mode,
             app_editor.active_kind,
+            app_editor.show_grid,
         )
         platform.end_frame(&app_window)
     }
