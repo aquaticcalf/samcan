@@ -29,6 +29,15 @@ main :: proc() {
     assert(editor.show_grid, "grid shortcut did not enable the grid")
 
     input = {}
+    input.zoom_to_content_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.viewport.zoom > 1.0, "fit content did not zoom in")
+    input = {}
+    input.zoom_reset_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.viewport.zoom == 1.0, "zoom reset did not restore 100 percent")
+
+    input = {}
     input.mouse = {400, 300}
     input.buttons[platform.MOUSE_BUTTON_LEFT] = true
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true

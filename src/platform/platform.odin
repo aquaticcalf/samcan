@@ -50,6 +50,9 @@ frame_input :: struct {
     save_as_requested: bool,
     export_svg_requested: bool,
     import_image_requested: bool,
+    zoom_reset_requested: bool,
+    zoom_to_content_requested: bool,
+    zoom_to_selection_requested: bool,
     undo_requested: bool,
     redo_requested: bool,
     delete_requested: bool,
@@ -155,6 +158,9 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.save_as_requested = false
     input.export_svg_requested = false
     input.import_image_requested = false
+    input.zoom_reset_requested = false
+    input.zoom_to_content_requested = false
+    input.zoom_to_selection_requested = false
     input.undo_requested = false
     input.redo_requested = false
     input.delete_requested = false
@@ -237,6 +243,15 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_I && (event.key.mod & SDL.KMOD_CTRL) != {} && (event.key.mod & SDL.KMOD_SHIFT) != {} {
                 input.import_image_requested = true
+            }
+            if event.key.key == SDL.K_0 && event.key.mod == {} {
+                input.zoom_reset_requested = true
+            }
+            if event.key.key == SDL.K_1 && event.key.mod == {} {
+                input.zoom_to_content_requested = true
+            }
+            if event.key.key == SDL.K_2 && event.key.mod == {} {
+                input.zoom_to_selection_requested = true
             }
             if event.key.key == SDL.K_O && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.open_requested = true

@@ -45,3 +45,22 @@ zoom_at :: proc(view: ^viewport, point: [2]f32, factor: f32) {
     after := world_to_screen(view^, before)
     view.origin += point - after
 }
+
+reset :: proc(view: ^viewport) {
+    view.zoom = 1.0
+    view.origin = {view.width * 0.5, view.height * 0.5}
+}
+
+fit_bounds :: proc(view: ^viewport, min_point, max_point: [2]f32, padding: f32 = 40.0) -> bool {
+    bounds_width := max(1.0, max_point[0] - min_point[0])
+    bounds_height := max(1.0, max_point[1] - min_point[1])
+    available_width := max(1.0, view.width - padding * 2.0)
+    available_height := max(1.0, view.height - padding * 2.0)
+    view.zoom = max(0.1, min(8.0, min(available_width / bounds_width, available_height / bounds_height)))
+    center := (min_point + max_point) * 0.5
+    view.origin = {
+        view.width * 0.5 - center[0] * view.zoom,
+        view.height * 0.5 - center[1] * view.zoom,
+    }
+    return true
+}

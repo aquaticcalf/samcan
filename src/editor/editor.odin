@@ -169,6 +169,19 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
+    if input.zoom_reset_requested {
+        viewport.reset(&editor.viewport)
+        return
+    }
+    if input.zoom_to_content_requested {
+        fit_document(editor, false)
+        return
+    }
+    if input.zoom_to_selection_requested {
+        fit_document(editor, true)
+        return
+    }
+
     if input.pressed[platform.MOUSE_BUTTON_LEFT] {
         action := toolbar_action_at(input.mouse)
         if action != .none {
@@ -450,6 +463,78 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         }
         editor.active_rect = -1
         finish_transaction(editor)
+    }
+}
+
+fit_document :: proc(editor: ^state, selection_only: bool) {
+    has_bounds := false
+    min_point: [2]f32
+    max_point: [2]f32
+
+    if selection_only && len(editor.selected_items) > 0 {
+        for index in editor.selected_items {
+            include_element_bounds(
+                editor.document.elements[:],
+                index,
+                &has_bounds,
+                &min_point,
+                &max_point,
+            )
+        }
+    } else if selection_only && editor.selected >= 0 {
+        include_element_bounds(
+            editor.document.elements[:],
+            editor.selected,
+            &has_bounds,
+            &min_point,
+            &max_point,
+        )
+    } else {
+        for index in 0 ..< len(editor.document.elements) {
+            include_element_bounds(
+                editor.document.elements[:],
+                index,
+                &has_bounds,
+                &min_point,
+                &max_point,
+            )
+        }
+    }
+
+    if has_bounds {
+        _ = viewport.fit_bounds(&editor.viewport, min_point, max_point)
+    } else {
+        viewport.reset(&editor.viewport)
+    }
+}
+
+include_element_bounds :: proc(
+    elements: []doc.element,
+    index: int,
+    has_bounds: ^bool,
+    min_point, max_point: ^[2]f32,
+) {
+    if index < 0 || index >= len(elements) {
+        return
+    }
+    element := elements[index]
+    element_min: [2]f32 = {element.x, element.y}
+    element_max: [2]f32 = {element.x + element.width, element.y + element.height}
+    for point in element.points {
+        element_min[0] = min(element_min[0], point[0])
+        element_min[1] = min(element_min[1], point[1])
+        element_max[0] = max(element_max[0], point[0])
+        element_max[1] = max(element_max[1], point[1])
+    }
+    if !has_bounds^ {
+        min_point^ = element_min
+        max_point^ = element_max
+        has_bounds^ = true
+    } else {
+        min_point^[0] = min(min_point^[0], element_min[0])
+        min_point^[1] = min(min_point^[1], element_min[1])
+        max_point^[0] = max(max_point^[0], element_max[0])
+        max_point^[1] = max(max_point^[1], element_max[1])
     }
 }
 
