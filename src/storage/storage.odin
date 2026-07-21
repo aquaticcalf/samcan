@@ -129,6 +129,11 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
                 auto_resize,
                 line_height,
             )
+            doc.elements[index].stroke = parse_color(element.strokeColor)
+            doc.elements[index].opacity = f32(element.opacity) / 100.0
+            if element.opacity <= 0 {
+                doc.elements[index].opacity = 1.0
+            }
             if element.originalText != "" {
                 delete(doc.elements[index].original_text)
                 doc.elements[index].original_text = strings.clone(element.originalText)
@@ -151,7 +156,7 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
             }
             continue
         }
-        document.add(
+        index := document.add(
             &doc,
             kind,
             f32(element.x),
@@ -160,6 +165,13 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
             f32(element.height),
             parse_color(element.backgroundColor),
         )
+        doc.elements[index].stroke = parse_color(element.strokeColor)
+        if element.strokeWidth > 0 {
+            doc.elements[index].stroke_width = f32(element.strokeWidth)
+        }
+        if element.opacity > 0 {
+            doc.elements[index].opacity = f32(element.opacity) / 100.0
+        }
     }
 
     ok = true
@@ -199,12 +211,12 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             lineHeight = f64(element.line_height),
             points = make([dynamic][2]f64, 0),
             angle = 0,
-            strokeColor = "#1e1e1e",
+            strokeColor = format_color(element.stroke),
             backgroundColor = format_color(element.fill),
             fillStyle = "solid",
-            strokeWidth = 1,
+            strokeWidth = f64(element.stroke_width),
             roughness = 1,
-            opacity = 100,
+            opacity = f64(element.opacity * 100.0),
             seed = i64(element.id),
             version = 1,
             versionNonce = i64(element.id),
@@ -312,6 +324,9 @@ destroy_scene :: proc(file: ^scene_file) {
 }
 
 format_color :: proc(value: document.color) -> string {
+    if value[3] <= 0 {
+        return "transparent"
+    }
     return fmt.tprintf(
         "#%02x%02x%02x",
         color_byte(value[0]),
@@ -326,6 +341,9 @@ color_byte :: proc(value: f32) -> u8 {
 }
 
 parse_color :: proc(value: string) -> document.color {
+    if value == "transparent" {
+        return {0, 0, 0, 0}
+    }
     if len(value) != 7 || value[0] != '#' {
         return {0.98, 0.80, 0.42, 1.0}
     }

@@ -242,8 +242,15 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         bottom_right := screen_to_clip(view, {right, bottom})
         bottom_left := screen_to_clip(view, {left, bottom})
 
-        append_triangle(vertices, top_left, top_right, bottom_right, element.fill)
-        append_triangle(vertices, top_left, bottom_right, bottom_left, element.fill)
+        fill := element_color(element.fill, element.opacity)
+        if fill[3] > 0 {
+            append_triangle(vertices, top_left, top_right, bottom_right, fill)
+            append_triangle(vertices, top_left, bottom_right, bottom_left, fill)
+        }
+        append_segment(vertices, view, {left, top}, {right, top}, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
+        append_segment(vertices, view, {right, top}, {right, bottom}, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
+        append_segment(vertices, view, {right, bottom}, {left, bottom}, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
+        append_segment(vertices, view, {left, bottom}, {left, top}, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
     case .diamond:
         center := screen_to_clip(view, {(left + right) * 0.5, (top + bottom) * 0.5})
         top_point := screen_to_clip(view, {(left + right) * 0.5, top})
@@ -251,24 +258,34 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         bottom_point := screen_to_clip(view, {(left + right) * 0.5, bottom})
         left_point := screen_to_clip(view, {left, (top + bottom) * 0.5})
 
-        append_triangle(vertices, center, top_point, right_point, element.fill)
-        append_triangle(vertices, center, right_point, bottom_point, element.fill)
-        append_triangle(vertices, center, bottom_point, left_point, element.fill)
-        append_triangle(vertices, center, left_point, top_point, element.fill)
+        fill := element_color(element.fill, element.opacity)
+        if fill[3] > 0 {
+            append_triangle(vertices, center, top_point, right_point, fill)
+            append_triangle(vertices, center, right_point, bottom_point, fill)
+            append_triangle(vertices, center, bottom_point, left_point, fill)
+            append_triangle(vertices, center, left_point, top_point, fill)
+        }
+        stroke := element_color(element.stroke, element.opacity)
+        thickness := element.stroke_width / view.zoom
+        append_segment(vertices, view, {left + element.width * 0.5, top}, {right, top + element.height * 0.5}, stroke, thickness)
+        append_segment(vertices, view, {right, top + element.height * 0.5}, {left + element.width * 0.5, bottom}, stroke, thickness)
+        append_segment(vertices, view, {left + element.width * 0.5, bottom}, {left, top + element.height * 0.5}, stroke, thickness)
+        append_segment(vertices, view, {left, top + element.height * 0.5}, {left + element.width * 0.5, top}, stroke, thickness)
     case .line:
         append_segment(
             vertices,
             view,
             {left, top},
             {right, bottom},
-            element.fill,
-            3.0 / view.zoom,
+            element_color(element.stroke, element.opacity),
+            element.stroke_width / view.zoom,
         )
     case .arrow:
         start := [2]f32{left, top}
         finish := [2]f32{right, bottom}
-        append_segment(vertices, view, start, finish, element.fill, 3.0 / view.zoom)
-        append_arrowhead(vertices, view, start, finish, element.fill)
+        stroke := element_color(element.stroke, element.opacity)
+        append_segment(vertices, view, start, finish, stroke, element.stroke_width / view.zoom)
+        append_arrowhead(vertices, view, start, finish, stroke)
     case .text:
         // text is rendered in the alpha-atlas pass after opaque geometry
     case .freehand:
@@ -279,8 +296,8 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
                     view,
                     element.points[point_index - 1],
                     element.points[point_index],
-                    element.fill,
-                    3.0 / view.zoom,
+                    element_color(element.stroke, element.opacity),
+                    element.stroke_width / view.zoom,
                 )
             }
         }
@@ -301,10 +318,34 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
                 (left + right) * 0.5 + math.cos(angle) * radius_x,
                 (top + bottom) * 0.5 + math.sin(angle) * radius_y,
             })
-            append_triangle(vertices, center, previous, current, element.fill)
+            fill := element_color(element.fill, element.opacity)
+            if fill[3] > 0 {
+                append_triangle(vertices, center, previous, current, fill)
+            }
+            previous = current
+        }
+        stroke := element_color(element.stroke, element.opacity)
+        thickness := element.stroke_width / view.zoom
+        previous = {
+            (left + right) * 0.5 + math.cos(f32(0)) * radius_x,
+            (top + bottom) * 0.5 + math.sin(f32(0)) * radius_y,
+        }
+        for segment in 1 ..= segments {
+            angle := tau * f32(segment) / f32(segments)
+            current := [2]f32{
+                (left + right) * 0.5 + math.cos(angle) * radius_x,
+                (top + bottom) * 0.5 + math.sin(angle) * radius_y,
+            }
+            append_segment(vertices, view, previous, current, stroke, thickness)
             previous = current
         }
     }
+}
+
+element_color :: proc(value: document.color, opacity: f32) -> document.color {
+    result := value
+    result[3] *= max(0.0, min(1.0, opacity))
+    return result
 }
 
 append_text_vertex :: proc(vertices: ^[dynamic]text_vertex, position, uv: [2]f32, color: [4]f32) {

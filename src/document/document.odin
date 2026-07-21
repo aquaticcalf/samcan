@@ -38,6 +38,9 @@ element :: struct {
     width:  f32,
     height: f32,
     fill:   color,
+    stroke: color,
+    stroke_width: f32,
+    opacity: f32,
     text:   string,
     original_text: string,
     font_size: f32,
@@ -97,6 +100,9 @@ same :: proc(left, right: ^document) -> bool {
             left_element.width != right_element.width ||
             left_element.height != right_element.height ||
             left_element.fill != right_element.fill ||
+            left_element.stroke != right_element.stroke ||
+            left_element.stroke_width != right_element.stroke_width ||
+            left_element.opacity != right_element.opacity ||
             left_element.text != right_element.text ||
             left_element.original_text != right_element.original_text ||
             left_element.font_size != right_element.font_size ||
@@ -131,6 +137,13 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
     id := doc.next_id
     doc.next_id += 1
 
+    background := fill
+    stroke: color = {0.12, 0.12, 0.12, 1.0}
+    if kind == .line || kind == .arrow || kind == .freehand {
+        background = {0, 0, 0, 0}
+        stroke = fill
+    }
+
     append(&doc.elements, element{
         id = id,
         kind = kind,
@@ -138,7 +151,10 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
         y = y,
         width = width,
         height = height,
-        fill = fill,
+        fill = background,
+        stroke = stroke,
+        stroke_width = 2.0,
+        opacity = 1.0,
         text = "",
         original_text = "",
         font_size = default_font_size,
@@ -212,6 +228,7 @@ add_text_styled :: proc(
     index := add(doc, .text, x, y, width, height, fill)
     doc.elements[index].text = strings.clone(text)
     doc.elements[index].original_text = strings.clone(text)
+    doc.elements[index].stroke = fill
     doc.elements[index].font_size = normalized_font_size
     doc.elements[index].font_family = font_family
     doc.elements[index].text_align = align
