@@ -97,7 +97,7 @@ main :: proc() {
         }
 
         platform.begin_frame(&app_window)
-        renderer.draw(&canvas_renderer, &app_editor.document, app_editor.viewport)
+        renderer.draw(&canvas_renderer, &app_editor.document, app_editor.viewport, app_editor.selected)
         platform.end_frame(&app_window)
     }
 }
