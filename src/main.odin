@@ -6,6 +6,7 @@ import "core:os"
 import editor "editor"
 import platform "platform"
 import renderer "renderer"
+import settings_pkg "settings"
 import storage "storage"
 
 main :: proc() {
@@ -18,15 +19,48 @@ main :: proc() {
     app_editor := editor.new(f32(app_window.width), f32(app_window.height))
     defer editor.destroy(&app_editor)
 
+    app_settings, settings_ok := settings_pkg.load()
+    if settings_ok {
+        app_editor.dark_mode = app_settings.dark_mode
+        app_editor.show_grid = app_settings.show_grid
+        app_editor.snap_to_grid = app_settings.snap_to_grid
+    }
+    defer settings_pkg.destroy(&app_settings)
+    defer settings_pkg.save(&app_settings)
+
     document_path := ""
     document_path_owned := false
-    if len(os.args) > 1 {
-        document_path = os.args[1]
-        if editor.load(&app_editor, document_path) {
-            fmt.printf("loaded %s\n", document_path)
+    recover_requested := false
+    for argument in os.args[1:] {
+        if argument == "--recover" {
+            recover_requested = true
+            continue
+        }
+        if document_path == "" {
+            document_path = argument
+        }
+    }
+    if document_path != "" {
+        load_path := document_path
+        load_path_owned := false
+        if recover_requested && storage.has_autosave(document_path) {
+            load_path = storage.autosave_path(document_path)
+            load_path_owned = true
+        }
+        if editor.load(&app_editor, load_path) {
+            if load_path_owned {
+                app_editor.dirty = true
+                fmt.printf("recovered %s\n", document_path)
+            } else {
+                fmt.printf("loaded %s\n", document_path)
+            }
+            settings_pkg.remember(&app_settings, document_path)
             if storage.has_autosave(document_path) {
                 fmt.printf("recovery available at %s\n", storage.autosave_path(document_path))
             }
+        }
+        if load_path_owned {
+            delete(load_path)
         }
     }
     defer if document_path_owned {
@@ -58,6 +92,13 @@ main :: proc() {
 
         editor.resize(&app_editor, f32(app_window.width), f32(app_window.height))
         editor.update(&app_editor, &input)
+
+        if input.toggle_theme_requested || input.toggle_grid_requested || input.toggle_snap_requested {
+            app_settings.dark_mode = app_editor.dark_mode
+            app_settings.show_grid = app_editor.show_grid
+            app_settings.snap_to_grid = app_editor.snap_to_grid
+            _ = settings_pkg.save(&app_settings)
+        }
 
         if input.dropped_file != "" {
             if editor.import_image_at(&app_editor, input.dropped_file, input.drop_position) {
@@ -135,6 +176,8 @@ main :: proc() {
                     }
                     document_path = dialog_path
                     document_path_owned = true
+                    settings_pkg.remember(&app_settings, document_path)
+                    _ = settings_pkg.save(&app_settings)
                     fmt.printf("loaded %s\n", document_path)
                 } else {
                     fmt.printf("open failed: %s\n", dialog_path)
@@ -147,6 +190,8 @@ main :: proc() {
                     }
                     document_path = dialog_path
                     document_path_owned = true
+                    settings_pkg.remember(&app_settings, document_path)
+                    _ = settings_pkg.save(&app_settings)
                     fmt.printf("saved %s\n", document_path)
                 } else {
                     fmt.printf("save failed: %s\n", dialog_path)
@@ -194,6 +239,8 @@ main :: proc() {
             if document_path == "" {
                 platform.show_save_dialog(&app_window)
             } else if editor.save(&app_editor, document_path) {
+                settings_pkg.remember(&app_settings, document_path)
+                _ = settings_pkg.save(&app_settings)
                 fmt.printf("saved %s\n", document_path)
             } else {
                 fmt.printf("save failed: %s\n", document_path)

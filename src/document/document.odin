@@ -46,6 +46,8 @@ stroke_style :: enum {
 fill_style :: enum {
     solid,
     none,
+    hachure,
+    cross_hatch,
 }
 
 default_font_size :: f32(20.0)

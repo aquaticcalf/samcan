@@ -456,6 +456,7 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
             append_triangle(vertices, top_left, top_right, bottom_right, fill)
             append_triangle(vertices, top_left, bottom_right, bottom_left, fill)
         }
+        append_hachure(vertices, view, element)
         append_styled_segment(vertices, view, top_left_world, top_right_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style, element.roughness, element.id)
         append_styled_segment(vertices, view, top_right_world, bottom_right_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style, element.roughness, element.id + 1)
         append_styled_segment(vertices, view, bottom_right_world, bottom_left_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style, element.roughness, element.id + 2)
@@ -479,6 +480,7 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
             append_triangle(vertices, center, bottom_point, left_point, fill)
             append_triangle(vertices, center, left_point, top_point, fill)
         }
+        append_hachure(vertices, view, element)
         stroke := element_color(element.stroke, element.opacity)
         thickness := element.stroke_width / view.zoom
         append_styled_segment(vertices, view, top_world, right_world, stroke, thickness, element.stroke_style, element.roughness, element.id)
@@ -549,6 +551,7 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
             }
             previous = current
         }
+        append_hachure(vertices, view, element)
         stroke := element_color(element.stroke, element.opacity)
         thickness := element.stroke_width / view.zoom
         previous_world = rotate_point(element, {
@@ -1158,6 +1161,16 @@ append_segment :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, a, b
     append_triangle(vertices, a_left, b_right, a_right, color)
 }
 
+rough_value :: proc(seed, channel: u64) -> f32 {
+    value := seed + channel * 0x9e3779b97f4a7c15
+    value = value ~ (value >> 30)
+    value *= 0xbf58476d1ce4e5b9
+    value = value ~ (value >> 27)
+    value *= 0x94d049bb133111eb
+    value = value ~ (value >> 31)
+    return f32(value % 2001) / 1000.0 - 1.0
+}
+
 append_styled_segment :: proc(
     vertices: ^[dynamic]vertex,
     view: viewport.viewport,
@@ -1168,8 +1181,8 @@ append_styled_segment :: proc(
     roughness: f32 = 0,
     seed: u64 = 0,
 ) {
-    append_styled_segment_base(vertices, view, a, b, color, thickness, style)
     if roughness <= 0 {
+        append_styled_segment_base(vertices, view, a, b, color, thickness, style)
         return
     }
     delta := b - a
@@ -1179,14 +1192,90 @@ append_styled_segment :: proc(
     }
     direction := delta / length
     normal: [2]f32 = {-direction[1], direction[0]}
-    scale := roughness * 1.5 / view.zoom
-    start_jitter := (f32(seed % 11) - 5.0) / 5.0 * scale
-    end_jitter := (f32((seed / 11) % 11) - 5.0) / 5.0 * scale
-    start_along := (f32((seed / 121) % 7) - 3.0) / 3.0 * scale * 0.5
-    end_along := (f32((seed / 847) % 7) - 3.0) / 3.0 * scale * 0.5
-    rough_start := a + normal * start_jitter + direction * start_along
-    rough_end := b + normal * end_jitter + direction * end_along
-    append_styled_segment_base(vertices, view, rough_start, rough_end, color, thickness, style)
+    spread := roughness * 2.0 / view.zoom
+    rough_start := a + normal * rough_value(seed, 1) * spread + direction * rough_value(seed, 2) * spread * 0.35
+    rough_end := b + normal * rough_value(seed, 3) * spread + direction * rough_value(seed, 4) * spread * 0.35
+    rough_mid := (a + b) * 0.5 + normal * rough_value(seed, 5) * spread + direction * rough_value(seed, 6) * spread
+    append_styled_segment_base(vertices, view, rough_start, rough_mid, color, thickness, style)
+    append_styled_segment_base(vertices, view, rough_mid, rough_end, color, thickness, style)
+
+    secondary := color
+    secondary.a *= 0.38
+    secondary_offset := normal * spread * 0.55
+    secondary_mid := rough_mid + normal * rough_value(seed, 7) * spread * 0.4
+    append_styled_segment_base(vertices, view, rough_start + secondary_offset, secondary_mid + secondary_offset, secondary, thickness * 0.72, style)
+    append_styled_segment_base(vertices, view, secondary_mid + secondary_offset, rough_end + secondary_offset, secondary, thickness * 0.72, style)
+}
+
+append_hachure_line :: proc(
+    vertices: ^[dynamic]vertex,
+    view: viewport.viewport,
+    element: document.element,
+    a, b: [2]f32,
+    color: [4]f32,
+    seed: u64,
+) {
+    append_styled_segment(
+        vertices,
+        view,
+        rotate_point(element, a),
+        rotate_point(element, b),
+        color,
+        0.8 / view.zoom,
+        .solid,
+        min(1.0, element.roughness * 0.55),
+        seed,
+    )
+}
+
+append_hachure :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, element: document.element) {
+    if element.fill_style != .hachure && element.fill_style != .cross_hatch {
+        return
+    }
+    if element.width <= 0 || element.height <= 0 {
+        return
+    }
+    color := element_color(element.stroke, element.opacity)
+    color.a *= 0.42
+    spacing := max(8.0, min(18.0, 10.0 + element.stroke_width * 2.0))
+    left := element.x
+    top := element.y
+    right := element.x + element.width
+    bottom := element.y + element.height
+    center_x := (left + right) * 0.5
+    center_y := (top + bottom) * 0.5
+
+    switch element.kind {
+    case .rectangle:
+        for step := 1; f32(step) * spacing < element.height; step += 1 {
+            y := top + f32(step) * spacing
+            append_hachure_line(vertices, view, element, {left + 3, y}, {right - 3, y}, color, element.id + u64(step))
+        }
+        if element.fill_style == .cross_hatch {
+            for step := 1; f32(step) * spacing < element.width; step += 1 {
+                x := left + f32(step) * spacing
+                append_hachure_line(vertices, view, element, {x, top + 3}, {x, bottom - 3}, color, element.id + 1000 + u64(step))
+            }
+        }
+    case .ellipse:
+        radius_x := element.width * 0.5
+        radius_y := element.height * 0.5
+        for step := 1; f32(step) * spacing < element.height; step += 1 {
+            y := top + f32(step) * spacing
+            normalized_y := (y - center_y) / radius_y
+            half_width := radius_x * math.sqrt(max(0.0, 1.0 - normalized_y * normalized_y))
+            append_hachure_line(vertices, view, element, {center_x - half_width, y}, {center_x + half_width, y}, color, element.id + u64(step))
+        }
+    case .diamond:
+        for step := 1; f32(step) * spacing < element.height; step += 1 {
+            y := top + f32(step) * spacing
+            normalized_y := math.abs((y - center_y) / (element.height * 0.5))
+            half_width := element.width * 0.5 * max(0.0, 1.0 - normalized_y)
+            append_hachure_line(vertices, view, element, {center_x - half_width, y}, {center_x + half_width, y}, color, element.id + u64(step))
+        }
+    case .line, .arrow, .text, .freehand, .image, .frame:
+        return
+    }
 }
 
 append_styled_segment_base :: proc(

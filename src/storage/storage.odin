@@ -864,6 +864,10 @@ fill_style_name :: proc(value: document.fill_style) -> string {
         return "none"
     case .solid:
         return "solid"
+    case .hachure:
+        return "hachure"
+    case .cross_hatch:
+        return "cross-hatch"
     }
     return "solid"
 }
@@ -871,6 +875,12 @@ fill_style_name :: proc(value: document.fill_style) -> string {
 fill_style_from_name :: proc(value: string) -> document.fill_style {
     if value == "none" {
         return .none
+    }
+    if value == "hachure" {
+        return .hachure
+    }
+    if value == "cross-hatch" || value == "cross_hatch" {
+        return .cross_hatch
     }
     return .solid
 }

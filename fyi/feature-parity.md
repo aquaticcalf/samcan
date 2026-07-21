@@ -95,9 +95,9 @@
 
 ### rough rendering
 
-the hand-drawn appearance is not a simple line style. implement a deterministic
-rough stroke module with seeded randomness, path simplification, double lines,
-hachure fills, and arrowhead geometry.
+the hand-drawn appearance is not a simple line style. samcan now has seeded
+rough passes and hachure/cross-hatch fill modes. exact roughjs path
+simplification and geometry parity still need work.
 
 ### mermaid and text-to-diagram
 

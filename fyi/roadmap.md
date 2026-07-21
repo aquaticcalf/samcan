@@ -23,13 +23,13 @@ foundation for the next one.
 - define document and element structs.
 - parse and serialize `.excalidraw`.
 - parse and serialize `.excalidrawlib`. done for legacy v1 and current v2.
-- add atomic save, autosave, settings, recent files, and recovery. atomic save and named-document sidecar autosave are done; settings, recent files, and recovery selection remain.
+- add atomic save, autosave, settings, recent files, and recovery. atomic save, named-document sidecar autosave, settings, recent files, and `--recover` loading are done; a native recovery dialog remains.
 - prove round-trip compatibility before adding more tools.
 
 ## phase 3: geometry and scene
 
 - implement ids, z-order, bounds, transforms, and hit testing.
-- implement selection, lasso, groups, locks, frames, and deleted elements.
+- implement selection, lasso, groups, locks, frame elements, and deleted elements. native frame creation and storage are done; frame container semantics remain.
 - implement lines, arrows, bindings, and linear editing.
 - add snapping, alignment, and distribution. grid, shape endpoint snapping, alignment, and distribution are done.
 
@@ -37,7 +37,7 @@ foundation for the next one.
 
 - render primitives and images.
 - render text with font atlases and shaping.
-- implement rough strokes and fills.
+- implement rough strokes and hachure fills. deterministic native rough passes and hachure/cross-hatch storage are done; exact roughjs parity remains.
 - add selection overlays, handles, grids, and themes.
 - add offscreen rendering for export.
 

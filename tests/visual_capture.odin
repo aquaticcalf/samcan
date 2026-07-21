@@ -304,6 +304,8 @@ tool_request :: proc(kind: document.element_kind) -> platform.frame_input {
         input.tool_line_requested = true
     case .arrow:
         input.tool_arrow_requested = true
+    case .frame:
+        input.tool_frame_requested = true
     case .text, .freehand, .image:
         // these tools have dedicated visual helpers
     }
