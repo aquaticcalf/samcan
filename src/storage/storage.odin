@@ -24,6 +24,13 @@ scene_element :: struct {
     width:          f64,
     height:         f64,
     text:           string,
+    originalText:   string,
+    fontSize:       f64,
+    fontFamily:     i32,
+    textAlign:      string,
+    verticalAlign:  string,
+    autoResize:     bool,
+    lineHeight:     f64,
     points:         [dynamic][2]f64,
     angle:          f64,
     strokeColor:    string,
@@ -97,13 +104,38 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
             continue
         }
         if kind == .text {
-            document.add_text(
+            font_size := f32(element.fontSize)
+            if font_size <= 0 {
+                font_size = document.default_font_size
+            }
+            line_height := f32(element.lineHeight)
+            if line_height <= 0 {
+                line_height = document.default_line_height
+            }
+            auto_resize := element.autoResize
+            if element.fontSize == 0 && element.fontFamily == 0 && element.lineHeight == 0 {
+                auto_resize = true
+            }
+            index := document.add_text_styled(
                 &doc,
                 f32(element.x),
                 f32(element.y),
                 element.text,
                 parse_color(element.strokeColor),
+                font_size,
+                element.fontFamily,
+                text_align_from_name(element.textAlign),
+                vertical_align_from_name(element.verticalAlign),
+                auto_resize,
+                line_height,
             )
+            if element.originalText != "" {
+                delete(doc.elements[index].original_text)
+                doc.elements[index].original_text = strings.clone(element.originalText)
+            }
+            if !auto_resize && element.width > 0 {
+                doc.elements[index].width = f32(element.width)
+            }
             continue
         }
         if kind == .freehand {
@@ -158,6 +190,13 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             width = f64(element.width),
             height = f64(element.height),
             text = strings.clone(element.text),
+            originalText = strings.clone(element.original_text),
+            fontSize = f64(element.font_size),
+            fontFamily = element.font_family,
+            textAlign = text_align_name(element.text_align),
+            verticalAlign = vertical_align_name(element.vertical_align),
+            autoResize = element.auto_resize,
+            lineHeight = f64(element.line_height),
             points = make([dynamic][2]f64, 0),
             angle = 0,
             strokeColor = "#1e1e1e",
@@ -218,9 +257,54 @@ element_kind_from_name :: proc(name: string) -> (document.element_kind, bool) {
     return .rectangle, false
 }
 
+text_align_name :: proc(value: document.text_align) -> string {
+    switch value {
+    case .center:
+        return "center"
+    case .right:
+        return "right"
+    case .left:
+        return "left"
+    }
+    return "left"
+}
+
+text_align_from_name :: proc(value: string) -> document.text_align {
+    switch value {
+    case "center":
+        return .center
+    case "right":
+        return .right
+    }
+    return .left
+}
+
+vertical_align_name :: proc(value: document.vertical_align) -> string {
+    switch value {
+    case .middle:
+        return "middle"
+    case .bottom:
+        return "bottom"
+    case .top:
+        return "top"
+    }
+    return "top"
+}
+
+vertical_align_from_name :: proc(value: string) -> document.vertical_align {
+    switch value {
+    case "middle":
+        return .middle
+    case "bottom":
+        return .bottom
+    }
+    return .top
+}
+
 destroy_scene :: proc(file: ^scene_file) {
     for &element in file.elements {
         delete(element.text)
+        delete(element.originalText)
         delete(element.points)
     }
     delete(file.elements)

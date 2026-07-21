@@ -14,6 +14,22 @@ element_kind :: enum {
     freehand,
 }
 
+text_align :: enum {
+    left,
+    center,
+    right,
+}
+
+vertical_align :: enum {
+    top,
+    middle,
+    bottom,
+}
+
+default_font_size :: f32(20.0)
+default_font_family :: i32(5)
+default_line_height :: f32(1.25)
+
 element :: struct {
     id:     u64,
     kind:   element_kind,
@@ -23,6 +39,13 @@ element :: struct {
     height: f32,
     fill:   color,
     text:   string,
+    original_text: string,
+    font_size: f32,
+    font_family: i32,
+    text_align: text_align,
+    vertical_align: vertical_align,
+    auto_resize: bool,
+    line_height: f32,
     points: [dynamic][2]f32,
 }
 
@@ -44,6 +67,9 @@ clone :: proc(source: ^document) -> document {
         element := source_element
         if element.text != "" {
             element.text = strings.clone(element.text)
+        }
+        if element.original_text != "" {
+            element.original_text = strings.clone(element.original_text)
         }
         if len(source_element.points) > 0 {
             element.points = make([dynamic][2]f32, 0)
@@ -72,6 +98,13 @@ same :: proc(left, right: ^document) -> bool {
             left_element.height != right_element.height ||
             left_element.fill != right_element.fill ||
             left_element.text != right_element.text ||
+            left_element.original_text != right_element.original_text ||
+            left_element.font_size != right_element.font_size ||
+            left_element.font_family != right_element.font_family ||
+            left_element.text_align != right_element.text_align ||
+            left_element.vertical_align != right_element.vertical_align ||
+            left_element.auto_resize != right_element.auto_resize ||
+            left_element.line_height != right_element.line_height ||
             len(left_element.points) != len(right_element.points) {
             return false
         }
@@ -87,6 +120,7 @@ same :: proc(left, right: ^document) -> bool {
 destroy :: proc(doc: ^document) {
     for &element in doc.elements {
         delete(element.text)
+        delete(element.original_text)
         delete(element.points)
     }
     delete(doc.elements)
@@ -106,6 +140,13 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
         height = height,
         fill = fill,
         text = "",
+        original_text = "",
+        font_size = default_font_size,
+        font_family = default_font_family,
+        text_align = .left,
+        vertical_align = .top,
+        auto_resize = true,
+        line_height = default_line_height,
         points = nil,
     })
     return len(doc.elements) - 1
@@ -132,9 +173,51 @@ add_arrow :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> int 
 }
 
 add_text :: proc(doc: ^document, x, y: f32, text: string, fill: color) -> int {
-    width, height := text_dimensions(text)
+    return add_text_styled(
+        doc,
+        x,
+        y,
+        text,
+        fill,
+        default_font_size,
+        default_font_family,
+        .left,
+        .top,
+        true,
+        default_line_height,
+    )
+}
+
+add_text_styled :: proc(
+    doc: ^document,
+    x, y: f32,
+    text: string,
+    fill: color,
+    font_size: f32,
+    font_family: i32,
+    align: text_align,
+    valign: vertical_align,
+    auto_resize: bool,
+    line_height: f32,
+) -> int {
+    normalized_font_size := font_size
+    if normalized_font_size <= 0 {
+        normalized_font_size = default_font_size
+    }
+    normalized_line_height := line_height
+    if normalized_line_height <= 0 {
+        normalized_line_height = default_line_height
+    }
+    width, height := text_dimensions(text, normalized_font_size, normalized_line_height)
     index := add(doc, .text, x, y, width, height, fill)
     doc.elements[index].text = strings.clone(text)
+    doc.elements[index].original_text = strings.clone(text)
+    doc.elements[index].font_size = normalized_font_size
+    doc.elements[index].font_family = font_family
+    doc.elements[index].text_align = align
+    doc.elements[index].vertical_align = valign
+    doc.elements[index].auto_resize = auto_resize
+    doc.elements[index].line_height = normalized_line_height
     return index
 }
 
@@ -157,6 +240,9 @@ duplicate :: proc(doc: ^document, index: int, delta_x, delta_y: f32) -> int {
     copy.y += delta_y
     if source.text != "" {
         copy.text = strings.clone(source.text)
+    }
+    if source.original_text != "" {
+        copy.original_text = strings.clone(source.original_text)
     }
     if len(source.points) > 0 {
         copy.points = make([dynamic][2]f32, 0)
@@ -202,10 +288,29 @@ set_text :: proc(doc: ^document, index: int, text: string) {
     replacement := strings.clone(text)
     delete(doc.elements[index].text)
     doc.elements[index].text = replacement
-    doc.elements[index].width, doc.elements[index].height = text_dimensions(text)
+    if doc.elements[index].original_text == "" {
+        doc.elements[index].original_text = strings.clone(text)
+    }
+    width, height := text_dimensions(
+        text,
+        doc.elements[index].font_size,
+        doc.elements[index].line_height,
+    )
+    if doc.elements[index].auto_resize {
+        doc.elements[index].width = width
+    }
+    doc.elements[index].height = height
 }
 
-text_dimensions :: proc(text: string) -> (width, height: f32) {
+text_dimensions :: proc(text: string, font_size: f32 = default_font_size, line_height: f32 = default_line_height) -> (width, height: f32) {
+    normalized_font_size := font_size
+    if normalized_font_size <= 0 {
+        normalized_font_size = default_font_size
+    }
+    normalized_line_height := line_height
+    if normalized_line_height <= 0 {
+        normalized_line_height = default_line_height
+    }
     current_width: f32 = 0
     max_width: f32 = 0
     lines := 1
@@ -215,13 +320,25 @@ text_dimensions :: proc(text: string) -> (width, height: f32) {
             current_width = 0
             lines += 1
         } else {
-            current_width += 6
+            current_width += approximate_character_width(character, normalized_font_size)
         }
     }
     max_width = max(max_width, current_width)
-    width = max(6.0, max_width)
-    height = f32(lines) * 12.0
+    width = max(normalized_font_size * 0.25, max_width)
+    height = f32(lines) * normalized_font_size * normalized_line_height
     return
+}
+
+approximate_character_width :: proc(character: rune, font_size: f32) -> f32 {
+    switch character {
+    case ' ', '\t':
+        return font_size * 0.3
+    case 'i', 'j', 'l', 'I', '.', ',', ':', ';', '!', '|', '\'', '"':
+        return font_size * 0.28
+    case 'm', 'w', 'M', 'W', '@', '#', '%':
+        return font_size * 0.8
+    }
+    return font_size * 0.5
 }
 
 set_bounds :: proc(doc: ^document, index: int, x, y, width, height: f32) {
@@ -251,6 +368,7 @@ remove :: proc(doc: ^document, index: int) {
         return
     }
     delete(doc.elements[index].text)
+    delete(doc.elements[index].original_text)
     delete(doc.elements[index].points)
     ordered_remove(&doc.elements, index)
 }

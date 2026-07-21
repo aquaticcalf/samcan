@@ -24,6 +24,8 @@ text_vertex :: struct {
 text_font :: struct {
     texture: u32,
     chars:   [96]stb.bakedchar,
+    pixel_height: f32,
+    baseline: f32,
     ready:   bool,
 }
 
@@ -189,6 +191,9 @@ load_text_font :: proc(font: ^text_font) -> bool {
         return false
     }
 
+    font.pixel_height = 32.0
+    font.baseline = 28.0
+
     gl.GenTextures(1, &font.texture)
     gl.BindTexture(gl.TEXTURE_2D, font.texture)
     gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
@@ -311,14 +316,74 @@ append_text :: proc(renderer: ^renderer, view: viewport.viewport, element: docum
         return
     }
 
-    x := element.x
-    y := element.y + 28
+    font_size := element.font_size
+    if font_size <= 0 {
+        font_size = document.default_font_size
+    }
+    line_height := element.line_height
+    if line_height <= 0 {
+        line_height = document.default_line_height
+    }
+    scale := font_size / renderer.text_font.pixel_height
+    line_height_pixels := font_size * line_height
+
+    line_count := 1
     for character in element.text {
         if character == '\n' {
-            x = element.x
-            y += 40
+            line_count += 1
+        }
+    }
+    vertical_offset: f32 = 0
+    if !element.auto_resize {
+        extra_height := element.height - f32(line_count) * line_height_pixels
+        if element.vertical_align == .middle {
+            vertical_offset = extra_height * 0.5
+        } else if element.vertical_align == .bottom {
+            vertical_offset = extra_height
+        }
+    }
+
+    line_start := 0
+    line_index := 0
+    for line_end := 0; line_end <= len(element.text); line_end += 1 {
+        if line_end != len(element.text) && element.text[line_end] != '\n' {
             continue
         }
+        line := element.text[line_start:line_end]
+        line_width := baked_text_width(&renderer.text_font, line) * scale
+        line_x := element.x
+        if element.text_align == .center {
+            line_x += (element.width - line_width) * 0.5
+        } else if element.text_align == .right {
+            line_x += element.width - line_width
+        }
+        line_y := element.y + vertical_offset + f32(line_index) * line_height_pixels
+        append_text_line(renderer, view, line, line_x, line_y, scale, element.fill)
+        line_start = line_end + 1
+        line_index += 1
+    }
+}
+
+baked_text_width :: proc(font: ^text_font, text: string) -> f32 {
+    width: f32 = 0
+    for character in text {
+        if character >= 32 && character <= 127 {
+            width += font.chars[character - 32].xadvance
+        }
+    }
+    return width
+}
+
+append_text_line :: proc(
+    renderer: ^renderer,
+    view: viewport.viewport,
+    text: string,
+    origin_x, origin_y, scale: f32,
+    color: [4]f32,
+) {
+    x: f32 = 0
+    y := renderer.text_font.baseline
+    for character in text {
         if character < 32 || character > 127 {
             continue
         }
@@ -333,16 +398,16 @@ append_text :: proc(renderer: ^renderer, view: viewport.viewport, element: docum
             &quad,
             true,
         )
-        top_left := screen_to_clip(view, {quad.x0, quad.y0})
-        top_right := screen_to_clip(view, {quad.x1, quad.y0})
-        bottom_right := screen_to_clip(view, {quad.x1, quad.y1})
-        bottom_left := screen_to_clip(view, {quad.x0, quad.y1})
-        append_text_vertex(&renderer.text_vertices, top_left, {quad.s0, quad.t0}, element.fill)
-        append_text_vertex(&renderer.text_vertices, top_right, {quad.s1, quad.t0}, element.fill)
-        append_text_vertex(&renderer.text_vertices, bottom_right, {quad.s1, quad.t1}, element.fill)
-        append_text_vertex(&renderer.text_vertices, top_left, {quad.s0, quad.t0}, element.fill)
-        append_text_vertex(&renderer.text_vertices, bottom_right, {quad.s1, quad.t1}, element.fill)
-        append_text_vertex(&renderer.text_vertices, bottom_left, {quad.s0, quad.t1}, element.fill)
+        top_left := screen_to_clip(view, {origin_x + quad.x0 * scale, origin_y + quad.y0 * scale})
+        top_right := screen_to_clip(view, {origin_x + quad.x1 * scale, origin_y + quad.y0 * scale})
+        bottom_right := screen_to_clip(view, {origin_x + quad.x1 * scale, origin_y + quad.y1 * scale})
+        bottom_left := screen_to_clip(view, {origin_x + quad.x0 * scale, origin_y + quad.y1 * scale})
+        append_text_vertex(&renderer.text_vertices, top_left, {quad.s0, quad.t0}, color)
+        append_text_vertex(&renderer.text_vertices, top_right, {quad.s1, quad.t0}, color)
+        append_text_vertex(&renderer.text_vertices, bottom_right, {quad.s1, quad.t1}, color)
+        append_text_vertex(&renderer.text_vertices, top_left, {quad.s0, quad.t0}, color)
+        append_text_vertex(&renderer.text_vertices, bottom_right, {quad.s1, quad.t1}, color)
+        append_text_vertex(&renderer.text_vertices, bottom_left, {quad.s0, quad.t1}, color)
     }
 }
 
