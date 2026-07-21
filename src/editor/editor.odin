@@ -4,6 +4,7 @@ import "core:math"
 
 import document "../document"
 import platform "../platform"
+import storage "../storage"
 import viewport "../viewport"
 
 state :: struct {
@@ -23,6 +24,22 @@ new :: proc(width, height: f32) -> state {
 
 destroy :: proc(editor: ^state) {
     document.destroy(&editor.document)
+}
+
+load :: proc(editor: ^state, path: string) -> bool {
+    loaded, ok := storage.load(path)
+    if !ok {
+        return false
+    }
+    document.destroy(&editor.document)
+    editor.document = loaded
+    editor.drawing = false
+    editor.active_rect = -1
+    return true
+}
+
+save :: proc(editor: ^state, path: string) -> bool {
+    return storage.save(path, &editor.document)
 }
 
 resize :: proc(editor: ^state, width, height: f32) {

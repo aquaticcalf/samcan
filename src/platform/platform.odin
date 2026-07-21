@@ -21,6 +21,7 @@ frame_input :: struct {
     mouse:       [2]f32,
     mouse_delta: [2]f32,
     wheel:       f32,
+    save_requested: bool,
     buttons:     [8]bool,
     pressed:     [8]bool,
     released:    [8]bool,
@@ -76,6 +77,7 @@ open :: proc(title: cstring, width, height: i32) -> (result: window, ok: bool) {
 poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.mouse_delta = {}
     input.wheel = 0
+    input.save_requested = false
     input.pressed = {}
     input.released = {}
 
@@ -108,6 +110,9 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
         case .KEY_DOWN:
             if event.key.key == SDL.K_ESCAPE {
                 quit = true
+            }
+            if event.key.key == SDL.K_S && (event.key.mod & SDL.KMOD_CTRL) != {} {
+                input.save_requested = true
             }
         }
     }
