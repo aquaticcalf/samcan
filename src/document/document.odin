@@ -1,5 +1,7 @@
 package document
 
+import "core:strings"
+
 color :: [4]f32
 
 element_kind :: enum {
@@ -8,6 +10,7 @@ element_kind :: enum {
     diamond,
     line,
     arrow,
+    text,
 }
 
 element :: struct {
@@ -18,6 +21,7 @@ element :: struct {
     width:  f32,
     height: f32,
     fill:   color,
+    text:   string,
 }
 
 document :: struct {
@@ -34,7 +38,11 @@ new :: proc() -> document {
 
 clone :: proc(source: ^document) -> document {
     result := new()
-    for element in source.elements {
+    for &source_element in source.elements {
+        element := source_element
+        if element.text != "" {
+            element.text = strings.clone(element.text)
+        }
         append(&result.elements, element)
     }
     result.next_id = source.next_id
@@ -54,6 +62,9 @@ same :: proc(left, right: ^document) -> bool {
 }
 
 destroy :: proc(doc: ^document) {
+    for &element in doc.elements {
+        delete(element.text)
+    }
     delete(doc.elements)
     doc.next_id = 1
 }
@@ -70,6 +81,7 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
         width = width,
         height = height,
         fill = fill,
+        text = "",
     })
     return len(doc.elements) - 1
 }
@@ -94,6 +106,42 @@ add_arrow :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> int 
     return add(doc, .arrow, x, y, width, height, fill)
 }
 
+add_text :: proc(doc: ^document, x, y: f32, text: string, fill: color) -> int {
+    width, height := text_dimensions(text)
+    index := add(doc, .text, x, y, width, height, fill)
+    doc.elements[index].text = strings.clone(text)
+    return index
+}
+
+set_text :: proc(doc: ^document, index: int, text: string) {
+    if index < 0 || index >= len(doc.elements) || doc.elements[index].kind != .text {
+        return
+    }
+    replacement := strings.clone(text)
+    delete(doc.elements[index].text)
+    doc.elements[index].text = replacement
+    doc.elements[index].width, doc.elements[index].height = text_dimensions(text)
+}
+
+text_dimensions :: proc(text: string) -> (width, height: f32) {
+    current_width: f32 = 0
+    max_width: f32 = 0
+    lines := 1
+    for character in text {
+        if character == '\n' {
+            max_width = max(max_width, current_width)
+            current_width = 0
+            lines += 1
+        } else {
+            current_width += 6
+        }
+    }
+    max_width = max(max_width, current_width)
+    width = max(6.0, max_width)
+    height = f32(lines) * 12.0
+    return
+}
+
 set_bounds :: proc(doc: ^document, index: int, x, y, width, height: f32) {
     if index < 0 || index >= len(doc.elements) {
         return
@@ -108,5 +156,6 @@ remove :: proc(doc: ^document, index: int) {
     if index < 0 || index >= len(doc.elements) {
         return
     }
+    delete(doc.elements[index].text)
     ordered_remove(&doc.elements, index)
 }

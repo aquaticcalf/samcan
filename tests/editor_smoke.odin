@@ -64,5 +64,30 @@ main :: proc() {
     assert(reverse.width == 100, "right-to-left draw did not preserve width")
     assert(reverse.height == 50, "right-to-left draw did not preserve height")
 
+    input = {}
+    input.tool_text_requested = true
+    editor_pkg.update(&editor, &input)
+
+    input = {}
+    input.mouse = {450, 330}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.text_editing, "text tool did not enter editing mode")
+
+    input = {}
+    input.text_input = "hello"
+    editor_pkg.update(&editor, &input)
+    input = {}
+    input.backspace_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.document.elements[editor.text_index].text == "hell", "text backspace did not remove the last rune")
+
+    input = {}
+    input.enter_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(!editor.text_editing, "text tool did not finish editing")
+    assert(editor.document.elements[2].text == "hell", "text content did not persist")
+
     fmt.println("editor smoke passed")
 }

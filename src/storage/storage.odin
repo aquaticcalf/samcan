@@ -3,6 +3,7 @@ package storage
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
+import "core:strings"
 
 import document "../document"
 
@@ -22,6 +23,7 @@ scene_element :: struct {
     y:              f64,
     width:          f64,
     height:         f64,
+    text:           string,
     angle:          f64,
     strokeColor:    string,
     backgroundColor:string,
@@ -93,6 +95,16 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
         if !known {
             continue
         }
+        if kind == .text {
+            document.add_text(
+                &doc,
+                f32(element.x),
+                f32(element.y),
+                element.text,
+                parse_color(element.strokeColor),
+            )
+            continue
+        }
         document.add(
             &doc,
             kind,
@@ -131,6 +143,7 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             y = f64(element.y),
             width = f64(element.width),
             height = f64(element.height),
+            text = strings.clone(element.text),
             angle = 0,
             strokeColor = "#1e1e1e",
             backgroundColor = format_color(element.fill),
@@ -159,6 +172,8 @@ element_type_name :: proc(kind: document.element_kind) -> string {
         return "line"
     case .arrow:
         return "arrow"
+    case .text:
+        return "text"
     }
     return "rectangle"
 }
@@ -175,11 +190,16 @@ element_kind_from_name :: proc(name: string) -> (document.element_kind, bool) {
         return .line, true
     case "arrow":
         return .arrow, true
+    case "text":
+        return .text, true
     }
     return .rectangle, false
 }
 
 destroy_scene :: proc(file: ^scene_file) {
+    for &element in file.elements {
+        delete(element.text)
+    }
     delete(file.elements)
     delete(file.files)
 }

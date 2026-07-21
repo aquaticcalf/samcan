@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:math"
 
 import gl "vendor:OpenGL"
+import font "vendor:stb/easy_font"
 import document "../document"
 import viewport "../viewport"
 
@@ -128,6 +129,8 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         finish := [2]f32{right, bottom}
         append_segment(vertices, view, start, finish, element.fill, 3.0 / view.zoom)
         append_arrowhead(vertices, view, start, finish, element.fill)
+    case .text:
+        append_text(vertices, view, element)
     case .ellipse:
         center := screen_to_clip(view, {(left + right) * 0.5, (top + bottom) * 0.5})
         radius_x := element.width * 0.5
@@ -148,6 +151,32 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
             append_triangle(vertices, center, previous, current, element.fill)
             previous = current
         }
+    }
+}
+
+append_text :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, element: document.element) {
+    if element.text == "" {
+        return
+    }
+
+    quad_capacity := max(1, len(element.text) * 8)
+    quads := make([]font.Quad, quad_capacity)
+    defer delete(quads)
+
+    color: font.Color = {
+        u8(max(0, min(255, int(element.fill[0] * 255.0)))),
+        u8(max(0, min(255, int(element.fill[1] * 255.0)))),
+        u8(max(0, min(255, int(element.fill[2] * 255.0)))),
+        u8(max(0, min(255, int(element.fill[3] * 255.0)))),
+    }
+    count := font.print_quad_buffer(element.x, element.y, element.text, color, quads)
+    for quad in quads[:count] {
+        top_left := screen_to_clip(view, {quad.tl.v[0], quad.tl.v[1]})
+        top_right := screen_to_clip(view, {quad.tr.v[0], quad.tr.v[1]})
+        bottom_right := screen_to_clip(view, {quad.br.v[0], quad.br.v[1]})
+        bottom_left := screen_to_clip(view, {quad.bl.v[0], quad.bl.v[1]})
+        append_triangle(vertices, top_left, top_right, bottom_right, element.fill)
+        append_triangle(vertices, top_left, bottom_right, bottom_left, element.fill)
     }
 }
 
@@ -228,6 +257,11 @@ append_selection_overlay :: proc(vertices: ^[dynamic]vertex, element: document.e
         finish := [2]f32{right, bottom}
         append_segment(vertices, view, start, finish, selection_color, thickness)
         append_arrowhead(vertices, view, start, finish, selection_color)
+    case .text:
+        append_segment(vertices, view, {left, top}, {right, top}, selection_color, thickness)
+        append_segment(vertices, view, {right, top}, {right, bottom}, selection_color, thickness)
+        append_segment(vertices, view, {right, bottom}, {left, bottom}, selection_color, thickness)
+        append_segment(vertices, view, {left, bottom}, {left, top}, selection_color, thickness)
     case .ellipse:
         center := [(2)]f32{(left + right) * 0.5, (top + bottom) * 0.5}
         radius_x := element.width * 0.5

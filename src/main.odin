@@ -36,16 +36,29 @@ main :: proc() {
     defer renderer.destroy(&canvas_renderer)
 
     input: platform.frame_input
+    defer platform.destroy_input(&input)
 
     fmt.println("samcan native shell")
 
     for {
+        was_text_editing := app_editor.text_editing
         if platform.poll(&app_window, &input) {
             break
         }
 
         editor.resize(&app_editor, f32(app_window.width), f32(app_window.height))
         editor.update(&app_editor, &input)
+
+        if input.tool_text_requested {
+            platform.start_text_input(&app_window)
+        }
+        if input.escape_requested {
+            if was_text_editing {
+                platform.stop_text_input(&app_window)
+            } else {
+                break
+            }
+        }
 
         if input.open_requested {
             platform.show_open_dialog(&app_window)

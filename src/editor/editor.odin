@@ -1,6 +1,7 @@
 package editor
 
 import "core:math"
+import "core:strings"
 
 import doc "../document"
 import history_pkg "../history"
@@ -29,6 +30,8 @@ state :: struct {
     drag_start:      [2]f32,
     start_bounds:    [4]f32,
     draw_start:      [2]f32,
+    text_editing:    bool,
+    text_index:      int,
     history:         history_pkg.state,
     before:          doc.document,
     before_valid:    bool,
@@ -43,6 +46,7 @@ new :: proc(width, height: f32) -> state {
         select_mode = true,
         selected = -1,
         interaction = .none,
+        text_index = -1,
         history = history_pkg.new(),
     }
 }
@@ -66,6 +70,8 @@ load :: proc(editor: ^state, path: string) -> bool {
     editor.active_rect = -1
     editor.selected = -1
     editor.interaction = .none
+    editor.text_editing = false
+    editor.text_index = -1
     if editor.before_valid {
         doc.destroy(&editor.before)
         editor.before_valid = false
@@ -92,6 +98,11 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         } else {
             _ = history_pkg.redo(&editor.history, &editor.document)
         }
+        return
+    }
+
+    if editor.text_editing {
+        update_text(editor, input)
         return
     }
 
@@ -145,6 +156,10 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.select_mode = false
         editor.active_kind = .arrow
     }
+    if input.tool_text_requested {
+        editor.select_mode = false
+        editor.active_kind = .text
+    }
 
     if input.wheel != 0 {
         factor: f32 = 1.1
@@ -156,6 +171,16 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
 
     if input.buttons[platform.MOUSE_BUTTON_MIDDLE] || input.buttons[platform.MOUSE_BUTTON_RIGHT] {
         viewport.pan(&editor.viewport, input.mouse_delta)
+    }
+
+    if editor.active_kind == .text && !editor.select_mode {
+        if input.pressed[platform.MOUSE_BUTTON_LEFT] {
+            world := viewport.screen_to_world(editor.viewport, input.mouse)
+            begin_transaction(editor)
+            editor.text_index = doc.add_text(&editor.document, world[0], world[1], "", {0.12, 0.12, 0.12, 1.0})
+            editor.text_editing = true
+        }
+        return
     }
 
     if editor.select_mode {
@@ -200,6 +225,52 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.active_rect = -1
         finish_transaction(editor)
     }
+}
+
+update_text :: proc(editor: ^state, input: ^platform.frame_input) {
+    if editor.text_index < 0 || editor.text_index >= len(editor.document.elements) {
+        editor.text_editing = false
+        editor.text_index = -1
+        finish_transaction(editor)
+        return
+    }
+
+    if input.text_input != "" {
+        current := editor.document.elements[editor.text_index].text
+        parts := [2]string{current, input.text_input}
+        combined := strings.concatenate(parts[:])
+        doc.set_text(&editor.document, editor.text_index, combined)
+    }
+
+    if input.backspace_requested {
+        current := editor.document.elements[editor.text_index].text
+        count := strings.rune_count(current)
+        if count > 0 {
+            shortened := strings.cut_clone(current, 0, count - 1)
+            doc.set_text(&editor.document, editor.text_index, shortened)
+            delete(shortened)
+        }
+    }
+
+    if input.enter_requested || input.escape_requested {
+        finish_text(editor, input.escape_requested)
+    }
+}
+
+finish_text :: proc(editor: ^state, cancel: bool) {
+    if editor.text_index >= 0 && editor.text_index < len(editor.document.elements) {
+        text := editor.document.elements[editor.text_index].text
+        if cancel || text == "" {
+            doc.remove(&editor.document, editor.text_index)
+            editor.selected = -1
+        } else {
+            editor.selected = editor.text_index
+        }
+    }
+    editor.text_editing = false
+    editor.text_index = -1
+    editor.select_mode = true
+    finish_transaction(editor)
 }
 
 update_selection :: proc(editor: ^state, input: ^platform.frame_input) {
@@ -288,7 +359,7 @@ contains :: proc(element: doc.element, point: [2]f32) -> bool {
         closest := [2]f32{element.x, element.y} + segment * amount
         distance := point - closest
         return distance[0] * distance[0] + distance[1] * distance[1] <= 64.0
-    case .rectangle:
+    case .rectangle, .text:
         return point[0] >= element.x && point[0] <= element.x + element.width &&
             point[1] >= element.y && point[1] <= element.y + element.height
     }

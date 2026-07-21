@@ -47,11 +47,16 @@ frame_input :: struct {
     redo_requested: bool,
     delete_requested: bool,
     duplicate_requested: bool,
+    text_input: string,
+    backspace_requested: bool,
+    enter_requested: bool,
+    escape_requested: bool,
     tool_rectangle_requested: bool,
     tool_ellipse_requested: bool,
     tool_diamond_requested: bool,
     tool_line_requested: bool,
     tool_arrow_requested: bool,
+    tool_text_requested: bool,
     tool_select_requested: bool,
     buttons:        [8]bool,
     pressed:        [8]bool,
@@ -121,11 +126,17 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.redo_requested = false
     input.delete_requested = false
     input.duplicate_requested = false
+    delete(input.text_input)
+    input.text_input = ""
+    input.backspace_requested = false
+    input.enter_requested = false
+    input.escape_requested = false
     input.tool_rectangle_requested = false
     input.tool_ellipse_requested = false
     input.tool_diamond_requested = false
     input.tool_line_requested = false
     input.tool_arrow_requested = false
+    input.tool_text_requested = false
     input.tool_select_requested = false
     input.pressed = {}
     input.released = {}
@@ -158,7 +169,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             input.mouse = {event.wheel.mouse_x, event.wheel.mouse_y}
         case .KEY_DOWN:
             if event.key.key == SDL.K_ESCAPE {
-                quit = true
+                input.escape_requested = true
             }
             if event.key.key == SDL.K_S && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 if (event.key.mod & SDL.KMOD_SHIFT) != {} {
@@ -183,6 +194,12 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             if event.key.key == SDL.K_DELETE || event.key.key == SDL.K_BACKSPACE {
                 input.delete_requested = true
             }
+            if event.key.key == SDL.K_BACKSPACE {
+                input.backspace_requested = true
+            }
+            if event.key.key == SDL.K_RETURN {
+                input.enter_requested = true
+            }
             if event.key.key == SDL.K_D && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.duplicate_requested = true
             }
@@ -204,9 +221,37 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             if event.key.key == SDL.K_A && event.key.mod == {} {
                 input.tool_arrow_requested = true
             }
+            if event.key.key == SDL.K_T && event.key.mod == {} {
+                input.tool_text_requested = true
+            }
+        case .TEXT_INPUT:
+            if event.text.text != nil {
+                incoming := string(event.text.text)
+                if input.text_input == "" {
+                    input.text_input = strings.clone(incoming)
+                } else {
+                    parts := [2]string{input.text_input, incoming}
+                    combined := strings.concatenate(parts[:])
+                    delete(input.text_input)
+                    input.text_input = combined
+                }
+            }
         }
     }
     return
+}
+
+start_text_input :: proc(window: ^window) -> bool {
+    return SDL.StartTextInput(window.handle)
+}
+
+stop_text_input :: proc(window: ^window) -> bool {
+    return SDL.StopTextInput(window.handle)
+}
+
+destroy_input :: proc(input: ^frame_input) {
+    delete(input.text_input)
+    input.text_input = ""
 }
 
 begin_frame :: proc(window: ^window) {
