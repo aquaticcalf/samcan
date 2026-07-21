@@ -147,5 +147,14 @@ main :: proc() {
     assert(editor.document.elements[3].kind == .freehand, "freehand tool did not create a path")
     assert(len(editor.document.elements[3].points) == 3, "freehand tool did not keep the drawn points")
 
+    clear(&editor.selected_items)
+    append(&editor.selected_items, 2)
+    editor.selected = 2
+    copied_text := editor_pkg.selected_text(&editor)
+    assert(copied_text == "hell\n", "selected text did not reach the clipboard adapter")
+    delete(copied_text)
+    assert(editor_pkg.paste_text(&editor, "pasted"), "external text paste did not create an element")
+    assert(editor.document.elements[4].text == "pasted", "external text paste content was wrong")
+
     fmt.println("editor smoke passed")
 }

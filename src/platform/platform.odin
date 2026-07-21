@@ -405,6 +405,24 @@ stop_text_input :: proc(window: ^window) -> bool {
     return SDL.StopTextInput(window.handle)
 }
 
+set_clipboard_text :: proc(text: string) -> bool {
+    return SDL.SetClipboardText(strings.unsafe_string_to_cstring(text))
+}
+
+has_clipboard_text :: proc() -> bool {
+    return SDL.HasClipboardText()
+}
+
+get_clipboard_text :: proc() -> string {
+    native_text := SDL.GetClipboardText()
+    if native_text == nil {
+        return ""
+    }
+    result := strings.clone(string(cstring(native_text)))
+    SDL.free(rawptr(native_text))
+    return result
+}
+
 destroy_input :: proc(input: ^frame_input) {
     delete(input.text_input)
     input.text_input = ""

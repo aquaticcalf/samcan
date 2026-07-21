@@ -147,6 +147,32 @@ import_image :: proc(editor: ^state, path: string) -> bool {
     return true
 }
 
+selected_text :: proc(editor: ^state) -> string {
+    if len(editor.selected_items) != 1 {
+        return ""
+    }
+    index := editor.selected_items[0]
+    if index < 0 || index >= len(editor.document.elements) || editor.document.elements[index].kind != .text {
+        return ""
+    }
+    return strings.clone(editor.document.elements[index].text)
+}
+
+paste_text :: proc(editor: ^state, text: string) -> bool {
+    if text == "" {
+        return false
+    }
+    center := viewport.screen_to_world(editor.viewport, {editor.viewport.width * 0.5, editor.viewport.height * 0.5})
+    finish_transaction(editor)
+    begin_transaction(editor)
+    index := doc.add_text(&editor.document, center[0], center[1], text, {0.12, 0.12, 0.12, 1.0})
+    clear_selection(editor)
+    editor.selected = index
+    append(&editor.selected_items, index)
+    finish_transaction(editor)
+    return true
+}
+
 resize :: proc(editor: ^state, width, height: f32) {
     viewport.resize(&editor.viewport, width, height)
 }

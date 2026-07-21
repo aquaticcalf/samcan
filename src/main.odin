@@ -46,8 +46,26 @@ main :: proc() {
             break
         }
 
+        if input.paste_requested && app_editor.text_editing && platform.has_clipboard_text() {
+            delete(input.text_input)
+            input.text_input = platform.get_clipboard_text()
+        }
+
         editor.resize(&app_editor, f32(app_window.width), f32(app_window.height))
         editor.update(&app_editor, &input)
+
+        if input.copy_requested {
+            copied_text := editor.selected_text(&app_editor)
+            if copied_text != "" {
+                _ = platform.set_clipboard_text(copied_text)
+            }
+            delete(copied_text)
+        }
+        if input.paste_requested && !was_text_editing && len(app_editor.clipboard.elements) == 0 && platform.has_clipboard_text() {
+            pasted_text := platform.get_clipboard_text()
+            _ = editor.paste_text(&app_editor, pasted_text)
+            delete(pasted_text)
+        }
 
         if input.tool_text_requested {
             platform.start_text_input(&app_window)
