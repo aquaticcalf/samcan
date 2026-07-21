@@ -452,6 +452,10 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     return
 }
 
+ticks_ms :: proc() -> u64 {
+    return u64(SDL.GetTicks())
+}
+
 start_text_input :: proc(window: ^window) -> bool {
     return SDL.StartTextInput(window.handle)
 }

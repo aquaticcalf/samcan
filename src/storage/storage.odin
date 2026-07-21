@@ -109,6 +109,28 @@ save :: proc(path: string, doc: ^document.document) -> bool {
     return true
 }
 
+autosave_path :: proc(path: string) -> string {
+    return fmt.tprintf("%s.autosave", path)
+}
+
+save_autosave :: proc(path: string, doc: ^document.document) -> bool {
+    return save(autosave_path(path), doc)
+}
+
+clear_autosave :: proc(path: string) -> bool {
+    err := os.remove(autosave_path(path))
+    return err == nil
+}
+
+has_autosave :: proc(path: string) -> bool {
+    data, err := os.read_entire_file(autosave_path(path), context.allocator)
+    if err != nil {
+        return false
+    }
+    delete(data)
+    return true
+}
+
 load_library :: proc(path: string) -> (items: [dynamic]library_item, ok: bool) {
     data, read_error := os.read_entire_file(path, context.allocator)
     if read_error != nil {

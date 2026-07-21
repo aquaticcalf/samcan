@@ -6,6 +6,7 @@ import "core:os"
 import editor "editor"
 import platform "platform"
 import renderer "renderer"
+import storage "storage"
 
 main :: proc() {
     app_window, ok := platform.open("samcan", 1280, 800)
@@ -23,6 +24,9 @@ main :: proc() {
         document_path = os.args[1]
         if editor.load(&app_editor, document_path) {
             fmt.printf("loaded %s\n", document_path)
+            if storage.has_autosave(document_path) {
+                fmt.printf("recovery available at %s\n", storage.autosave_path(document_path))
+            }
         }
     }
     defer if document_path_owned {
@@ -39,6 +43,7 @@ main :: proc() {
     defer platform.destroy_input(&input)
 
     fmt.println("samcan native shell")
+    last_autosave_tick := platform.ticks_ms()
 
     for {
         was_text_editing := app_editor.text_editing
@@ -59,6 +64,16 @@ main :: proc() {
                 fmt.printf("imported %s\n", input.dropped_file)
             } else {
                 fmt.printf("drop import failed: %s\n", input.dropped_file)
+            }
+        }
+
+        if document_path != "" && app_editor.dirty {
+            now := platform.ticks_ms()
+            if now - last_autosave_tick >= 5000 {
+                if editor.autosave(&app_editor, document_path) {
+                    fmt.printf("autosaved %s\n", storage.autosave_path(document_path))
+                    last_autosave_tick = now
+                }
             }
         }
 

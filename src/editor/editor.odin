@@ -57,6 +57,7 @@ state :: struct {
     show_grid:       bool,
     snap_to_grid:    bool,
     dark_mode:       bool,
+    dirty:           bool,
     library_open:    bool,
     library_items:   [dynamic]storage.library_item,
     drawing:         bool,
@@ -91,6 +92,7 @@ new :: proc(width, height: f32) -> state {
         show_grid = false,
         snap_to_grid = false,
         dark_mode = false,
+        dirty = false,
         library_open = false,
         library_items = make([dynamic]storage.library_item, 0),
         erasing = false,
@@ -139,11 +141,21 @@ load :: proc(editor: ^state, path: string) -> bool {
         editor.before_valid = false
     }
     history_pkg.reset(&editor.history)
+    editor.dirty = false
     return true
 }
 
 save :: proc(editor: ^state, path: string) -> bool {
-    return storage.save(path, &editor.document)
+    if !storage.save(path, &editor.document) {
+        return false
+    }
+    editor.dirty = false
+    _ = storage.clear_autosave(path)
+    return true
+}
+
+autosave :: proc(editor: ^state, path: string) -> bool {
+    return storage.save_autosave(path, &editor.document)
 }
 
 save_svg :: proc(editor: ^state, path: string) -> bool {
@@ -243,9 +255,13 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.drawing = false
         editor.active_rect = -1
         if input.undo_requested {
-            _ = history_pkg.undo(&editor.history, &editor.document)
+            if history_pkg.undo(&editor.history, &editor.document) {
+                editor.dirty = true
+            }
         } else {
-            _ = history_pkg.redo(&editor.history, &editor.document)
+            if history_pkg.redo(&editor.history, &editor.document) {
+                editor.dirty = true
+            }
         }
         return
     }
@@ -1568,7 +1584,11 @@ finish_transaction :: proc(editor: ^state) {
     if !editor.before_valid {
         return
     }
+    changed := !doc.same(&editor.before, &editor.document)
     history_pkg.record(&editor.history, &editor.before, &editor.document)
+    if changed {
+        editor.dirty = true
+    }
     doc.destroy(&editor.before)
     editor.before_valid = false
 }

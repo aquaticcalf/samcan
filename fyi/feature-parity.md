@@ -63,7 +63,7 @@
 - image attachments
 - document title and metadata
 - recent documents
-- autosave and recovery
+- autosave and recovery -- atomic `.autosave` sidecars are written for dirty named documents; recovery selection remains
 
 ### export and interoperability
 

@@ -23,7 +23,7 @@ foundation for the next one.
 - define document and element structs.
 - parse and serialize `.excalidraw`.
 - parse and serialize `.excalidrawlib`. done for legacy v1 and current v2.
-- add atomic save, autosave, settings, recent files, and recovery.
+- add atomic save, autosave, settings, recent files, and recovery. atomic save and named-document sidecar autosave are done; settings, recent files, and recovery selection remain.
 - prove round-trip compatibility before adding more tools.
 
 ## phase 3: geometry and scene
