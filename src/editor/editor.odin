@@ -41,14 +41,20 @@ toolbar_action :: enum {
     library,
 }
 
-toolbar_button_width :: f32(38.0)
-toolbar_button_gap :: f32(4.0)
-toolbar_x :: f32(8.0)
-toolbar_y :: f32(8.0)
-toolbar_height :: f32(32.0)
-library_panel_width :: f32(232.0)
-library_panel_top :: f32(52.0)
-library_item_height :: f32(54.0)
+toolbar_button_width :: f32(34.0)
+toolbar_button_gap :: f32(6.0)
+toolbar_x :: f32(124.0)
+toolbar_y :: f32(10.0)
+toolbar_height :: f32(34.0)
+tool_rail_x :: f32(10.0)
+tool_rail_y :: f32(64.0)
+tool_rail_button_size :: f32(38.0)
+tool_rail_gap :: f32(4.0)
+library_panel_width :: f32(286.0)
+library_panel_top :: f32(158.0)
+library_item_height :: f32(94.0)
+library_item_width :: f32(126.0)
+library_item_gap :: f32(8.0)
 
 state :: struct {
     document:        doc.document,
@@ -898,18 +904,25 @@ include_element_bounds :: proc(
 }
 
 toolbar_action_at :: proc(point: [2]f32) -> toolbar_action {
-    if point[1] < toolbar_y || point[1] > toolbar_y + toolbar_height {
+    if point[0] >= tool_rail_x && point[0] <= tool_rail_x + tool_rail_button_size {
+        if point[1] >= tool_rail_y {
+            index := int((point[1] - tool_rail_y) / (tool_rail_button_size + tool_rail_gap))
+            actions := [?]toolbar_action{.select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand, .eraser}
+            if index >= 0 && index < len(actions) {
+                button_top := tool_rail_y + f32(index) * (tool_rail_button_size + tool_rail_gap)
+                if point[1] <= button_top + tool_rail_button_size {
+                    return actions[index]
+                }
+            }
+        }
+    }
+
+    if point[1] < toolbar_y || point[1] > toolbar_y + toolbar_height || point[0] < toolbar_x {
         return .none
     }
     index := int((point[0] - toolbar_x) / (toolbar_button_width + toolbar_button_gap))
-    if index < 0 {
-        return .none
-    }
-    actions := [?]toolbar_action{
-        .select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand, .eraser,
-        .undo, .redo, .open, .save, .grid, .export_svg, .import_image, .theme, .export_png, .library,
-    }
-    if index >= len(actions) {
+    actions := [?]toolbar_action{.undo, .redo, .open, .save, .grid, .export_svg, .import_image, .theme, .export_png, .library}
+    if index < 0 || index >= len(actions) {
         return .none
     }
     button_left := toolbar_x + f32(index) * (toolbar_button_width + toolbar_button_gap)
@@ -985,7 +998,21 @@ library_item_at :: proc(editor: ^state, point: [2]f32) -> int {
     if point[0] < left || point[1] < library_panel_top {
         return -1
     }
-    index := int((point[1] - library_panel_top) / library_item_height)
+    relative_x := point[0] - (left + 12.0)
+    if relative_x < 0 {
+        return -1
+    }
+    column := int(relative_x / (library_item_width + library_item_gap))
+    column_left := f32(column) * (library_item_width + library_item_gap)
+    if column < 0 || column >= 2 || relative_x > column_left + library_item_width {
+        return -1
+    }
+    row := int((point[1] - library_panel_top) / library_item_height)
+    row_top := library_panel_top + f32(row) * library_item_height
+    if point[1] > row_top + library_item_height - library_item_gap {
+        return -1
+    }
+    index := row * 2 + column
     if index < 0 || index >= len(editor.library_items) {
         return -1
     }

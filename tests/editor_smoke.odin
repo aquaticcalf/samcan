@@ -12,13 +12,13 @@ main :: proc() {
     doc.add_rectangle(&editor.document, -50, -40, 100, 80, {0.2, 0.4, 0.6, 1.0})
 
     input: platform.frame_input
-    input.mouse = {55, 20}
+    input.mouse = {30, 125}
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true
     editor_pkg.update(&editor, &input)
     assert(!editor.select_mode && editor.active_kind == .rectangle, "toolbar rectangle button did not activate")
 
     input = {}
-    input.mouse = {20, 20}
+    input.mouse = {30, 80}
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true
     editor_pkg.update(&editor, &input)
     assert(editor.select_mode, "toolbar select button did not activate")
@@ -47,13 +47,13 @@ main :: proc() {
     assert(!editor.dark_mode, "theme toggle did not restore light mode")
 
     input = {}
-    input.mouse = {722, 20}
+    input.mouse = {460, 20}
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true
     editor_pkg.update(&editor, &input)
     assert(input.export_png_requested, "png export toolbar button did not request export")
 
     input = {}
-    input.mouse = {764, 20}
+    input.mouse = {500, 20}
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true
     editor_pkg.update(&editor, &input)
     assert(input.open_library_requested, "library toolbar button did not request a library")
@@ -215,7 +215,7 @@ main :: proc() {
     assert(editor_pkg.load_library(&editor, library_path), "editor did not load a library")
     previous_count := len(editor.document.elements)
     input = {}
-    input.mouse = {650, 100}
+    input.mouse = {600, 180}
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true
     editor_pkg.update(&editor, &input)
     assert(len(editor.document.elements) == previous_count + 1, "library panel did not insert an item")

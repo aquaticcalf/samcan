@@ -756,16 +756,268 @@ append_ui_text :: proc(renderer: ^renderer, view: viewport.viewport, text: strin
     }
 }
 
-append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid, dark_mode, eraser_mode: bool) {
-    toolbar_width: f32 = 19.0 * 38.0 + 18.0 * 4.0
-    toolbar_background: [4]f32 = {0.86, 0.86, 0.86, 1.0}
-    if dark_mode {
-        toolbar_background = {0.16, 0.16, 0.18, 1.0}
+ui_icon :: enum {
+    selection,
+    rectangle,
+    ellipse,
+    diamond,
+    line,
+    arrow,
+    text,
+    freedraw,
+    eraser,
+    undo,
+    redo,
+    open,
+    save,
+    grid,
+    svg,
+    image,
+    theme,
+    png,
+    library,
+    search,
+    layers,
+    sliders,
+    plus,
+    chevron_left,
+    close,
+}
+
+append_ui_segment :: proc(renderer: ^renderer, view: viewport.viewport, a, b: [2]f32, color: [4]f32, thickness: f32 = 1.5) {
+    delta := b - a
+    length := math.sqrt(delta[0] * delta[0] + delta[1] * delta[1])
+    if length <= 0.001 {
+        return
     }
-    append_ui_rect(&renderer.vertices, view, 4, 4, 4 + toolbar_width, 44, toolbar_background)
-    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "k", "u", "y", "o", "s", "#", "x", "i", "m", "p", "c"}
-    for index in 0 ..< len(labels) {
-        left: f32 = 8.0 + f32(index) * (38.0 + 4.0)
+    offset := [2]f32{-delta[1] / length, delta[0] / length} * (thickness * 0.5)
+    append_triangle(
+        &renderer.vertices,
+        screen_to_clip_ui(view, a + offset),
+        screen_to_clip_ui(view, b + offset),
+        screen_to_clip_ui(view, b - offset),
+        color,
+    )
+    append_triangle(
+        &renderer.vertices,
+        screen_to_clip_ui(view, a + offset),
+        screen_to_clip_ui(view, b - offset),
+        screen_to_clip_ui(view, a - offset),
+        color,
+    )
+}
+
+append_ui_circle :: proc(renderer: ^renderer, view: viewport.viewport, center: [2]f32, radius: f32, color: [4]f32, thickness: f32 = 1.5) {
+    tau: f32 = 6.283185307179586
+    segments :: 20
+    previous := center + [2]f32{math.cos(f32(0.0)) * radius, math.sin(f32(0.0)) * radius}
+    for index in 1 ..= segments {
+        angle := tau * f32(index) / f32(segments)
+        current := center + [2]f32{math.cos(angle) * radius, math.sin(angle) * radius}
+        append_ui_segment(renderer, view, previous, current, color, thickness)
+        previous = current
+    }
+}
+
+append_ui_outline_rect :: proc(renderer: ^renderer, view: viewport.viewport, left, top, right, bottom: f32, color: [4]f32, thickness: f32 = 1.5) {
+    append_ui_segment(renderer, view, {left, top}, {right, top}, color, thickness)
+    append_ui_segment(renderer, view, {right, top}, {right, bottom}, color, thickness)
+    append_ui_segment(renderer, view, {right, bottom}, {left, bottom}, color, thickness)
+    append_ui_segment(renderer, view, {left, bottom}, {left, top}, color, thickness)
+}
+
+ui_icon_point :: proc(left, top, x, y: f32) -> [2]f32 {
+    return {left + 8.0 + x, top + 8.0 + y}
+}
+
+append_ui_icon :: proc(renderer: ^renderer, view: viewport.viewport, icon: ui_icon, left, top: f32, color: [4]f32) {
+    p :: proc(left, top, x, y: f32) -> [2]f32 {
+        return ui_icon_point(left, top, x, y)
+    }
+    line :: proc(renderer: ^renderer, view: viewport.viewport, left, top, x0, y0, x1, y1: f32, color: [4]f32) {
+        append_ui_segment(renderer, view, p(left, top, x0, y0), p(left, top, x1, y1), color, 1.7)
+    }
+
+    switch icon {
+    case .selection:
+        line(renderer, view, left, top, 5, 4, 11, 19, color)
+        line(renderer, view, left, top, 5, 4, 20, 11, color)
+        line(renderer, view, left, top, 11, 19, 14, 13, color)
+        line(renderer, view, left, top, 14, 13, 20, 19, color)
+        line(renderer, view, left, top, 14, 13, 20, 11, color)
+    case .rectangle:
+        append_ui_outline_rect(renderer, view, left + 4, top + 4, left + 28, top + 28, color, 1.6)
+    case .ellipse:
+        append_ui_circle(renderer, view, p(left, top, 16, 16), 11, color, 1.6)
+    case .diamond:
+        line(renderer, view, left, top, 16, 4, 28, 16, color)
+        line(renderer, view, left, top, 28, 16, 16, 28, color)
+        line(renderer, view, left, top, 16, 28, 4, 16, color)
+        line(renderer, view, left, top, 4, 16, 16, 4, color)
+    case .line:
+        line(renderer, view, left, top, 5, 27, 27, 5, color)
+    case .arrow:
+        line(renderer, view, left, top, 4, 16, 27, 16, color)
+        line(renderer, view, left, top, 20, 9, 27, 16, color)
+        line(renderer, view, left, top, 27, 16, 20, 23, color)
+    case .text:
+        line(renderer, view, left, top, 5, 6, 27, 6, color)
+        line(renderer, view, left, top, 16, 6, 16, 28, color)
+    case .freedraw:
+        line(renderer, view, left, top, 4, 22, 8, 15, color)
+        line(renderer, view, left, top, 8, 15, 12, 19, color)
+        line(renderer, view, left, top, 12, 19, 17, 9, color)
+        line(renderer, view, left, top, 17, 9, 27, 13, color)
+    case .eraser:
+        line(renderer, view, left, top, 5, 19, 18, 6, color)
+        line(renderer, view, left, top, 18, 6, 28, 16, color)
+        line(renderer, view, left, top, 28, 16, 15, 29, color)
+        line(renderer, view, left, top, 15, 29, 5, 19, color)
+        line(renderer, view, left, top, 12, 12, 22, 22, color)
+    case .undo, .redo:
+        if icon == .undo {
+            line(renderer, view, left, top, 7, 12, 12, 7, color)
+            line(renderer, view, left, top, 7, 12, 13, 17, color)
+            line(renderer, view, left, top, 7, 12, 20, 12, color)
+            line(renderer, view, left, top, 20, 12, 25, 16, color)
+            line(renderer, view, left, top, 20, 12, 25, 8, color)
+        } else {
+            line(renderer, view, left, top, 25, 12, 20, 7, color)
+            line(renderer, view, left, top, 25, 12, 19, 17, color)
+            line(renderer, view, left, top, 25, 12, 12, 12, color)
+            line(renderer, view, left, top, 12, 12, 7, 16, color)
+            line(renderer, view, left, top, 12, 12, 7, 8, color)
+        }
+    case .open:
+        line(renderer, view, left, top, 4, 9, 12, 9, color)
+        line(renderer, view, left, top, 12, 9, 15, 12, color)
+        line(renderer, view, left, top, 15, 12, 28, 12, color)
+        line(renderer, view, left, top, 28, 12, 24, 25, color)
+        line(renderer, view, left, top, 24, 25, 5, 25, color)
+        line(renderer, view, left, top, 5, 25, 4, 9, color)
+        line(renderer, view, left, top, 4, 9, 5, 5, color)
+        line(renderer, view, left, top, 5, 5, 13, 5, color)
+        line(renderer, view, left, top, 13, 5, 16, 9, color)
+    case .save:
+        append_ui_outline_rect(renderer, view, left + 5, top + 4, left + 27, top + 28, color, 1.6)
+        append_ui_outline_rect(renderer, view, left + 9, top + 5, left + 22, top + 12, color, 1.4)
+        append_ui_circle(renderer, view, p(left, top, 16, 21), 3, color, 1.4)
+    case .grid:
+        for index in 0 ..< 3 {
+            offset := 5.0 + f32(index) * 7.0
+            line(renderer, view, left, top, 4, offset, 28, offset, color)
+            line(renderer, view, left, top, offset, 4, offset, 28, color)
+        }
+    case .svg, .png:
+        line(renderer, view, left, top, 7, 4, 20, 4, color)
+        line(renderer, view, left, top, 20, 4, 27, 11, color)
+        line(renderer, view, left, top, 27, 11, 27, 28, color)
+        line(renderer, view, left, top, 27, 28, 7, 28, color)
+        line(renderer, view, left, top, 7, 28, 7, 4, color)
+        line(renderer, view, left, top, 20, 4, 20, 11, color)
+        line(renderer, view, left, top, 20, 11, 27, 11, color)
+        if icon == .svg {
+            line(renderer, view, left, top, 11, 17, 14, 24, color)
+            line(renderer, view, left, top, 14, 24, 17, 17, color)
+            line(renderer, view, left, top, 12, 19, 16, 19, color)
+        } else {
+            line(renderer, view, left, top, 11, 17, 11, 24, color)
+            line(renderer, view, left, top, 11, 17, 14, 17, color)
+            line(renderer, view, left, top, 14, 17, 14, 20, color)
+            line(renderer, view, left, top, 14, 20, 11, 20, color)
+            line(renderer, view, left, top, 17, 17, 17, 24, color)
+            line(renderer, view, left, top, 17, 17, 20, 17, color)
+            line(renderer, view, left, top, 20, 17, 17, 20, color)
+        }
+    case .image:
+        append_ui_outline_rect(renderer, view, left + 4, top + 5, left + 28, top + 27, color, 1.6)
+        append_ui_circle(renderer, view, p(left, top, 11, 11), 2, color, 1.3)
+        line(renderer, view, left, top, 6, 24, 13, 16, color)
+        line(renderer, view, left, top, 13, 16, 18, 21, color)
+        line(renderer, view, left, top, 18, 21, 23, 15, color)
+    case .theme:
+        append_ui_circle(renderer, view, p(left, top, 16, 16), 6, color, 1.6)
+        for index in 0 ..< 8 {
+            angle := 0.7853981633974483 * f32(index)
+            inner := p(left, top, 16 + math.cos(angle) * 10, 16 + math.sin(angle) * 10)
+            outer := p(left, top, 16 + math.cos(angle) * 13, 16 + math.sin(angle) * 13)
+            append_ui_segment(renderer, view, inner, outer, color, 1.5)
+        }
+    case .library:
+        append_ui_outline_rect(renderer, view, left + 5, top + 5, left + 27, top + 27, color, 1.5)
+        line(renderer, view, left, top, 9, 9, 23, 9, color)
+        line(renderer, view, left, top, 9, 15, 23, 15, color)
+        line(renderer, view, left, top, 9, 21, 23, 21, color)
+    case .search:
+        append_ui_circle(renderer, view, p(left, top, 13, 13), 7, color, 1.6)
+        line(renderer, view, left, top, 18, 18, 25, 25, color)
+    case .layers:
+        line(renderer, view, left, top, 5, 9, 16, 4, color)
+        line(renderer, view, left, top, 16, 4, 27, 9, color)
+        line(renderer, view, left, top, 27, 9, 16, 14, color)
+        line(renderer, view, left, top, 16, 14, 5, 9, color)
+        line(renderer, view, left, top, 5, 15, 16, 20, color)
+        line(renderer, view, left, top, 16, 20, 27, 15, color)
+        line(renderer, view, left, top, 5, 21, 16, 26, color)
+        line(renderer, view, left, top, 16, 26, 27, 21, color)
+    case .sliders:
+        line(renderer, view, left, top, 5, 7, 27, 7, color)
+        line(renderer, view, left, top, 5, 16, 27, 16, color)
+        line(renderer, view, left, top, 5, 25, 27, 25, color)
+        append_ui_circle(renderer, view, p(left, top, 12, 7), 2, color, 1.4)
+        append_ui_circle(renderer, view, p(left, top, 20, 16), 2, color, 1.4)
+        append_ui_circle(renderer, view, p(left, top, 9, 25), 2, color, 1.4)
+    case .plus:
+        line(renderer, view, left, top, 16, 6, 16, 26, color)
+        line(renderer, view, left, top, 6, 16, 26, 16, color)
+    case .chevron_left:
+        line(renderer, view, left, top, 19, 5, 11, 16, color)
+        line(renderer, view, left, top, 11, 16, 19, 27, color)
+    case .close:
+        line(renderer, view, left, top, 7, 7, 25, 25, color)
+        line(renderer, view, left, top, 25, 7, 7, 25, color)
+    }
+}
+
+append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid, dark_mode, eraser_mode: bool) {
+    toolbar_background: [4]f32 = {0.98, 0.98, 0.98, 0.96}
+    button_background: [4]f32 = {0.95, 0.95, 0.95, 1.0}
+    text_color: [4]f32 = {0.16, 0.16, 0.18, 1.0}
+    accent: [4]f32 = {0.20, 0.42, 0.82, 1.0}
+    if dark_mode {
+        toolbar_background = {0.12, 0.12, 0.14, 0.96}
+        button_background = {0.20, 0.20, 0.23, 1.0}
+        text_color = {0.91, 0.91, 0.94, 1.0}
+        accent = {0.45, 0.68, 1.0, 1.0}
+    }
+    append_ui_rect(&renderer.vertices, view, 4, 4, view.width - 4, 52, toolbar_background)
+    append_ui_text(renderer, view, "samcan", 16, 9, text_color)
+    append_ui_text(renderer, view, "local canvas", 16, 29, text_color)
+    append_ui_segment(renderer, view, {112, 12}, {112, 44}, text_color, 1.0)
+
+    top_icons := [?]ui_icon{.undo, .redo, .open, .save, .grid, .svg, .image, .theme, .png, .library}
+    for index in 0 ..< len(top_icons) {
+        left := 124.0 + f32(index) * 40.0
+        active := (index == 4 && show_grid) || (index == 7 && dark_mode)
+        background := button_background
+        if active {
+            background = {0.72, 0.84, 1.0, 1.0}
+            if dark_mode {
+                background = {0.27, 0.42, 0.66, 1.0}
+            }
+        }
+        append_ui_rect(&renderer.vertices, view, left, 10, left + 34, 44, background)
+        append_ui_icon(renderer, view, top_icons[index], left + 1, 7, text_color)
+    }
+
+    append_ui_text(renderer, view, "untitled", view.width * 0.5 - 24, 17, text_color)
+    append_ui_text(renderer, view, "offline", view.width - 100, 17, text_color)
+
+    rail_background := toolbar_background
+    append_ui_rect(&renderer.vertices, view, 6, 60, 54, 60 + 9.0 * 42.0 + 8.0, rail_background)
+    tool_icons := [?]ui_icon{.selection, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freedraw, .eraser}
+    for index in 0 ..< len(tool_icons) {
+        top := 64.0 + f32(index) * 42.0
         active := index == 0 && select_mode
         if index > 0 && index < 8 && !select_mode {
             active = (index == 1 && active_kind == .rectangle) ||
@@ -779,47 +1031,59 @@ append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode
         if index == 8 {
             active = eraser_mode
         }
-        if index == 13 {
-            active = show_grid
-        }
-        if index == 16 {
-            active = dark_mode
-        }
-        background: [4]f32 = {0.96, 0.96, 0.96, 1.0}
-        text_color: [4]f32 = {0.10, 0.10, 0.10, 1.0}
-        if dark_mode {
-            background = {0.24, 0.24, 0.27, 1.0}
-            text_color = {0.92, 0.92, 0.94, 1.0}
-        }
+        background := button_background
+        icon_color := text_color
         if active {
-            background = {0.60, 0.78, 1.0, 1.0}
+            background = {0.72, 0.84, 1.0, 1.0}
+            icon_color = {0.10, 0.24, 0.56, 1.0}
+            if dark_mode {
+                background = {0.27, 0.42, 0.66, 1.0}
+                icon_color = {0.95, 0.97, 1.0, 1.0}
+            }
         }
-        append_ui_rect(&renderer.vertices, view, left, 8, left + 38, 40, background)
-        append_ui_text(renderer, view, labels[index], left + 7, 8, text_color)
+        append_ui_rect(&renderer.vertices, view, 10, top, 50, top + 38, background)
+        append_ui_icon(renderer, view, tool_icons[index], 10, top - 1, icon_color)
     }
 }
 
 append_library_panel :: proc(renderer: ^renderer, view: viewport.viewport, item_count: int, dark_mode: bool) {
+    left := view.width - 286.0
+    background: [4]f32 = {0.98, 0.98, 0.98, 0.98}
+    text_color: [4]f32 = {0.14, 0.14, 0.16, 1.0}
+    item_background: [4]f32 = {0.93, 0.94, 0.96, 1.0}
+    muted: [4]f32 = {0.42, 0.44, 0.48, 1.0}
+    if dark_mode {
+        background = {0.12, 0.12, 0.14, 0.98}
+        text_color = {0.92, 0.92, 0.95, 1.0}
+        item_background = {0.21, 0.22, 0.25, 1.0}
+        muted = {0.61, 0.62, 0.68, 1.0}
+    }
+    append_ui_rect(&renderer.vertices, view, left, 58, view.width - 6, view.height - 8, background)
+    append_ui_text(renderer, view, "library", left + 14, 66, text_color)
+    append_ui_text(renderer, view, "reusable pieces", left + 14, 94, muted)
+    append_ui_icon(renderer, view, .chevron_left, view.width - 38, 64, muted)
+    append_ui_rect(&renderer.vertices, view, left + 12, 118, view.width - 18, 150, item_background)
+    append_ui_icon(renderer, view, .search, left + 16, 120, muted)
+    append_ui_text(renderer, view, "search library", left + 48, 123, muted)
+
     if item_count <= 0 {
+        append_ui_icon(renderer, view, .library, left + 106, 186, muted)
+        append_ui_text(renderer, view, "no items yet", left + 96, 226, muted)
+        append_ui_text(renderer, view, "shift-click library to import", left + 38, 250, muted)
         return
     }
-    left := view.width - 232.0
-    background: [4]f32 = {0.86, 0.86, 0.86, 1.0}
-    text_color: [4]f32 = {0.10, 0.10, 0.10, 1.0}
-    item_background: [4]f32 = {0.96, 0.96, 0.96, 1.0}
-    if dark_mode {
-        background = {0.16, 0.16, 0.18, 1.0}
-        text_color = {0.92, 0.92, 0.94, 1.0}
-        item_background = {0.24, 0.24, 0.27, 1.0}
-    }
-    append_ui_rect(&renderer.vertices, view, left, 48, view.width - 4, view.height - 84, background)
-    append_ui_text(renderer, view, "library", left + 10, 54, text_color)
+
     visible_count := min(item_count, 12)
     for index in 0 ..< visible_count {
-        top := 76.0 + f32(index) * 54.0
-        append_ui_rect(&renderer.vertices, view, left + 8, top, view.width - 12, top + 46, item_background)
-        append_ui_text(renderer, view, fmt.tprintf("item %d", index + 1), left + 18, top + 10, text_color)
-        append_ui_text(renderer, view, "click to insert", left + 18, top + 27, text_color)
+        column := index % 2
+        row := index / 2
+        card_left := left + 12.0 + f32(column) * 134.0
+        top := 158.0 + f32(row) * 94.0
+        append_ui_rect(&renderer.vertices, view, card_left, top, card_left + 126, top + 84, item_background)
+        preview_icon := [?]ui_icon{.rectangle, .ellipse, .diamond, .arrow, .freedraw, .text}
+        append_ui_icon(renderer, view, preview_icon[index % len(preview_icon)], card_left + 43, top + 7, text_color)
+        append_ui_text(renderer, view, fmt.tprintf("item %d", index + 1), card_left + 12, top + 52, text_color)
+        append_ui_text(renderer, view, "click to insert", card_left + 12, top + 68, muted)
     }
 }
 

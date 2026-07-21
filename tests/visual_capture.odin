@@ -184,7 +184,7 @@ main :: proc() {
         input = {}
         capture(&state, input, "library panel")
         input = {}
-        input.mouse = {1110, 120}
+        input.mouse = {1110, 180}
         input.pressed[platform.MOUSE_BUTTON_LEFT] = true
         capture(&state, input, "library insertion")
     }

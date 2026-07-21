@@ -44,6 +44,23 @@ port their cases into native tests and keep the original fixtures as oracles.
 - test high export scale.
 - test images, text, arrows, rough fills, and deleted elements.
 
+## visual capture mode
+
+the native capture program renders a realistic classroom board and a
+directional interaction matrix into numbered png files. the wrapper also
+encodes those frames into an mp4 when ffmpeg is available:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/visual-test.ps1
+```
+
+the output folder contains `manifest.txt`, the frame images, and
+`visual-test.mp4`. pass a folder to keep a stable output location:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/visual-test.ps1 build/visual-latest
+```
+
 ## interaction tests
 
 automate sequences such as:
