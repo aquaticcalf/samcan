@@ -485,7 +485,7 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
         type = "excalidraw",
         version = 2,
         source = "samcan",
-        elements = make([dynamic]scene_element, len(doc.elements)),
+        elements = make([dynamic]scene_element, 0, len(doc.elements)),
         appState = app_state{
             viewBackgroundColor = "#f7f7f7",
             zoom = 1.0,

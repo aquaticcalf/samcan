@@ -52,6 +52,10 @@ main :: proc() {
     assert(image_index == 7, "image index was unexpected")
 
     assert(storage.save(path, &original), "could not save storage smoke fixture")
+    scene_data, scene_error := os.read_entire_file(path, context.allocator)
+    assert(scene_error == nil, "could not read scene smoke fixture")
+    assert(!strings.contains(string(scene_data), "\"id\": \"\""), "scene contained empty placeholder elements")
+    delete(scene_data)
 
     svg_path := "build/storage-smoke.svg"
     assert(storage.save_svg(svg_path, &original), "could not save svg smoke fixture")
