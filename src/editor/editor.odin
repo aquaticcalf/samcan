@@ -212,7 +212,19 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
+    if len(editor.selected_items) > 0 && input.toggle_lock_requested {
+        finish_transaction(editor)
+        begin_transaction(editor)
+        should_lock := !selection_has_locked(editor)
+        doc.set_locked(&editor.document, editor.selected_items[:], should_lock)
+        finish_transaction(editor)
+        return
+    }
+
     if input.delete_requested && len(editor.selected_items) > 0 {
+        if selection_has_locked(editor) {
+            return
+        }
         finish_transaction(editor)
         begin_transaction(editor)
         remove_selected_elements(editor)
@@ -222,6 +234,9 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
     }
 
     if input.duplicate_requested && len(editor.selected_items) > 0 {
+        if selection_has_locked(editor) {
+            return
+        }
         finish_transaction(editor)
         begin_transaction(editor)
         originals := make([dynamic]int, 0)
@@ -538,6 +553,10 @@ update_selection :: proc(editor: ^state, input: ^platform.frame_input) {
                 }
             }
             editor.selected = hit
+            if selection_has_locked(editor) {
+                editor.interaction = .none
+                return
+            }
             editor.interaction = action
             if editor.interaction == .none {
                 editor.interaction = .move
@@ -817,6 +836,9 @@ hit_handle :: proc(element: doc.element, point: [2]f32, zoom: f32) -> interactio
 }
 
 apply_interaction :: proc(editor: ^state, point: [2]f32) {
+    if selection_has_locked(editor) {
+        return
+    }
     delta := point - editor.drag_start
     x := editor.start_bounds[0]
     y := editor.start_bounds[1]
@@ -866,6 +888,15 @@ apply_interaction :: proc(editor: ^state, point: [2]f32) {
         return
     }
     doc.set_bounds(&editor.document, editor.selected, x, y, width, height)
+}
+
+selection_has_locked :: proc(editor: ^state) -> bool {
+    for index in editor.selected_items {
+        if index >= 0 && index < len(editor.document.elements) && editor.document.elements[index].locked {
+            return true
+        }
+    }
+    return false
 }
 
 begin_transaction :: proc(editor: ^state) {

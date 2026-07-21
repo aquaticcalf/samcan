@@ -33,6 +33,7 @@ default_line_height :: f32(1.25)
 element :: struct {
     id:     u64,
     group_id: u64,
+    locked: bool,
     kind:   element_kind,
     x:      f32,
     y:      f32,
@@ -99,6 +100,7 @@ same :: proc(left, right: ^document) -> bool {
         right_element := right.elements[index]
         if left_element.id != right_element.id ||
             left_element.group_id != right_element.group_id ||
+            left_element.locked != right_element.locked ||
             left_element.kind != right_element.kind ||
             left_element.x != right_element.x ||
             left_element.y != right_element.y ||
@@ -153,6 +155,7 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
     append(&doc.elements, element{
         id = id,
         group_id = 0,
+        locked = false,
         kind = kind,
         x = x,
         y = y,
@@ -299,6 +302,14 @@ ungroup :: proc(doc: ^document, indices: []int) {
     for index in indices {
         if index >= 0 && index < len(doc.elements) {
             doc.elements[index].group_id = 0
+        }
+    }
+}
+
+set_locked :: proc(doc: ^document, indices: []int, locked: bool) {
+    for index in indices {
+        if index >= 0 && index < len(doc.elements) {
+            doc.elements[index].locked = locked
         }
     }
 }

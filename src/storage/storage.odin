@@ -27,6 +27,7 @@ scene_element :: struct {
     text:           string,
     originalText:   string,
     groupIds:       [dynamic]string,
+    locked:         bool,
     fontSize:       f64,
     fontFamily:     i32,
     textAlign:      string,
@@ -329,6 +330,7 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
             if len(element.groupIds) > 0 {
                 doc.elements[index].group_id = group_id_from_string(element.groupIds[0])
             }
+            doc.elements[index].locked = element.locked
             continue
         }
         if kind == .freehand {
@@ -363,6 +365,7 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
         if len(element.groupIds) > 0 {
             doc.elements[index].group_id = group_id_from_string(element.groupIds[0])
         }
+        doc.elements[index].locked = element.locked
     }
 
     ok = true
@@ -395,6 +398,7 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             text = strings.clone(element.text),
             originalText = strings.clone(element.original_text),
             groupIds = make([dynamic]string, 0),
+            locked = element.locked,
             fontSize = f64(element.font_size),
             fontFamily = element.font_family,
             textAlign = text_align_name(element.text_align),
