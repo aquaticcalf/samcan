@@ -9,15 +9,15 @@ typescript, the dom, a browser runtime, electron, tauri, or vite.
 
 ## documents
 
-- [architecture](architecture.md) — runtime layers, project layout, and the
+- [architecture](architecture.md) -- runtime layers, project layout, and the
   native event/render loop.
-- [vendors](vendors.md) — which odin vendor libraries to use and why.
-- [feature parity](feature-parity.md) — the editor features to reproduce and
+- [vendors](vendors.md) -- which odin vendor libraries to use and why.
+- [feature parity](feature-parity.md) -- the editor features to reproduce and
   the local replacements for cloud features.
-- [storage and format](storage-and-format.md) — document data, compatible
+- [storage and format](storage-and-format.md) -- document data, compatible
   files, autosave, recovery, and libraries.
-- [roadmap](roadmap.md) — the implementation order and milestones.
-- [testing](testing.md) — parity tests, rendering tests, and the definition of
+- [roadmap](roadmap.md) -- the implementation order and milestones.
+- [testing](testing.md) -- parity tests, rendering tests, and the definition of
   done.
 
 ## target
