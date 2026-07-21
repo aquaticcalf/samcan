@@ -50,5 +50,22 @@ main :: proc() {
     editor_pkg.update(&editor, &input)
     assert(editor.document.elements[2].x == -10, "z-order undo did not restore the element order")
 
+    input = {}
+    input.copy_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(len(editor.clipboard.elements) == 1, "copy did not capture the selected element")
+
+    input = {}
+    input.paste_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(len(editor.document.elements) == 4, "paste did not create a copied element")
+    assert(editor.document.elements[3].x == -10, "paste did not offset the copied element")
+
+    input = {}
+    input.cut_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(len(editor.document.elements) == 3, "cut did not remove the pasted element")
+    assert(len(editor.clipboard.elements) == 1, "cut did not retain clipboard data")
+
     fmt.println("commands smoke passed")
 }

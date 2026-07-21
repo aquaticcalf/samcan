@@ -249,7 +249,10 @@ duplicate :: proc(doc: ^document, index: int, delta_x, delta_y: f32) -> int {
         return -1
     }
 
-    source := doc.elements[index]
+    return append_element_copy(doc, doc.elements[index], delta_x, delta_y)
+}
+
+append_element_copy :: proc(doc: ^document, source: element, delta_x, delta_y: f32) -> int {
     copy := source
     copy.id = doc.next_id
     doc.next_id += 1

@@ -20,6 +20,7 @@ interaction_kind :: enum {
 
 state :: struct {
     document:        doc.document,
+    clipboard:       doc.document,
     viewport:        viewport.viewport,
     drawing:         bool,
     active_rect:     int,
@@ -43,6 +44,7 @@ state :: struct {
 new :: proc(width, height: f32) -> state {
     return state{
         document = doc.new(),
+        clipboard = doc.new(),
         viewport = viewport.new(width, height),
         active_rect = -1,
         active_kind = .rectangle,
@@ -66,6 +68,7 @@ destroy :: proc(editor: ^state) {
     delete(editor.drag_items)
     delete(editor.drag_bounds)
     doc.destroy(&editor.document)
+    doc.destroy(&editor.clipboard)
 }
 
 load :: proc(editor: ^state, path: string) -> bool {
@@ -122,6 +125,33 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
 
     if input.select_all_requested {
         select_all(editor)
+        return
+    }
+
+    if input.copy_requested && len(editor.selected_items) > 0 {
+        copy_selection(editor)
+        return
+    }
+
+    if input.cut_requested && len(editor.selected_items) > 0 {
+        copy_selection(editor)
+        finish_transaction(editor)
+        begin_transaction(editor)
+        remove_selected_elements(editor)
+        finish_transaction(editor)
+        return
+    }
+
+    if input.paste_requested && len(editor.clipboard.elements) > 0 {
+        finish_transaction(editor)
+        begin_transaction(editor)
+        clear_selection(editor)
+        for source in editor.clipboard.elements {
+            pasted := doc.append_element_copy(&editor.document, source, 20, 20)
+            append(&editor.selected_items, pasted)
+            editor.selected = pasted
+        }
+        finish_transaction(editor)
         return
     }
 
@@ -432,6 +462,16 @@ select_all :: proc(editor: ^state) {
     for index in 0 ..< len(editor.document.elements) {
         append(&editor.selected_items, index)
         editor.selected = index
+    }
+}
+
+copy_selection :: proc(editor: ^state) {
+    doc.destroy(&editor.clipboard)
+    editor.clipboard = doc.new()
+    for index in editor.selected_items {
+        if index >= 0 && index < len(editor.document.elements) {
+            doc.append_element_copy(&editor.clipboard, editor.document.elements[index], 0, 0)
+        }
     }
 }
 
