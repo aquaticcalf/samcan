@@ -171,6 +171,7 @@ main :: proc() {
             app_editor.active_kind,
             app_editor.show_grid,
             app_editor.dark_mode,
+            app_editor.erasing,
         )
         platform.end_frame(&app_window)
     }
