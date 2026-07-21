@@ -43,6 +43,13 @@ main :: proc() {
     freehand := document.add_freehand(&original, -10, -10, {0.3, 0.3, 0.3, 1.0})
     document.append_point(&original, freehand, {-5, 0})
     document.append_point(&original, freehand, {10, -5})
+    image_id := "image-1"
+    original.images[image_id] = document.image_asset{
+        mime_type = strings.clone("image/png"),
+        data_url = strings.clone("data:image/png;base64,abcd"),
+    }
+    image_index := document.add_image(&original, 140, 80, 160, 120, image_id)
+    assert(image_index == 7, "image index was unexpected")
 
     assert(storage.save(path, &original), "could not save storage smoke fixture")
 
@@ -59,7 +66,7 @@ main :: proc() {
     assert(ok, "could not load storage smoke fixture")
     defer document.destroy(&loaded)
 
-    assert(len(loaded.elements) == 7, "element count did not round-trip")
+    assert(len(loaded.elements) == 8, "element count did not round-trip")
     rect := loaded.elements[0]
     assert(rect.kind == .rectangle, "rectangle kind did not round-trip")
     assert(rect.x == -40, "rectangle x did not round-trip")
@@ -91,7 +98,13 @@ main :: proc() {
     assert(loaded.elements[5].width == 180, "fixed text width did not round-trip")
     assert(loaded.elements[6].kind == .freehand, "freehand kind did not round-trip")
     assert(len(loaded.elements[6].points) == 3, "freehand points did not round-trip")
-
+    assert(loaded.elements[7].kind == .image, "image kind did not round-trip")
+    assert(loaded.elements[7].image_id == image_id, "image id did not round-trip")
+    assert(len(loaded.images) == 1, "image file did not round-trip")
+    loaded_image, image_found := loaded.images[image_id]
+    assert(image_found, "image asset was missing")
+    assert(loaded_image.mime_type == "image/png", "image mime type did not round-trip")
+    assert(loaded_image.data_url == "data:image/png;base64,abcd", "image data did not round-trip")
     _ = os.remove(path)
     _ = os.remove(svg_path)
     fmt.println("storage smoke passed")

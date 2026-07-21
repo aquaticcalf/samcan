@@ -27,6 +27,7 @@ scene_element :: struct {
     text:           string,
     originalText:   string,
     groupIds:       [dynamic]string,
+    fileId:         string,
     locked:         bool,
     fontSize:       f64,
     fontFamily:     i32,
@@ -114,7 +115,13 @@ save_svg :: proc(path: string, doc: ^document.document) -> bool {
         height,
     )
     for element in doc.elements {
-        append_svg_element(&builder, element)
+        image_data := ""
+        if element.image_id != "" {
+            if image, found := doc.images[element.image_id]; found {
+                image_data = image.data_url
+            }
+        }
+        append_svg_element(&builder, element, image_data)
     }
     strings.write_string(&builder, "</svg>\n")
 
@@ -154,7 +161,7 @@ document_bounds :: proc(doc: ^document.document) -> (min_x, min_y, max_x, max_y:
     return
 }
 
-append_svg_element :: proc(builder: ^strings.Builder, element: document.element) {
+append_svg_element :: proc(builder: ^strings.Builder, element: document.element, image_data: string = "") {
     stroke := format_color(element.stroke)
     fill := format_color(element.fill)
     if fill == "transparent" {
@@ -224,6 +231,14 @@ append_svg_element :: proc(builder: ^strings.Builder, element: document.element)
         )
         append_svg_text(builder, element.text)
         strings.write_string(builder, "</text>\n")
+    case .image:
+        if image_data != "" {
+            fmt.sbprintf(
+                builder,
+                "<image href=\"%s\" x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" opacity=\"%f\" preserveAspectRatio=\"none\" />\n",
+                image_data, element.x, element.y, element.width, element.height, opacity,
+            )
+        }
     }
 }
 
@@ -285,6 +300,14 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
     defer destroy_scene(&file)
 
     doc = document.new()
+    for image_id, file_data in file.files {
+        if file_data.dataURL != "" {
+            doc.images[strings.clone(image_id)] = document.image_asset{
+                mime_type = strings.clone(file_data.mimeType),
+                data_url = strings.clone(file_data.dataURL),
+            }
+        }
+    }
     for element in file.elements {
         kind, known := element_kind_from_name(element.type)
         if !known {
@@ -379,6 +402,9 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
             doc.elements[index].group_id = group_id_from_string(element.groupIds[0])
         }
         doc.elements[index].locked = element.locked
+        if kind == .image && element.fileId != "" {
+            doc.elements[index].image_id = strings.clone(element.fileId)
+        }
     }
 
     ok = true
@@ -411,6 +437,7 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             text = strings.clone(element.text),
             originalText = strings.clone(element.original_text),
             groupIds = make([dynamic]string, 0),
+            fileId = strings.clone(element.image_id),
             locked = element.locked,
             fontSize = f64(element.font_size),
             fontFamily = element.font_family,
@@ -439,6 +466,15 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             append(&file.elements[len(file.elements) - 1].points, [2]f64{f64(point[0]), f64(point[1])})
         }
     }
+    for image_id, image in doc.images {
+        file.files[strings.clone(image_id)] = file_data{
+            mimeType = strings.clone(image.mime_type),
+            id = strings.clone(image_id),
+            dataURL = strings.clone(image.data_url),
+            version = 1,
+            status = "saved",
+        }
+    }
     return file
 }
 
@@ -458,6 +494,8 @@ element_type_name :: proc(kind: document.element_kind) -> string {
         return "text"
     case .freehand:
         return "freedraw"
+    case .image:
+        return "image"
     }
     return "rectangle"
 }
@@ -478,6 +516,8 @@ element_kind_from_name :: proc(name: string) -> (document.element_kind, bool) {
         return .text, true
     case "freedraw":
         return .freehand, true
+    case "image":
+        return .image, true
     }
     return .rectangle, false
 }
@@ -570,6 +610,7 @@ destroy_scene :: proc(file: ^scene_file) {
         delete(element.text)
         delete(element.originalText)
         delete(element.groupIds)
+        delete(element.fileId)
         delete(element.points)
     }
     delete(file.elements)

@@ -12,6 +12,7 @@ element_kind :: enum {
     arrow,
     text,
     freehand,
+    image,
 }
 
 text_align :: enum {
@@ -41,6 +42,11 @@ default_font_size :: f32(20.0)
 default_font_family :: i32(5)
 default_line_height :: f32(1.25)
 
+image_asset :: struct {
+    mime_type: string,
+    data_url:   string,
+}
+
 element :: struct {
     id:     u64,
     group_id: u64,
@@ -66,11 +72,13 @@ element :: struct {
     vertical_align: vertical_align,
     auto_resize: bool,
     line_height: f32,
+    image_id: string,
     points: [dynamic][2]f32,
 }
 
 document :: struct {
     elements: [dynamic]element,
+    images:   map[string]image_asset,
     next_id:  u64,
     next_group_id: u64,
 }
@@ -78,6 +86,7 @@ document :: struct {
 new :: proc() -> document {
     return document{
         elements = make([dynamic]element, 0),
+        images = make(map[string]image_asset),
         next_id = 1,
         next_group_id = 1,
     }
@@ -93,6 +102,9 @@ clone :: proc(source: ^document) -> document {
         if element.original_text != "" {
             element.original_text = strings.clone(element.original_text)
         }
+        if source_element.image_id != "" {
+            element.image_id = strings.clone(source_element.image_id)
+        }
         if len(source_element.points) > 0 {
             element.points = make([dynamic][2]f32, 0)
             for point in source_element.points {
@@ -100,6 +112,13 @@ clone :: proc(source: ^document) -> document {
             }
         }
         append(&result.elements, element)
+    }
+    for image_id, source_image in source.images {
+        image_id_copy := strings.clone(image_id)
+        result.images[image_id_copy] = image_asset{
+            mime_type = strings.clone(source_image.mime_type),
+            data_url = strings.clone(source_image.data_url),
+        }
     }
     result.next_id = source.next_id
     result.next_group_id = source.next_group_id
@@ -137,6 +156,7 @@ same :: proc(left, right: ^document) -> bool {
             left_element.vertical_align != right_element.vertical_align ||
             left_element.auto_resize != right_element.auto_resize ||
             left_element.line_height != right_element.line_height ||
+            left_element.image_id != right_element.image_id ||
             len(left_element.points) != len(right_element.points) {
             return false
         }
@@ -146,6 +166,15 @@ same :: proc(left, right: ^document) -> bool {
             }
         }
     }
+    if len(left.images) != len(right.images) {
+        return false
+    }
+    for image_id, left_image in left.images {
+        right_image, ok := right.images[image_id]
+        if !ok || left_image.mime_type != right_image.mime_type || left_image.data_url != right_image.data_url {
+            return false
+        }
+    }
     return true
 }
 
@@ -153,9 +182,15 @@ destroy :: proc(doc: ^document) {
     for &element in doc.elements {
         delete(element.text)
         delete(element.original_text)
+        delete(element.image_id)
         delete(element.points)
     }
     delete(doc.elements)
+    for _, image in doc.images {
+        delete(image.mime_type)
+        delete(image.data_url)
+    }
+    delete(doc.images)
     doc.next_id = 1
     doc.next_group_id = 1
 }
@@ -271,6 +306,14 @@ add_text_styled :: proc(
     return index
 }
 
+add_image :: proc(doc: ^document, x, y, width, height: f32, image_id: string) -> int {
+    index := add(doc, .image, x, y, width, height, {0, 0, 0, 0})
+    delete(doc.elements[index].image_id)
+    doc.elements[index].image_id = strings.clone(image_id)
+    doc.elements[index].fill_style = .none
+    return index
+}
+
 add_freehand :: proc(doc: ^document, x, y: f32, fill: color) -> int {
     index := add(doc, .freehand, x, y, 0, 0, fill)
     append(&doc.elements[index].points, [2]f32{x, y})
@@ -296,6 +339,9 @@ append_element_copy :: proc(doc: ^document, source: element, delta_x, delta_y: f
     }
     if source.original_text != "" {
         copy.original_text = strings.clone(source.original_text)
+    }
+    if source.image_id != "" {
+        copy.image_id = strings.clone(source.image_id)
     }
     if len(source.points) > 0 {
         copy.points = make([dynamic][2]f32, 0)
@@ -459,6 +505,7 @@ remove :: proc(doc: ^document, index: int) {
     }
     delete(doc.elements[index].text)
     delete(doc.elements[index].original_text)
+    delete(doc.elements[index].image_id)
     delete(doc.elements[index].points)
     ordered_remove(&doc.elements, index)
 }
