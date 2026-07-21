@@ -31,5 +31,24 @@ main :: proc() {
     editor_pkg.update(&editor, &input)
     assert(len(editor.document.elements) == 2, "undo did not restore the deleted element")
 
+    doc.add_rectangle(&editor.document, 30, 30, 20, 20, {0.1, 0.2, 0.3, 1.0})
+    editor.selected = 1
+    input = {}
+    input.bring_forward_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.selected == 2, "bring forward did not update the selected index")
+    assert(editor.document.elements[2].x == -10, "bring forward did not preserve element data")
+
+    input = {}
+    input.send_to_back_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.selected == 0, "send to back did not update the selected index")
+    assert(editor.document.elements[0].x == -10, "send to back did not move the selected element")
+
+    input = {}
+    input.undo_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.document.elements[2].x == -10, "z-order undo did not restore the element order")
+
     fmt.println("commands smoke passed")
 }

@@ -152,6 +152,27 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
+    if len(editor.selected_items) > 0 && (
+        input.bring_forward_requested ||
+        input.send_backward_requested ||
+        input.bring_to_front_requested ||
+        input.send_to_back_requested
+    ) {
+        finish_transaction(editor)
+        begin_transaction(editor)
+        if input.bring_forward_requested {
+            move_selection_forward(editor)
+        } else if input.send_backward_requested {
+            move_selection_backward(editor)
+        } else if input.bring_to_front_requested {
+            move_selection_to_front(editor)
+        } else {
+            move_selection_to_back(editor)
+        }
+        finish_transaction(editor)
+        return
+    }
+
     if input.tool_select_requested {
         editor.select_mode = true
     }
@@ -411,6 +432,49 @@ select_all :: proc(editor: ^state) {
     for index in 0 ..< len(editor.document.elements) {
         append(&editor.selected_items, index)
         editor.selected = index
+    }
+}
+
+move_selection_forward :: proc(editor: ^state) {
+    for index := len(editor.document.elements) - 2; index >= 0; index -= 1 {
+        if !is_selected(editor, index) || is_selected(editor, index + 1) {
+            continue
+        }
+        doc.swap_elements(&editor.document, index, index + 1)
+        update_selection_index(editor, index, index + 1)
+    }
+}
+
+move_selection_backward :: proc(editor: ^state) {
+    for index := 1; index < len(editor.document.elements); index += 1 {
+        if !is_selected(editor, index) || is_selected(editor, index - 1) {
+            continue
+        }
+        doc.swap_elements(&editor.document, index, index - 1)
+        update_selection_index(editor, index, index - 1)
+    }
+}
+
+move_selection_to_front :: proc(editor: ^state) {
+    for pass := 0; pass < len(editor.document.elements); pass += 1 {
+        move_selection_forward(editor)
+    }
+}
+
+move_selection_to_back :: proc(editor: ^state) {
+    for pass := 0; pass < len(editor.document.elements); pass += 1 {
+        move_selection_backward(editor)
+    }
+}
+
+update_selection_index :: proc(editor: ^state, old_index, new_index: int) {
+    for &selected_index in editor.selected_items {
+        if selected_index == old_index {
+            selected_index = new_index
+        }
+    }
+    if editor.selected == old_index {
+        editor.selected = new_index
     }
 }
 

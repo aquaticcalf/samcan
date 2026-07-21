@@ -50,6 +50,10 @@ frame_input :: struct {
     delete_requested: bool,
     duplicate_requested: bool,
     select_all_requested: bool,
+    bring_forward_requested: bool,
+    send_backward_requested: bool,
+    bring_to_front_requested: bool,
+    send_to_back_requested: bool,
     text_input: string,
     backspace_requested: bool,
     enter_requested: bool,
@@ -133,6 +137,10 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.delete_requested = false
     input.duplicate_requested = false
     input.select_all_requested = false
+    input.bring_forward_requested = false
+    input.send_backward_requested = false
+    input.bring_to_front_requested = false
+    input.send_to_back_requested = false
     delete(input.text_input)
     input.text_input = ""
     input.backspace_requested = false
@@ -213,6 +221,20 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_A && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.select_all_requested = true
+            }
+            if event.key.key == SDL.K_RIGHTBRACKET && (event.key.mod & SDL.KMOD_CTRL) != {} {
+                if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                    input.bring_to_front_requested = true
+                } else {
+                    input.bring_forward_requested = true
+                }
+            }
+            if event.key.key == SDL.K_LEFTBRACKET && (event.key.mod & SDL.KMOD_CTRL) != {} {
+                if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                    input.send_to_back_requested = true
+                } else {
+                    input.send_backward_requested = true
+                }
             }
             if event.key.key == SDL.K_R && event.key.mod == {} {
                 input.tool_rectangle_requested = true

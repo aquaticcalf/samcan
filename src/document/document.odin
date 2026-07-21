@@ -254,6 +254,13 @@ duplicate :: proc(doc: ^document, index: int, delta_x, delta_y: f32) -> int {
     return len(doc.elements) - 1
 }
 
+swap_elements :: proc(doc: ^document, left, right: int) {
+    if left < 0 || right < 0 || left >= len(doc.elements) || right >= len(doc.elements) || left == right {
+        return
+    }
+    doc.elements[left], doc.elements[right] = doc.elements[right], doc.elements[left]
+}
+
 append_point :: proc(doc: ^document, index: int, point: [2]f32) {
     if index < 0 || index >= len(doc.elements) || doc.elements[index].kind != .freehand {
         return
