@@ -8,7 +8,7 @@
 - pan and zoom
 - zoom to fit, selection, and drawing
 - grid mode
-- snap to objects and midpoints
+- snap to objects and midpoints -- grid snapping plus shape corners and midpoints for lines/arrows
 - dark and light themes
 - canvas background color
 - view mode and zen mode

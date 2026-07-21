@@ -55,6 +55,7 @@ state :: struct {
     clipboard:       doc.document,
     viewport:        viewport.viewport,
     show_grid:       bool,
+    snap_to_grid:    bool,
     dark_mode:       bool,
     library_open:    bool,
     library_items:   [dynamic]storage.library_item,
@@ -88,6 +89,7 @@ new :: proc(width, height: f32) -> state {
         clipboard = doc.new(),
         viewport = viewport.new(width, height),
         show_grid = false,
+        snap_to_grid = false,
         dark_mode = false,
         library_open = false,
         library_items = make([dynamic]storage.library_item, 0),
@@ -531,6 +533,9 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
     if input.toggle_grid_requested {
         editor.show_grid = !editor.show_grid
     }
+    if input.toggle_snap_requested {
+        editor.snap_to_grid = !editor.snap_to_grid
+    }
 
     if input.wheel != 0 {
         factor: f32 = 1.1
@@ -547,6 +552,7 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
     if editor.active_kind == .text && !editor.select_mode {
         if input.pressed[platform.MOUSE_BUTTON_LEFT] {
             world := viewport.screen_to_world(editor.viewport, input.mouse)
+            world = snap_point(editor, world, -1, false)
             existing := hit_test(&editor.document, world)
             if existing >= 0 && editor.document.elements[existing].kind == .text && !editor.document.elements[existing].locked {
                 begin_transaction(editor)
@@ -604,6 +610,13 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
 
     if input.pressed[platform.MOUSE_BUTTON_LEFT] {
         world := viewport.screen_to_world(editor.viewport, input.mouse)
+        if editor.active_kind == .freehand {
+            // freehand keeps the raw pointer path
+        } else if editor.active_kind == .line || editor.active_kind == .arrow {
+            world = snap_point(editor, world, -1, true)
+        } else {
+            world = snap_point(editor, world, -1, false)
+        }
         begin_transaction(editor)
         if editor.active_kind == .freehand {
             editor.active_rect = doc.add_freehand(&editor.document, world[0], world[1], {0.12, 0.12, 0.12, 1.0})
@@ -624,6 +637,13 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
 
     if editor.drawing && editor.active_rect >= 0 {
         world := viewport.screen_to_world(editor.viewport, input.mouse)
+        if editor.active_kind == .freehand {
+            // freehand keeps the raw pointer path
+        } else if editor.active_kind == .line || editor.active_kind == .arrow {
+            world = snap_point(editor, world, editor.active_rect, true)
+        } else {
+            world = snap_point(editor, world, editor.active_rect, false)
+        }
         element := editor.document.elements[editor.active_rect]
         if element.kind == .freehand {
             if len(element.points) == 0 || element.points[len(element.points) - 1] != world {
@@ -652,6 +672,55 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.active_rect = -1
         finish_transaction(editor)
     }
+}
+
+snap_grid_size :: f32(20.0)
+
+snap_point :: proc(editor: ^state, point: [2]f32, exclude_index: int, object_snap: bool) -> [2]f32 {
+    result := point
+    if editor.snap_to_grid {
+        result[0] = math.round(result[0] / snap_grid_size) * snap_grid_size
+        result[1] = math.round(result[1] / snap_grid_size) * snap_grid_size
+    }
+    if !object_snap {
+        return result
+    }
+
+    threshold := 14.0 / max(0.1, editor.viewport.zoom)
+    threshold_squared := threshold * threshold
+    best_squared := threshold_squared
+    for index in 0 ..< len(editor.document.elements) {
+        element := editor.document.elements[index]
+        if index == exclude_index || element.locked {
+            continue
+        }
+        if element.kind != .rectangle && element.kind != .ellipse &&
+            element.kind != .diamond && element.kind != .image {
+            continue
+        }
+        center_x := element.x + element.width * 0.5
+        center_y := element.y + element.height * 0.5
+        candidates := [9][2]f32{
+            {element.x, element.y},
+            {center_x, element.y},
+            {element.x + element.width, element.y},
+            {element.x, center_y},
+            {center_x, center_y},
+            {element.x + element.width, center_y},
+            {element.x, element.y + element.height},
+            {center_x, element.y + element.height},
+            {element.x + element.width, element.y + element.height},
+        }
+        for candidate in candidates {
+            delta := result - candidate
+            distance_squared := delta[0] * delta[0] + delta[1] * delta[1]
+            if distance_squared < best_squared {
+                best_squared = distance_squared
+                result = candidate
+            }
+        }
+    }
+    return result
 }
 
 property_action_at :: proc(view: viewport.viewport, point: [2]f32) -> (row, color_index: int, hit: bool) {
@@ -1297,7 +1366,11 @@ apply_interaction :: proc(editor: ^state, point: [2]f32) {
     if selection_has_locked(editor) {
         return
     }
-    delta := point - editor.drag_start
+    snapped_point := point
+    if editor.interaction != .move {
+        snapped_point = snap_point(editor, snapped_point, -1, false)
+    }
+    delta := snapped_point - editor.drag_start
     x := editor.start_bounds[0]
     y := editor.start_bounds[1]
     width := editor.start_bounds[2]
@@ -1308,21 +1381,21 @@ apply_interaction :: proc(editor: ^state, point: [2]f32) {
         x += delta[0]
         y += delta[1]
     case .resize_top_left:
-        x = min(point[0], editor.start_bounds[0] + editor.start_bounds[2] - 1.0)
-        y = min(point[1], editor.start_bounds[1] + editor.start_bounds[3] - 1.0)
+        x = min(snapped_point[0], editor.start_bounds[0] + editor.start_bounds[2] - 1.0)
+        y = min(snapped_point[1], editor.start_bounds[1] + editor.start_bounds[3] - 1.0)
         width = max(1.0, editor.start_bounds[0] + editor.start_bounds[2] - x)
         height = max(1.0, editor.start_bounds[1] + editor.start_bounds[3] - y)
     case .resize_top_right:
-        y = min(point[1], editor.start_bounds[1] + editor.start_bounds[3] - 1.0)
-        width = max(1.0, point[0] - editor.start_bounds[0])
+        y = min(snapped_point[1], editor.start_bounds[1] + editor.start_bounds[3] - 1.0)
+        width = max(1.0, snapped_point[0] - editor.start_bounds[0])
         height = max(1.0, editor.start_bounds[1] + editor.start_bounds[3] - y)
     case .resize_bottom_right:
-        width = max(1.0, point[0] - editor.start_bounds[0])
-        height = max(1.0, point[1] - editor.start_bounds[1])
+        width = max(1.0, snapped_point[0] - editor.start_bounds[0])
+        height = max(1.0, snapped_point[1] - editor.start_bounds[1])
     case .resize_bottom_left:
-        x = min(point[0], editor.start_bounds[0] + editor.start_bounds[2] - 1.0)
+        x = min(snapped_point[0], editor.start_bounds[0] + editor.start_bounds[2] - 1.0)
         width = max(1.0, editor.start_bounds[0] + editor.start_bounds[2] - x)
-        height = max(1.0, point[1] - editor.start_bounds[1])
+        height = max(1.0, snapped_point[1] - editor.start_bounds[1])
     case .none:
         return
     }
@@ -1336,6 +1409,10 @@ apply_interaction :: proc(editor: ^state, point: [2]f32) {
             bounds := editor.drag_bounds[position]
             target_x := bounds[0] + delta[0]
             target_y := bounds[1] + delta[1]
+            if editor.snap_to_grid {
+                target_x = math.round(target_x / snap_grid_size) * snap_grid_size
+                target_y = math.round(target_y / snap_grid_size) * snap_grid_size
+            }
             if editor.document.elements[index].kind == .freehand {
                 current := editor.document.elements[index]
                 doc.translate(&editor.document, index, target_x - current.x, target_y - current.y)

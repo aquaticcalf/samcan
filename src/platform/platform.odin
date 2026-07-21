@@ -99,6 +99,7 @@ frame_input :: struct {
     tool_eraser_requested: bool,
     tool_select_requested: bool,
     toggle_grid_requested: bool,
+    toggle_snap_requested: bool,
     buttons:        [8]bool,
     pressed:        [8]bool,
     released:       [8]bool,
@@ -216,6 +217,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.tool_eraser_requested = false
     input.tool_select_requested = false
     input.toggle_grid_requested = false
+    input.toggle_snap_requested = false
     input.pressed = {}
     input.released = {}
     input.double_click = false
@@ -410,6 +412,9 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_G && event.key.mod == {} {
                 input.toggle_grid_requested = true
+            }
+            if event.key.key == SDL.K_G && event.key.mod == SDL.KMOD_SHIFT {
+                input.toggle_snap_requested = true
             }
         case .TEXT_INPUT:
             if event.text.text != nil {
