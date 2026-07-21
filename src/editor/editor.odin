@@ -497,11 +497,56 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
             if (element.kind == .freehand && len(element.points) < 2) ||
                 (element.kind != .freehand && (element.width < 2 || element.height < 2)) {
                 doc.remove(&editor.document, editor.active_rect)
+            } else if element.kind == .arrow {
+                bind_arrow(editor, editor.active_rect)
             }
         }
         editor.active_rect = -1
         finish_transaction(editor)
     }
+}
+
+bind_arrow :: proc(editor: ^state, arrow_index: int) {
+    if arrow_index < 0 || arrow_index >= len(editor.document.elements) {
+        return
+    }
+    arrow := &editor.document.elements[arrow_index]
+    if arrow.kind != .arrow {
+        return
+    }
+    start: [2]f32 = {arrow.x, arrow.y}
+    finish: [2]f32 = {arrow.x + arrow.width, arrow.y + arrow.height}
+    arrow.start_binding_id = nearest_bindable_id(&editor.document, arrow_index, start)
+    arrow.end_binding_id = nearest_bindable_id(&editor.document, arrow_index, finish)
+}
+
+nearest_bindable_id :: proc(doc: ^doc.document, excluded_index: int, point: [2]f32, tolerance: f32 = 16.0) -> u64 {
+    best_id: u64 = 0
+    best_distance := tolerance * tolerance
+    for index in 0 ..< len(doc.elements) {
+        if index == excluded_index {
+            continue
+        }
+        element := doc.elements[index]
+        if element.kind != .rectangle && element.kind != .ellipse && element.kind != .diamond && element.kind != .image {
+            continue
+        }
+        left := element.x - tolerance
+        top := element.y - tolerance
+        right := element.x + element.width + tolerance
+        bottom := element.y + element.height + tolerance
+        if point[0] < left || point[0] > right || point[1] < top || point[1] > bottom {
+            continue
+        }
+        center: [2]f32 = {element.x + element.width * 0.5, element.y + element.height * 0.5}
+        delta := point - center
+        distance := delta[0] * delta[0] + delta[1] * delta[1]
+        if best_id == 0 || distance < best_distance {
+            best_id = element.id
+            best_distance = distance
+        }
+    }
+    return best_id
 }
 
 fit_document :: proc(editor: ^state, selection_only: bool) {

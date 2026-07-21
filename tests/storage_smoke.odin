@@ -24,6 +24,8 @@ main :: proc() {
     original.elements[2].angle = 0.5
     document.add_line(&original, -80, 60, 120, 50, {0.50, 0.25, 0.75, 1.0})
     document.add_arrow(&original, -100, -80, 140, 30, {0.75, 0.25, 0.50, 1.0})
+    original.elements[4].start_binding_id = original.elements[0].id
+    original.elements[4].end_binding_id = original.elements[2].id
     group_indices := [?]int{0, 1}
     group_id := document.group(&original, group_indices[:])
     text_index := document.add_text_styled(
@@ -91,6 +93,8 @@ main :: proc() {
     assert(loaded.elements[2].angle == 0.5, "angle did not round-trip")
     assert(loaded.elements[3].kind == .line, "line kind did not round-trip")
     assert(loaded.elements[4].kind == .arrow, "arrow kind did not round-trip")
+    assert(loaded.elements[4].start_binding_id == loaded.elements[0].id, "arrow start binding did not round-trip")
+    assert(loaded.elements[4].end_binding_id == loaded.elements[2].id, "arrow end binding did not round-trip")
     assert(loaded.elements[5].kind == .text, "text kind did not round-trip")
     assert(loaded.elements[5].text == "hello & <", "text content did not round-trip")
     assert(loaded.elements[5].original_text == "hello & <", "original text did not round-trip")

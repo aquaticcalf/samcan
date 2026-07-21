@@ -73,6 +73,8 @@ element :: struct {
     auto_resize: bool,
     line_height: f32,
     image_id: string,
+    start_binding_id: u64,
+    end_binding_id: u64,
     points: [dynamic][2]f32,
 }
 
@@ -157,6 +159,8 @@ same :: proc(left, right: ^document) -> bool {
             left_element.auto_resize != right_element.auto_resize ||
             left_element.line_height != right_element.line_height ||
             left_element.image_id != right_element.image_id ||
+            left_element.start_binding_id != right_element.start_binding_id ||
+            left_element.end_binding_id != right_element.end_binding_id ||
             len(left_element.points) != len(right_element.points) {
             return false
         }

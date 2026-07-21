@@ -31,6 +31,8 @@ scene_element :: struct {
     originalText:   string,
     groupIds:       [dynamic]string,
     fileId:         string,
+    startBindingId: string,
+    endBindingId:   string,
     locked:         bool,
     fontSize:       f64,
     fontFamily:     i32,
@@ -474,6 +476,14 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
         if kind == .image && element.fileId != "" {
             doc.elements[index].image_id = strings.clone(element.fileId)
         }
+        doc.elements[index].start_binding_id = group_id_from_string(element.startBindingId)
+        doc.elements[index].end_binding_id = group_id_from_string(element.endBindingId)
+        if element.startBindingId == "" {
+            doc.elements[index].start_binding_id = 0
+        }
+        if element.endBindingId == "" {
+            doc.elements[index].end_binding_id = 0
+        }
     }
 
     ok = true
@@ -496,6 +506,14 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
     }
 
     for element in doc.elements {
+        start_binding_id := ""
+        if element.start_binding_id != 0 {
+            start_binding_id = strings.clone(fmt.tprintf("%d", element.start_binding_id))
+        }
+        end_binding_id := ""
+        if element.end_binding_id != 0 {
+            end_binding_id = strings.clone(fmt.tprintf("%d", element.end_binding_id))
+        }
         append(&file.elements, scene_element{
             id = fmt.tprintf("%d", element.id),
             type = element_type_name(element.kind),
@@ -507,6 +525,8 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             originalText = strings.clone(element.original_text),
             groupIds = make([dynamic]string, 0),
             fileId = strings.clone(element.image_id),
+            startBindingId = start_binding_id,
+            endBindingId = end_binding_id,
             locked = element.locked,
             fontSize = f64(element.font_size),
             fontFamily = element.font_family,
@@ -680,6 +700,8 @@ destroy_scene :: proc(file: ^scene_file) {
         delete(element.originalText)
         delete(element.groupIds)
         delete(element.fileId)
+        delete(element.startBindingId)
+        delete(element.endBindingId)
         delete(element.points)
     }
     delete(file.elements)

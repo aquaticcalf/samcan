@@ -130,5 +130,11 @@ main :: proc() {
     editor_pkg.update(&editor, &input)
     assert(editor.document.elements[3].angle > 0.26 && editor.document.elements[3].angle < 0.27, "rotate command did not update the angle")
 
+    bound_shape := doc.add_rectangle(&editor.document, 1000, 1000, 20, 20, {0.3, 0.3, 0.3, 1.0})
+    bound_arrow := doc.add_arrow(&editor.document, 1000, 1000, 20, 20, {0.3, 0.3, 0.3, 1.0})
+    editor_pkg.bind_arrow(&editor, bound_arrow)
+    assert(editor.document.elements[bound_arrow].start_binding_id == editor.document.elements[bound_shape].id, "arrow start did not bind to a shape")
+    assert(editor.document.elements[bound_arrow].end_binding_id == editor.document.elements[bound_shape].id, "arrow end did not bind to a shape")
+
     fmt.println("commands smoke passed")
 }
