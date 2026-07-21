@@ -204,7 +204,7 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
-    if input.cut_requested && len(editor.selected_items) > 0 {
+    if input.cut_requested && len(editor.selected_items) > 0 && !selection_has_locked(editor) {
         copy_selection(editor)
         finish_transaction(editor)
         begin_transaction(editor)
@@ -226,7 +226,7 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
-    if len(editor.selected_items) > 1 && input.group_requested {
+    if len(editor.selected_items) > 1 && input.group_requested && !selection_has_locked(editor) {
         finish_transaction(editor)
         begin_transaction(editor)
         _ = doc.group(&editor.document, editor.selected_items[:])
@@ -234,7 +234,7 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
-    if len(editor.selected_items) > 0 && input.ungroup_requested {
+    if len(editor.selected_items) > 0 && input.ungroup_requested && !selection_has_locked(editor) {
         finish_transaction(editor)
         begin_transaction(editor)
         doc.ungroup(&editor.document, editor.selected_items[:])
@@ -339,6 +339,9 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         input.bring_to_front_requested ||
         input.send_to_back_requested
     ) {
+        if selection_has_locked(editor) {
+            return
+        }
         finish_transaction(editor)
         begin_transaction(editor)
         if input.bring_forward_requested {

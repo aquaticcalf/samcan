@@ -104,6 +104,10 @@ main :: proc() {
     editor_pkg.update(&editor, &input)
     assert(len(editor.document.elements) == 5, "locked element was duplicated")
     input = {}
+    input.cut_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(len(editor.document.elements) == 5, "locked element was cut")
+    input = {}
     input.toggle_lock_requested = true
     editor_pkg.update(&editor, &input)
     assert(!editor.document.elements[3].locked, "unlock command did not unlock the selected element")
