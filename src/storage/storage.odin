@@ -24,6 +24,7 @@ scene_element :: struct {
     width:          f64,
     height:         f64,
     text:           string,
+    points:         [dynamic][2]f64,
     angle:          f64,
     strokeColor:    string,
     backgroundColor:string,
@@ -105,6 +106,19 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
             )
             continue
         }
+        if kind == .freehand {
+            start := [2]f32{f32(element.x), f32(element.y)}
+            if len(element.points) > 0 {
+                start = {f32(element.points[0][0]), f32(element.points[0][1])}
+            }
+            index := document.add_freehand(&doc, start[0], start[1], parse_color(element.backgroundColor))
+            if len(element.points) > 1 {
+                for point in element.points[1:] {
+                    document.append_point(&doc, index, {f32(point[0]), f32(point[1])})
+                }
+            }
+            continue
+        }
         document.add(
             &doc,
             kind,
@@ -144,6 +158,7 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             width = f64(element.width),
             height = f64(element.height),
             text = strings.clone(element.text),
+            points = make([dynamic][2]f64, 0),
             angle = 0,
             strokeColor = "#1e1e1e",
             backgroundColor = format_color(element.fill),
@@ -156,6 +171,9 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             versionNonce = i64(element.id),
             isDeleted = false,
         })
+        for point in element.points {
+            append(&file.elements[len(file.elements) - 1].points, [2]f64{f64(point[0]), f64(point[1])})
+        }
     }
     return file
 }
@@ -174,6 +192,8 @@ element_type_name :: proc(kind: document.element_kind) -> string {
         return "arrow"
     case .text:
         return "text"
+    case .freehand:
+        return "freedraw"
     }
     return "rectangle"
 }
@@ -192,6 +212,8 @@ element_kind_from_name :: proc(name: string) -> (document.element_kind, bool) {
         return .arrow, true
     case "text":
         return .text, true
+    case "freedraw":
+        return .freehand, true
     }
     return .rectangle, false
 }
@@ -199,6 +221,7 @@ element_kind_from_name :: proc(name: string) -> (document.element_kind, bool) {
 destroy_scene :: proc(file: ^scene_file) {
     for &element in file.elements {
         delete(element.text)
+        delete(element.points)
     }
     delete(file.elements)
     delete(file.files)

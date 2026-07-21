@@ -131,6 +131,19 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         append_arrowhead(vertices, view, start, finish, element.fill)
     case .text:
         append_text(vertices, view, element)
+    case .freehand:
+        if len(element.points) >= 2 {
+            for point_index in 1 ..< len(element.points) {
+                append_segment(
+                    vertices,
+                    view,
+                    element.points[point_index - 1],
+                    element.points[point_index],
+                    element.fill,
+                    3.0 / view.zoom,
+                )
+            }
+        }
     case .ellipse:
         center := screen_to_clip(view, {(left + right) * 0.5, (top + bottom) * 0.5})
         radius_x := element.width * 0.5
@@ -262,6 +275,19 @@ append_selection_overlay :: proc(vertices: ^[dynamic]vertex, element: document.e
         append_segment(vertices, view, {right, top}, {right, bottom}, selection_color, thickness)
         append_segment(vertices, view, {right, bottom}, {left, bottom}, selection_color, thickness)
         append_segment(vertices, view, {left, bottom}, {left, top}, selection_color, thickness)
+    case .freehand:
+        if len(element.points) >= 2 {
+            for point_index in 1 ..< len(element.points) {
+                append_segment(
+                    vertices,
+                    view,
+                    element.points[point_index - 1],
+                    element.points[point_index],
+                    selection_color,
+                    thickness,
+                )
+            }
+        }
     case .ellipse:
         center := [(2)]f32{(left + right) * 0.5, (top + bottom) * 0.5}
         radius_x := element.width * 0.5

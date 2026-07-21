@@ -57,6 +57,7 @@ frame_input :: struct {
     tool_line_requested: bool,
     tool_arrow_requested: bool,
     tool_text_requested: bool,
+    tool_freehand_requested: bool,
     tool_select_requested: bool,
     buttons:        [8]bool,
     pressed:        [8]bool,
@@ -137,6 +138,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.tool_line_requested = false
     input.tool_arrow_requested = false
     input.tool_text_requested = false
+    input.tool_freehand_requested = false
     input.tool_select_requested = false
     input.pressed = {}
     input.released = {}
@@ -223,6 +225,9 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_T && event.key.mod == {} {
                 input.tool_text_requested = true
+            }
+            if event.key.key == SDL.K_F && event.key.mod == {} {
+                input.tool_freehand_requested = true
             }
         case .TEXT_INPUT:
             if event.text.text != nil {

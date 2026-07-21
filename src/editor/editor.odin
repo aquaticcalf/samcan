@@ -160,6 +160,10 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.select_mode = false
         editor.active_kind = .text
     }
+    if input.tool_freehand_requested {
+        editor.select_mode = false
+        editor.active_kind = .freehand
+    }
 
     if input.wheel != 0 {
         factor: f32 = 1.1
@@ -191,15 +195,19 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
     if input.pressed[platform.MOUSE_BUTTON_LEFT] {
         world := viewport.screen_to_world(editor.viewport, input.mouse)
         begin_transaction(editor)
-        editor.active_rect = doc.add(
-            &editor.document,
-            editor.active_kind,
-            world[0],
-            world[1],
-            0,
-            0,
-            {0.98, 0.80, 0.42, 1.0},
-        )
+        if editor.active_kind == .freehand {
+            editor.active_rect = doc.add_freehand(&editor.document, world[0], world[1], {0.12, 0.12, 0.12, 1.0})
+        } else {
+            editor.active_rect = doc.add(
+                &editor.document,
+                editor.active_kind,
+                world[0],
+                world[1],
+                0,
+                0,
+                {0.98, 0.80, 0.42, 1.0},
+            )
+        }
         editor.draw_start = world
         editor.drawing = true
     }
@@ -207,18 +215,25 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
     if editor.drawing && editor.active_rect >= 0 {
         world := viewport.screen_to_world(editor.viewport, input.mouse)
         element := editor.document.elements[editor.active_rect]
-        x := min(editor.draw_start[0], world[0])
-        y := min(editor.draw_start[1], world[1])
-        width := math.abs(world[0] - editor.draw_start[0])
-        height := math.abs(world[1] - editor.draw_start[1])
-        doc.set_bounds(&editor.document, editor.active_rect, x, y, width, height)
+        if element.kind == .freehand {
+            if len(element.points) == 0 || element.points[len(element.points) - 1] != world {
+                doc.append_point(&editor.document, editor.active_rect, world)
+            }
+        } else {
+            x := min(editor.draw_start[0], world[0])
+            y := min(editor.draw_start[1], world[1])
+            width := math.abs(world[0] - editor.draw_start[0])
+            height := math.abs(world[1] - editor.draw_start[1])
+            doc.set_bounds(&editor.document, editor.active_rect, x, y, width, height)
+        }
     }
 
     if input.released[platform.MOUSE_BUTTON_LEFT] {
         editor.drawing = false
         if editor.active_rect >= 0 {
             element := editor.document.elements[editor.active_rect]
-            if element.width < 2 || element.height < 2 {
+            if (element.kind == .freehand && len(element.points) < 2) ||
+                (element.kind != .freehand && (element.width < 2 || element.height < 2)) {
                 doc.remove(&editor.document, editor.active_rect)
             }
         }
@@ -359,6 +374,28 @@ contains :: proc(element: doc.element, point: [2]f32) -> bool {
         closest := [2]f32{element.x, element.y} + segment * amount
         distance := point - closest
         return distance[0] * distance[0] + distance[1] * distance[1] <= 64.0
+    case .freehand:
+        if len(element.points) < 2 {
+            return false
+        }
+        for point_index in 1 ..< len(element.points) {
+            start := element.points[point_index - 1]
+            finish := element.points[point_index]
+            segment := finish - start
+            length_squared := segment[0] * segment[0] + segment[1] * segment[1]
+            if length_squared <= 0 {
+                continue
+            }
+            relative := point - start
+            amount := (relative[0] * segment[0] + relative[1] * segment[1]) / length_squared
+            amount = max(0.0, min(1.0, amount))
+            closest := start + segment * amount
+            distance := point - closest
+            if distance[0] * distance[0] + distance[1] * distance[1] <= 64.0 {
+                return true
+            }
+        }
+        return false
     case .rectangle, .text:
         return point[0] >= element.x && point[0] <= element.x + element.width &&
             point[1] >= element.y && point[1] <= element.y + element.height
@@ -419,6 +456,10 @@ apply_interaction :: proc(editor: ^state, point: [2]f32) {
         return
     }
 
+    if editor.interaction == .move && editor.document.elements[editor.selected].kind == .freehand {
+        doc.translate(&editor.document, editor.selected, delta[0], delta[1])
+        return
+    }
     doc.set_bounds(&editor.document, editor.selected, x, y, width, height)
 }
 

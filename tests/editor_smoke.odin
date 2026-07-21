@@ -89,5 +89,31 @@ main :: proc() {
     assert(!editor.text_editing, "text tool did not finish editing")
     assert(editor.document.elements[2].text == "hell", "text content did not persist")
 
+    input = {}
+    input.tool_freehand_requested = true
+    editor_pkg.update(&editor, &input)
+
+    input = {}
+    input.mouse = {450, 330}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+
+    input = {}
+    input.mouse = {460, 340}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    input = {}
+    input.mouse = {470, 320}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+
+    input = {}
+    input.mouse = {470, 320}
+    input.released[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.document.elements[3].kind == .freehand, "freehand tool did not create a path")
+    assert(len(editor.document.elements[3].points) == 3, "freehand tool did not keep the drawn points")
+
     fmt.println("editor smoke passed")
 }

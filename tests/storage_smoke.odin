@@ -17,6 +17,9 @@ main :: proc() {
     document.add_line(&original, -80, 60, 120, 50, {0.50, 0.25, 0.75, 1.0})
     document.add_arrow(&original, -100, -80, 140, 30, {0.75, 0.25, 0.50, 1.0})
     document.add_text(&original, 5, 10, "hello", {0.12, 0.12, 0.12, 1.0})
+    freehand := document.add_freehand(&original, -10, -10, {0.3, 0.3, 0.3, 1.0})
+    document.append_point(&original, freehand, {-5, 0})
+    document.append_point(&original, freehand, {10, -5})
 
     assert(storage.save(path, &original), "could not save storage smoke fixture")
 
@@ -24,7 +27,7 @@ main :: proc() {
     assert(ok, "could not load storage smoke fixture")
     defer document.destroy(&loaded)
 
-    assert(len(loaded.elements) == 6, "element count did not round-trip")
+    assert(len(loaded.elements) == 7, "element count did not round-trip")
     rect := loaded.elements[0]
     assert(rect.kind == .rectangle, "rectangle kind did not round-trip")
     assert(rect.x == -40, "rectangle x did not round-trip")
@@ -38,6 +41,8 @@ main :: proc() {
     assert(loaded.elements[4].kind == .arrow, "arrow kind did not round-trip")
     assert(loaded.elements[5].kind == .text, "text kind did not round-trip")
     assert(loaded.elements[5].text == "hello", "text content did not round-trip")
+    assert(loaded.elements[6].kind == .freehand, "freehand kind did not round-trip")
+    assert(len(loaded.elements[6].points) == 3, "freehand points did not round-trip")
 
     _ = os.remove(path)
     fmt.println("storage smoke passed")
