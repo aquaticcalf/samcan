@@ -19,6 +19,7 @@ main :: proc() {
     document.add_ellipse(&original, 10, 20, 80, 40, {0.75, 0.50, 0.25, 1.0})
     document.add_diamond(&original, 30, 40, 60, 60, {0.25, 0.75, 0.50, 1.0})
     original.elements[2].locked = true
+    original.elements[2].angle = 0.5
     document.add_line(&original, -80, 60, 120, 50, {0.50, 0.25, 0.75, 1.0})
     document.add_arrow(&original, -100, -80, 140, 30, {0.75, 0.25, 0.50, 1.0})
     group_indices := [?]int{0, 1}
@@ -72,6 +73,7 @@ main :: proc() {
     assert(loaded.elements[1].group_id == group_id, "group membership did not round-trip")
     assert(loaded.elements[2].kind == .diamond, "diamond kind did not round-trip")
     assert(loaded.elements[2].locked, "locked state did not round-trip")
+    assert(loaded.elements[2].angle == 0.5, "angle did not round-trip")
     assert(loaded.elements[3].kind == .line, "line kind did not round-trip")
     assert(loaded.elements[4].kind == .arrow, "arrow kind did not round-trip")
     assert(loaded.elements[5].kind == .text, "text kind did not round-trip")

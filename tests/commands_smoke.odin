@@ -121,5 +121,10 @@ main :: proc() {
     assert(editor.document.elements[3].x == editor.document.elements[4].x, "align left did not align both elements")
     assert(editor.document.elements[3].y == 120, "align left changed the wrong axis")
 
+    input = {}
+    input.rotate_right_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.document.elements[3].angle > 0.26 && editor.document.elements[3].angle < 0.27, "rotate command did not update the angle")
+
     fmt.println("commands smoke passed")
 }

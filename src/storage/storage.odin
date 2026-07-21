@@ -316,6 +316,7 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
                 line_height,
             )
             doc.elements[index].stroke = parse_color(element.strokeColor)
+            doc.elements[index].angle = f32(element.angle)
             doc.elements[index].opacity = f32(element.opacity) / 100.0
             if element.opacity <= 0 {
                 doc.elements[index].opacity = 1.0
@@ -339,6 +340,7 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
                 start = {f32(element.points[0][0]), f32(element.points[0][1])}
             }
             index := document.add_freehand(&doc, start[0], start[1], parse_color(element.backgroundColor))
+            doc.elements[index].angle = f32(element.angle)
             if len(element.points) > 1 {
                 for point in element.points[1:] {
                     document.append_point(&doc, index, {f32(point[0]), f32(point[1])})
@@ -356,6 +358,7 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
             parse_color(element.backgroundColor),
         )
         doc.elements[index].stroke = parse_color(element.strokeColor)
+        doc.elements[index].angle = f32(element.angle)
         if element.strokeWidth > 0 {
             doc.elements[index].stroke_width = f32(element.strokeWidth)
         }
@@ -406,7 +409,7 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             autoResize = element.auto_resize,
             lineHeight = f64(element.line_height),
             points = make([dynamic][2]f64, 0),
-            angle = 0,
+            angle = f64(element.angle),
             strokeColor = format_color(element.stroke),
             backgroundColor = format_color(element.fill),
             fillStyle = "solid",

@@ -251,6 +251,25 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
+    if len(editor.selected_items) > 0 && (input.rotate_left_requested || input.rotate_right_requested) {
+        if selection_has_locked(editor) {
+            return
+        }
+        finish_transaction(editor)
+        begin_transaction(editor)
+        rotation: f32 = 0.2617994
+        if input.rotate_left_requested {
+            rotation = -rotation
+        }
+        for index in editor.selected_items {
+            if index >= 0 && index < len(editor.document.elements) {
+                editor.document.elements[index].angle += rotation
+            }
+        }
+        finish_transaction(editor)
+        return
+    }
+
     if input.delete_requested && len(editor.selected_items) > 0 {
         if selection_has_locked(editor) {
             return
@@ -790,10 +809,11 @@ contains :: proc(element: doc.element, point: [2]f32) -> bool {
         return false
     }
 
+    local_point := unrotate_point(element, point)
     center: [2]f32 = {element.x + element.width * 0.5, element.y + element.height * 0.5}
     normalized: [2]f32 = {
-        (point[0] - center[0]) / (element.width * 0.5),
-        (point[1] - center[1]) / (element.height * 0.5),
+        (local_point[0] - center[0]) / (element.width * 0.5),
+        (local_point[1] - center[1]) / (element.height * 0.5),
     }
 
     switch element.kind {
@@ -808,7 +828,7 @@ contains :: proc(element: doc.element, point: [2]f32) -> bool {
         if length_squared <= 0 {
             return false
         }
-        relative := point - [2]f32{element.x, element.y}
+        relative := local_point - [2]f32{element.x, element.y}
         amount := (relative[0] * segment[0] + relative[1] * segment[1]) / length_squared
         amount = max(0.0, min(1.0, amount))
         closest := [2]f32{element.x, element.y} + segment * amount
@@ -826,7 +846,7 @@ contains :: proc(element: doc.element, point: [2]f32) -> bool {
             if length_squared <= 0 {
                 continue
             }
-            relative := point - start
+            relative := local_point - start
             amount := (relative[0] * segment[0] + relative[1] * segment[1]) / length_squared
             amount = max(0.0, min(1.0, amount))
             closest := start + segment * amount
@@ -837,32 +857,47 @@ contains :: proc(element: doc.element, point: [2]f32) -> bool {
         }
         return false
     case .rectangle, .text:
-        return point[0] >= element.x && point[0] <= element.x + element.width &&
-            point[1] >= element.y && point[1] <= element.y + element.height
+        return local_point[0] >= element.x && local_point[0] <= element.x + element.width &&
+            local_point[1] >= element.y && local_point[1] <= element.y + element.height
     }
     return false
 }
 
 hit_handle :: proc(element: doc.element, point: [2]f32, zoom: f32) -> interaction_kind {
+    local_point := unrotate_point(element, point)
     size := 8.0 / zoom
     left := element.x
     top := element.y
     right := element.x + element.width
     bottom := element.y + element.height
 
-    if math.abs(point[0] - left) <= size && math.abs(point[1] - top) <= size {
+    if math.abs(local_point[0] - left) <= size && math.abs(local_point[1] - top) <= size {
         return .resize_top_left
     }
-    if math.abs(point[0] - right) <= size && math.abs(point[1] - top) <= size {
+    if math.abs(local_point[0] - right) <= size && math.abs(local_point[1] - top) <= size {
         return .resize_top_right
     }
-    if math.abs(point[0] - right) <= size && math.abs(point[1] - bottom) <= size {
+    if math.abs(local_point[0] - right) <= size && math.abs(local_point[1] - bottom) <= size {
         return .resize_bottom_right
     }
-    if math.abs(point[0] - left) <= size && math.abs(point[1] - bottom) <= size {
+    if math.abs(local_point[0] - left) <= size && math.abs(local_point[1] - bottom) <= size {
         return .resize_bottom_left
     }
     return .none
+}
+
+unrotate_point :: proc(element: doc.element, point: [2]f32) -> [2]f32 {
+    if element.angle == 0 {
+        return point
+    }
+    center: [2]f32 = {element.x + element.width * 0.5, element.y + element.height * 0.5}
+    relative := point - center
+    sine := math.sin(-element.angle)
+    cosine := math.cos(-element.angle)
+    return center + [2]f32{
+        relative[0] * cosine - relative[1] * sine,
+        relative[0] * sine + relative[1] * cosine,
+    }
 }
 
 apply_interaction :: proc(editor: ^state, point: [2]f32) {

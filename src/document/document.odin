@@ -39,6 +39,7 @@ element :: struct {
     y:      f32,
     width:  f32,
     height: f32,
+    angle:  f32,
     fill:   color,
     stroke: color,
     stroke_width: f32,
@@ -106,6 +107,7 @@ same :: proc(left, right: ^document) -> bool {
             left_element.y != right_element.y ||
             left_element.width != right_element.width ||
             left_element.height != right_element.height ||
+            left_element.angle != right_element.angle ||
             left_element.fill != right_element.fill ||
             left_element.stroke != right_element.stroke ||
             left_element.stroke_width != right_element.stroke_width ||
@@ -161,6 +163,7 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
         y = y,
         width = width,
         height = height,
+        angle = 0,
         fill = background,
         stroke = stroke,
         stroke_width = 2.0,

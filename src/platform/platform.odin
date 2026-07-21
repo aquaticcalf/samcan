@@ -64,6 +64,8 @@ frame_input :: struct {
     align_top_requested: bool,
     align_center_vertical_requested: bool,
     align_bottom_requested: bool,
+    rotate_left_requested: bool,
+    rotate_right_requested: bool,
     select_all_requested: bool,
     bring_forward_requested: bool,
     send_backward_requested: bool,
@@ -166,6 +168,8 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.align_top_requested = false
     input.align_center_vertical_requested = false
     input.align_bottom_requested = false
+    input.rotate_left_requested = false
+    input.rotate_right_requested = false
     input.select_all_requested = false
     input.bring_forward_requested = false
     input.send_backward_requested = false
@@ -300,6 +304,12 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
                     } else {
                         input.align_bottom_requested = true
                     }
+                }
+                if event.key.key == SDL.K_LEFTBRACKET {
+                    input.rotate_left_requested = true
+                }
+                if event.key.key == SDL.K_RIGHTBRACKET {
+                    input.rotate_right_requested = true
                 }
             }
             if event.key.key == SDL.K_A && (event.key.mod & SDL.KMOD_CTRL) != {} {

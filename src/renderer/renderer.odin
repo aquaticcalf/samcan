@@ -229,6 +229,20 @@ append_triangle :: proc(vertices: ^[dynamic]vertex, a, b, c: [2]f32, color: [4]f
     append(vertices, vertex{position = c, color = color})
 }
 
+rotate_point :: proc(element: document.element, point: [2]f32) -> [2]f32 {
+    if element.angle == 0 {
+        return point
+    }
+    center: [2]f32 = {element.x + element.width * 0.5, element.y + element.height * 0.5}
+    relative := point - center
+    sine := math.sin(element.angle)
+    cosine := math.cos(element.angle)
+    return center + [2]f32{
+        relative[0] * cosine - relative[1] * sine,
+        relative[0] * sine + relative[1] * cosine,
+    }
+}
+
 append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view: viewport.viewport) {
     left := element.x
     top := element.y
@@ -237,26 +251,35 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
 
     switch element.kind {
     case .rectangle:
-        top_left := screen_to_clip(view, {left, top})
-        top_right := screen_to_clip(view, {right, top})
-        bottom_right := screen_to_clip(view, {right, bottom})
-        bottom_left := screen_to_clip(view, {left, bottom})
+        top_left_world := rotate_point(element, {left, top})
+        top_right_world := rotate_point(element, {right, top})
+        bottom_right_world := rotate_point(element, {right, bottom})
+        bottom_left_world := rotate_point(element, {left, bottom})
+        top_left := screen_to_clip(view, top_left_world)
+        top_right := screen_to_clip(view, top_right_world)
+        bottom_right := screen_to_clip(view, bottom_right_world)
+        bottom_left := screen_to_clip(view, bottom_left_world)
 
         fill := element_color(element.fill, element.opacity)
         if fill[3] > 0 {
             append_triangle(vertices, top_left, top_right, bottom_right, fill)
             append_triangle(vertices, top_left, bottom_right, bottom_left, fill)
         }
-        append_segment(vertices, view, {left, top}, {right, top}, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
-        append_segment(vertices, view, {right, top}, {right, bottom}, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
-        append_segment(vertices, view, {right, bottom}, {left, bottom}, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
-        append_segment(vertices, view, {left, bottom}, {left, top}, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
+        append_segment(vertices, view, top_left_world, top_right_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
+        append_segment(vertices, view, top_right_world, bottom_right_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
+        append_segment(vertices, view, bottom_right_world, bottom_left_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
+        append_segment(vertices, view, bottom_left_world, top_left_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom)
     case .diamond:
-        center := screen_to_clip(view, {(left + right) * 0.5, (top + bottom) * 0.5})
-        top_point := screen_to_clip(view, {(left + right) * 0.5, top})
-        right_point := screen_to_clip(view, {right, (top + bottom) * 0.5})
-        bottom_point := screen_to_clip(view, {(left + right) * 0.5, bottom})
-        left_point := screen_to_clip(view, {left, (top + bottom) * 0.5})
+        center_world := rotate_point(element, {(left + right) * 0.5, (top + bottom) * 0.5})
+        top_world := rotate_point(element, {(left + right) * 0.5, top})
+        right_world := rotate_point(element, {right, (top + bottom) * 0.5})
+        bottom_world := rotate_point(element, {(left + right) * 0.5, bottom})
+        left_world := rotate_point(element, {left, (top + bottom) * 0.5})
+        center := screen_to_clip(view, center_world)
+        top_point := screen_to_clip(view, top_world)
+        right_point := screen_to_clip(view, right_world)
+        bottom_point := screen_to_clip(view, bottom_world)
+        left_point := screen_to_clip(view, left_world)
 
         fill := element_color(element.fill, element.opacity)
         if fill[3] > 0 {
@@ -267,22 +290,22 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         }
         stroke := element_color(element.stroke, element.opacity)
         thickness := element.stroke_width / view.zoom
-        append_segment(vertices, view, {left + element.width * 0.5, top}, {right, top + element.height * 0.5}, stroke, thickness)
-        append_segment(vertices, view, {right, top + element.height * 0.5}, {left + element.width * 0.5, bottom}, stroke, thickness)
-        append_segment(vertices, view, {left + element.width * 0.5, bottom}, {left, top + element.height * 0.5}, stroke, thickness)
-        append_segment(vertices, view, {left, top + element.height * 0.5}, {left + element.width * 0.5, top}, stroke, thickness)
+        append_segment(vertices, view, top_world, right_world, stroke, thickness)
+        append_segment(vertices, view, right_world, bottom_world, stroke, thickness)
+        append_segment(vertices, view, bottom_world, left_world, stroke, thickness)
+        append_segment(vertices, view, left_world, top_world, stroke, thickness)
     case .line:
         append_segment(
             vertices,
             view,
-            {left, top},
-            {right, bottom},
+            rotate_point(element, {left, top}),
+            rotate_point(element, {right, bottom}),
             element_color(element.stroke, element.opacity),
             element.stroke_width / view.zoom,
         )
     case .arrow:
-        start := [2]f32{left, top}
-        finish := [2]f32{right, bottom}
+        start := rotate_point(element, {left, top})
+        finish := rotate_point(element, {right, bottom})
         stroke := element_color(element.stroke, element.opacity)
         append_segment(vertices, view, start, finish, stroke, element.stroke_width / view.zoom)
         append_arrowhead(vertices, view, start, finish, stroke)
@@ -294,30 +317,33 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
                 append_segment(
                     vertices,
                     view,
-                    element.points[point_index - 1],
-                    element.points[point_index],
+                    rotate_point(element, element.points[point_index - 1]),
+                    rotate_point(element, element.points[point_index]),
                     element_color(element.stroke, element.opacity),
                     element.stroke_width / view.zoom,
                 )
             }
         }
     case .ellipse:
-        center := screen_to_clip(view, {(left + right) * 0.5, (top + bottom) * 0.5})
+        center_world := rotate_point(element, {(left + right) * 0.5, (top + bottom) * 0.5})
+        center := screen_to_clip(view, center_world)
         radius_x := element.width * 0.5
         radius_y := element.height * 0.5
         segments :: 32
         tau: f32 = 6.283185307179586
-        previous := screen_to_clip(view, {
+        previous_world := rotate_point(element, {
             (left + right) * 0.5 + math.cos(f32(0)) * radius_x,
             (top + bottom) * 0.5 + math.sin(f32(0)) * radius_y,
         })
+        previous := screen_to_clip(view, previous_world)
 
         for segment in 1 ..= segments {
             angle := tau * f32(segment) / f32(segments)
-            current := screen_to_clip(view, {
+            current_world := rotate_point(element, {
                 (left + right) * 0.5 + math.cos(angle) * radius_x,
                 (top + bottom) * 0.5 + math.sin(angle) * radius_y,
             })
+            current := screen_to_clip(view, current_world)
             fill := element_color(element.fill, element.opacity)
             if fill[3] > 0 {
                 append_triangle(vertices, center, previous, current, fill)
@@ -326,18 +352,18 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         }
         stroke := element_color(element.stroke, element.opacity)
         thickness := element.stroke_width / view.zoom
-        previous = {
+        previous_world = rotate_point(element, {
             (left + right) * 0.5 + math.cos(f32(0)) * radius_x,
             (top + bottom) * 0.5 + math.sin(f32(0)) * radius_y,
-        }
+        })
         for segment in 1 ..= segments {
             angle := tau * f32(segment) / f32(segments)
-            current := [2]f32{
+            current_world := rotate_point(element, [2]f32{
                 (left + right) * 0.5 + math.cos(angle) * radius_x,
                 (top + bottom) * 0.5 + math.sin(angle) * radius_y,
-            }
-            append_segment(vertices, view, previous, current, stroke, thickness)
-            previous = current
+            })
+            append_segment(vertices, view, previous_world, current_world, stroke, thickness)
+            previous_world = current_world
         }
     }
 }
@@ -419,7 +445,7 @@ append_text :: proc(renderer: ^renderer, view: viewport.viewport, element: docum
             line_x += element.width - line_width
         }
         line_y := element.y + vertical_offset + f32(line_index) * line_height_pixels
-        append_text_line(renderer, view, line, line_x, line_y, scale, element.fill)
+        append_text_line(renderer, view, element, line, line_x, line_y, scale, element.fill)
         line_start = line_end + 1
         line_index += 1
     }
@@ -438,6 +464,7 @@ baked_text_width :: proc(font: ^text_font, text: string) -> f32 {
 append_text_line :: proc(
     renderer: ^renderer,
     view: viewport.viewport,
+    element: document.element,
     text: string,
     origin_x, origin_y, scale: f32,
     color: [4]f32,
@@ -459,10 +486,10 @@ append_text_line :: proc(
             &quad,
             true,
         )
-        top_left := screen_to_clip(view, {origin_x + quad.x0 * scale, origin_y + quad.y0 * scale})
-        top_right := screen_to_clip(view, {origin_x + quad.x1 * scale, origin_y + quad.y0 * scale})
-        bottom_right := screen_to_clip(view, {origin_x + quad.x1 * scale, origin_y + quad.y1 * scale})
-        bottom_left := screen_to_clip(view, {origin_x + quad.x0 * scale, origin_y + quad.y1 * scale})
+        top_left := screen_to_clip(view, rotate_point(element, {origin_x + quad.x0 * scale, origin_y + quad.y0 * scale}))
+        top_right := screen_to_clip(view, rotate_point(element, {origin_x + quad.x1 * scale, origin_y + quad.y0 * scale}))
+        bottom_right := screen_to_clip(view, rotate_point(element, {origin_x + quad.x1 * scale, origin_y + quad.y1 * scale}))
+        bottom_left := screen_to_clip(view, rotate_point(element, {origin_x + quad.x0 * scale, origin_y + quad.y1 * scale}))
         append_text_vertex(&renderer.text_vertices, top_left, {quad.s0, quad.t0}, color)
         append_text_vertex(&renderer.text_vertices, top_right, {quad.s1, quad.t0}, color)
         append_text_vertex(&renderer.text_vertices, bottom_right, {quad.s1, quad.t1}, color)
@@ -613,72 +640,80 @@ append_selection_overlay :: proc(vertices: ^[dynamic]vertex, element: document.e
 
     switch element.kind {
     case .rectangle:
-        append_segment(vertices, view, {left, top}, {right, top}, selection_color, thickness)
-        append_segment(vertices, view, {right, top}, {right, bottom}, selection_color, thickness)
-        append_segment(vertices, view, {right, bottom}, {left, bottom}, selection_color, thickness)
-        append_segment(vertices, view, {left, bottom}, {left, top}, selection_color, thickness)
+        top_left := rotate_point(element, {left, top})
+        top_right := rotate_point(element, {right, top})
+        bottom_right := rotate_point(element, {right, bottom})
+        bottom_left := rotate_point(element, {left, bottom})
+        append_segment(vertices, view, top_left, top_right, selection_color, thickness)
+        append_segment(vertices, view, top_right, bottom_right, selection_color, thickness)
+        append_segment(vertices, view, bottom_right, bottom_left, selection_color, thickness)
+        append_segment(vertices, view, bottom_left, top_left, selection_color, thickness)
     case .diamond:
         center_x := (left + right) * 0.5
         center_y := (top + bottom) * 0.5
-        top_point := [2]f32{center_x, top}
-        right_point := [2]f32{right, center_y}
-        bottom_point := [2]f32{center_x, bottom}
-        left_point := [2]f32{left, center_y}
+        top_point := rotate_point(element, [2]f32{center_x, top})
+        right_point := rotate_point(element, [2]f32{right, center_y})
+        bottom_point := rotate_point(element, [2]f32{center_x, bottom})
+        left_point := rotate_point(element, [2]f32{left, center_y})
         append_segment(vertices, view, top_point, right_point, selection_color, thickness)
         append_segment(vertices, view, right_point, bottom_point, selection_color, thickness)
         append_segment(vertices, view, bottom_point, left_point, selection_color, thickness)
         append_segment(vertices, view, left_point, top_point, selection_color, thickness)
     case .line:
-        append_segment(vertices, view, {left, top}, {right, bottom}, selection_color, thickness)
+        append_segment(vertices, view, rotate_point(element, {left, top}), rotate_point(element, {right, bottom}), selection_color, thickness)
     case .arrow:
-        start := [2]f32{left, top}
-        finish := [2]f32{right, bottom}
+        start := rotate_point(element, {left, top})
+        finish := rotate_point(element, {right, bottom})
         append_segment(vertices, view, start, finish, selection_color, thickness)
         append_arrowhead(vertices, view, start, finish, selection_color)
     case .text:
-        append_segment(vertices, view, {left, top}, {right, top}, selection_color, thickness)
-        append_segment(vertices, view, {right, top}, {right, bottom}, selection_color, thickness)
-        append_segment(vertices, view, {right, bottom}, {left, bottom}, selection_color, thickness)
-        append_segment(vertices, view, {left, bottom}, {left, top}, selection_color, thickness)
+        top_left := rotate_point(element, {left, top})
+        top_right := rotate_point(element, {right, top})
+        bottom_right := rotate_point(element, {right, bottom})
+        bottom_left := rotate_point(element, {left, bottom})
+        append_segment(vertices, view, top_left, top_right, selection_color, thickness)
+        append_segment(vertices, view, top_right, bottom_right, selection_color, thickness)
+        append_segment(vertices, view, bottom_right, bottom_left, selection_color, thickness)
+        append_segment(vertices, view, bottom_left, top_left, selection_color, thickness)
     case .freehand:
         if len(element.points) >= 2 {
             for point_index in 1 ..< len(element.points) {
                 append_segment(
                     vertices,
                     view,
-                    element.points[point_index - 1],
-                    element.points[point_index],
+                    rotate_point(element, element.points[point_index - 1]),
+                    rotate_point(element, element.points[point_index]),
                     selection_color,
                     thickness,
                 )
             }
         }
     case .ellipse:
-        center := [(2)]f32{(left + right) * 0.5, (top + bottom) * 0.5}
+        center := [2]f32{(left + right) * 0.5, (top + bottom) * 0.5}
         radius_x := element.width * 0.5
         radius_y := element.height * 0.5
         segments :: 32
         tau: f32 = 6.283185307179586
-        previous: [2]f32 = {
+        previous := rotate_point(element, {
             center[0] + math.cos(f32(0)) * radius_x,
             center[1] + math.sin(f32(0)) * radius_y,
-        }
+        })
         for segment in 1 ..= segments {
             angle := tau * f32(segment) / f32(segments)
-            current: [2]f32 = {
+            current := rotate_point(element, {
                 center[0] + math.cos(angle) * radius_x,
                 center[1] + math.sin(angle) * radius_y,
-            }
+            })
             append_segment(vertices, view, previous, current, selection_color, thickness)
             previous = current
         }
     }
 
     handle_size := 10.0 / view.zoom
-    append_handle(vertices, view, {left, top}, handle_size, selection_color)
-    append_handle(vertices, view, {right, top}, handle_size, selection_color)
-    append_handle(vertices, view, {right, bottom}, handle_size, selection_color)
-    append_handle(vertices, view, {left, bottom}, handle_size, selection_color)
+    append_handle(vertices, view, rotate_point(element, {left, top}), handle_size, selection_color)
+    append_handle(vertices, view, rotate_point(element, {right, top}), handle_size, selection_color)
+    append_handle(vertices, view, rotate_point(element, {right, bottom}), handle_size, selection_color)
+    append_handle(vertices, view, rotate_point(element, {left, bottom}), handle_size, selection_color)
 }
 
 draw :: proc(
