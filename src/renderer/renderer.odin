@@ -444,10 +444,10 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
             append_triangle(vertices, top_left, top_right, bottom_right, fill)
             append_triangle(vertices, top_left, bottom_right, bottom_left, fill)
         }
-        append_styled_segment(vertices, view, top_left_world, top_right_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style)
-        append_styled_segment(vertices, view, top_right_world, bottom_right_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style)
-        append_styled_segment(vertices, view, bottom_right_world, bottom_left_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style)
-        append_styled_segment(vertices, view, bottom_left_world, top_left_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style)
+        append_styled_segment(vertices, view, top_left_world, top_right_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style, element.roughness, element.id)
+        append_styled_segment(vertices, view, top_right_world, bottom_right_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style, element.roughness, element.id + 1)
+        append_styled_segment(vertices, view, bottom_right_world, bottom_left_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style, element.roughness, element.id + 2)
+        append_styled_segment(vertices, view, bottom_left_world, top_left_world, element_color(element.stroke, element.opacity), element.stroke_width / view.zoom, element.stroke_style, element.roughness, element.id + 3)
     case .diamond:
         center_world := rotate_point(element, {(left + right) * 0.5, (top + bottom) * 0.5})
         top_world := rotate_point(element, {(left + right) * 0.5, top})
@@ -469,10 +469,10 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         }
         stroke := element_color(element.stroke, element.opacity)
         thickness := element.stroke_width / view.zoom
-        append_styled_segment(vertices, view, top_world, right_world, stroke, thickness, element.stroke_style)
-        append_styled_segment(vertices, view, right_world, bottom_world, stroke, thickness, element.stroke_style)
-        append_styled_segment(vertices, view, bottom_world, left_world, stroke, thickness, element.stroke_style)
-        append_styled_segment(vertices, view, left_world, top_world, stroke, thickness, element.stroke_style)
+        append_styled_segment(vertices, view, top_world, right_world, stroke, thickness, element.stroke_style, element.roughness, element.id)
+        append_styled_segment(vertices, view, right_world, bottom_world, stroke, thickness, element.stroke_style, element.roughness, element.id + 1)
+        append_styled_segment(vertices, view, bottom_world, left_world, stroke, thickness, element.stroke_style, element.roughness, element.id + 2)
+        append_styled_segment(vertices, view, left_world, top_world, stroke, thickness, element.stroke_style, element.roughness, element.id + 3)
     case .line:
         append_styled_segment(
             vertices,
@@ -482,12 +482,14 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
             element_color(element.stroke, element.opacity),
             element.stroke_width / view.zoom,
             element.stroke_style,
+            element.roughness,
+            element.id,
         )
     case .arrow:
         start := rotate_point(element, {left, top})
         finish := rotate_point(element, {right, bottom})
         stroke := element_color(element.stroke, element.opacity)
-        append_styled_segment(vertices, view, start, finish, stroke, element.stroke_width / view.zoom, element.stroke_style)
+        append_styled_segment(vertices, view, start, finish, stroke, element.stroke_width / view.zoom, element.stroke_style, element.roughness, element.id)
         append_arrowhead(vertices, view, start, finish, stroke)
     case .text:
         // text is rendered in the alpha-atlas pass after opaque geometry
@@ -504,6 +506,8 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
                     element_color(element.stroke, element.opacity),
                     element.stroke_width / view.zoom,
                     element.stroke_style,
+                    element.roughness,
+                    element.id + u64(point_index),
                 )
             }
         }
@@ -545,7 +549,7 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
                 (left + right) * 0.5 + math.cos(angle) * radius_x,
                 (top + bottom) * 0.5 + math.sin(angle) * radius_y,
             })
-            append_styled_segment(vertices, view, previous_world, current_world, stroke, thickness, element.stroke_style)
+            append_styled_segment(vertices, view, previous_world, current_world, stroke, thickness, element.stroke_style, element.roughness, element.id + u64(segment))
             previous_world = current_world
         }
     }
@@ -784,6 +788,37 @@ append_segment :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, a, b
 }
 
 append_styled_segment :: proc(
+    vertices: ^[dynamic]vertex,
+    view: viewport.viewport,
+    a, b: [2]f32,
+    color: [4]f32,
+    thickness: f32,
+    style: document.stroke_style,
+    roughness: f32 = 0,
+    seed: u64 = 0,
+) {
+    append_styled_segment_base(vertices, view, a, b, color, thickness, style)
+    if roughness <= 0 {
+        return
+    }
+    delta := b - a
+    length := math.sqrt(delta[0] * delta[0] + delta[1] * delta[1])
+    if length <= 0 {
+        return
+    }
+    direction := delta / length
+    normal: [2]f32 = {-direction[1], direction[0]}
+    scale := roughness * 1.5 / view.zoom
+    start_jitter := (f32(seed % 11) - 5.0) / 5.0 * scale
+    end_jitter := (f32((seed / 11) % 11) - 5.0) / 5.0 * scale
+    start_along := (f32((seed / 121) % 7) - 3.0) / 3.0 * scale * 0.5
+    end_along := (f32((seed / 847) % 7) - 3.0) / 3.0 * scale * 0.5
+    rough_start := a + normal * start_jitter + direction * start_along
+    rough_end := b + normal * end_jitter + direction * end_along
+    append_styled_segment_base(vertices, view, rough_start, rough_end, color, thickness, style)
+}
+
+append_styled_segment_base :: proc(
     vertices: ^[dynamic]vertex,
     view: viewport.viewport,
     a, b: [2]f32,
