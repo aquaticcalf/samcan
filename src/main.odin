@@ -18,11 +18,15 @@ main :: proc() {
     defer editor.destroy(&app_editor)
 
     document_path := ""
+    document_path_owned := false
     if len(os.args) > 1 {
         document_path = os.args[1]
         if editor.load(&app_editor, document_path) {
             fmt.printf("loaded %s\n", document_path)
         }
+    }
+    defer if document_path_owned {
+        delete(document_path)
     }
 
     canvas_renderer, renderer_ok := renderer.open()
@@ -43,9 +47,48 @@ main :: proc() {
         editor.resize(&app_editor, f32(app_window.width), f32(app_window.height))
         editor.update(&app_editor, &input)
 
+        if input.open_requested {
+            platform.show_open_dialog(&app_window)
+        }
+        if input.save_as_requested {
+            platform.show_save_dialog(&app_window)
+        }
+
+        dialog_kind, dialog_path, dialog_ready := platform.take_dialog_result(&app_window)
+        if dialog_ready && dialog_path != "" {
+            switch dialog_kind {
+            case .NONE:
+                delete(dialog_path)
+            case .OPEN:
+                if editor.load(&app_editor, dialog_path) {
+                    if document_path_owned {
+                        delete(document_path)
+                    }
+                    document_path = dialog_path
+                    document_path_owned = true
+                    fmt.printf("loaded %s\n", document_path)
+                } else {
+                    fmt.printf("open failed: %s\n", dialog_path)
+                    delete(dialog_path)
+                }
+            case .SAVE:
+                if editor.save(&app_editor, dialog_path) {
+                    if document_path_owned {
+                        delete(document_path)
+                    }
+                    document_path = dialog_path
+                    document_path_owned = true
+                    fmt.printf("saved %s\n", document_path)
+                } else {
+                    fmt.printf("save failed: %s\n", dialog_path)
+                    delete(dialog_path)
+                }
+            }
+        }
+
         if input.save_requested {
             if document_path == "" {
-                fmt.println("save skipped: pass a .excalidraw path as the first argument")
+                platform.show_save_dialog(&app_window)
             } else if editor.save(&app_editor, document_path) {
                 fmt.printf("saved %s\n", document_path)
             } else {

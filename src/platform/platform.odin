@@ -2,15 +2,34 @@ package platform
 
 import "core:c"
 import "core:fmt"
+import "core:strings"
+import "base:runtime"
 
 import gl "vendor:OpenGL"
 import SDL "vendor:sdl3"
+
+dialog_kind :: enum {
+    NONE,
+    OPEN,
+    SAVE,
+}
+
+dialog_state :: struct {
+    pending:      bool,
+    result_ready: bool,
+    kind:         dialog_kind,
+    path:         string,
+    filter:       SDL.DialogFileFilter,
+    filter_name:  cstring,
+    filter_pattern:cstring,
+}
 
 window :: struct {
     handle:  ^SDL.Window,
     ctx:     SDL.GLContext,
     width:   i32,
     height:  i32,
+    dialog:  dialog_state,
 }
 
 MOUSE_BUTTON_LEFT   :: 1
@@ -18,13 +37,15 @@ MOUSE_BUTTON_MIDDLE :: 2
 MOUSE_BUTTON_RIGHT  :: 3
 
 frame_input :: struct {
-    mouse:       [2]f32,
-    mouse_delta: [2]f32,
-    wheel:       f32,
+    mouse:          [2]f32,
+    mouse_delta:    [2]f32,
+    wheel:          f32,
     save_requested: bool,
-    buttons:     [8]bool,
-    pressed:     [8]bool,
-    released:    [8]bool,
+    open_requested: bool,
+    save_as_requested: bool,
+    buttons:        [8]bool,
+    pressed:        [8]bool,
+    released:       [8]bool,
 }
 
 open :: proc(title: cstring, width, height: i32) -> (result: window, ok: bool) {
@@ -70,6 +91,12 @@ open :: proc(title: cstring, width, height: i32) -> (result: window, ok: bool) {
 
     result.width = width
     result.height = height
+    result.dialog.filter_name = cstring("excalidraw")
+    result.dialog.filter_pattern = cstring("*.excalidraw")
+    result.dialog.filter = SDL.DialogFileFilter{
+        name = result.dialog.filter_name,
+        pattern = result.dialog.filter_pattern,
+    }
     ok = true
     return
 }
@@ -78,6 +105,8 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.mouse_delta = {}
     input.wheel = 0
     input.save_requested = false
+    input.open_requested = false
+    input.save_as_requested = false
     input.pressed = {}
     input.released = {}
 
@@ -112,7 +141,14 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
                 quit = true
             }
             if event.key.key == SDL.K_S && (event.key.mod & SDL.KMOD_CTRL) != {} {
-                input.save_requested = true
+                if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                    input.save_as_requested = true
+                } else {
+                    input.save_requested = true
+                }
+            }
+            if event.key.key == SDL.K_O && (event.key.mod & SDL.KMOD_CTRL) != {} {
+                input.open_requested = true
             }
         }
     }
@@ -130,6 +166,7 @@ end_frame :: proc(window: ^window) {
 }
 
 close :: proc(window: ^window) {
+    delete(window.dialog.path)
     if window.ctx != nil {
         SDL.GL_DestroyContext(window.ctx)
         window.ctx = nil
@@ -139,4 +176,75 @@ close :: proc(window: ^window) {
         window.handle = nil
     }
     SDL.Quit()
+}
+
+show_open_dialog :: proc(window: ^window) -> bool {
+    return show_dialog(window, .OPEN)
+}
+
+show_save_dialog :: proc(window: ^window) -> bool {
+    return show_dialog(window, .SAVE)
+}
+
+show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
+    if window.dialog.pending {
+        return false
+    }
+
+    delete(window.dialog.path)
+    window.dialog.path = ""
+    window.dialog.pending = true
+    window.dialog.result_ready = false
+    window.dialog.kind = kind
+
+    switch kind {
+    case .NONE:
+        return false
+    case .OPEN:
+        SDL.ShowOpenFileDialog(
+            file_dialog_callback,
+            rawptr(window),
+            window.handle,
+            &window.dialog.filter,
+            1,
+            nil,
+            false,
+        )
+    case .SAVE:
+        SDL.ShowSaveFileDialog(
+            file_dialog_callback,
+            rawptr(window),
+            window.handle,
+            &window.dialog.filter,
+            1,
+            nil,
+        )
+    }
+    return true
+}
+
+file_dialog_callback :: proc "c" (userdata: rawptr, filelist: [^]cstring, filter: c.int) {
+    context = runtime.default_context()
+    window := (^window)(userdata)
+    window.dialog.pending = false
+    window.dialog.result_ready = true
+    delete(window.dialog.path)
+
+    if filelist != nil && filelist[0] != nil {
+        window.dialog.path = strings.clone(string(filelist[0]))
+    }
+}
+
+take_dialog_result :: proc(window: ^window) -> (kind: dialog_kind, path: string, ready: bool) {
+    if !window.dialog.result_ready {
+        return
+    }
+
+    kind = window.dialog.kind
+    path = window.dialog.path
+    window.dialog.path = ""
+    window.dialog.kind = .NONE
+    window.dialog.result_ready = false
+    ready = true
+    return
 }
