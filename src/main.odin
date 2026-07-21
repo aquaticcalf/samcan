@@ -110,7 +110,16 @@ main :: proc() {
         }
 
         platform.begin_frame(&app_window)
-        renderer.draw(&canvas_renderer, &app_editor.document, app_editor.viewport, app_editor.selected, app_editor.selected_items[:])
+        renderer.draw(
+            &canvas_renderer,
+            &app_editor.document,
+            app_editor.viewport,
+            app_editor.selected,
+            app_editor.selected_items[:],
+            app_editor.lassoing,
+            app_editor.lasso_start,
+            app_editor.lasso_current,
+        )
         platform.end_frame(&app_window)
     }
 }

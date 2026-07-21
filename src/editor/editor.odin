@@ -29,6 +29,9 @@ state :: struct {
     selected:        int,
     selected_items:  [dynamic]int,
     interaction:     interaction_kind,
+    lassoing:        bool,
+    lasso_start:     [2]f32,
+    lasso_current:   [2]f32,
     drag_start:      [2]f32,
     start_bounds:    [4]f32,
     drag_items:      [dynamic]int,
@@ -421,6 +424,9 @@ update_selection :: proc(editor: ^state, input: ^platform.frame_input) {
             if !shift {
                 clear_selection(editor)
             }
+            editor.lassoing = true
+            editor.lasso_start = world
+            editor.lasso_current = world
             editor.interaction = .none
         }
     }
@@ -430,13 +436,51 @@ update_selection :: proc(editor: ^state, input: ^platform.frame_input) {
         apply_interaction(editor, world)
     }
 
+    if editor.lassoing && input.buttons[platform.MOUSE_BUTTON_LEFT] {
+        editor.lasso_current = viewport.screen_to_world(editor.viewport, input.mouse)
+    }
+
     if input.released[platform.MOUSE_BUTTON_LEFT] {
+        if editor.lassoing {
+            lasso_select(editor, editor.lasso_start, editor.lasso_current, input.shift)
+            editor.lassoing = false
+        }
         if editor.interaction != .none {
             finish_transaction(editor)
         }
         editor.interaction = .none
         clear(&editor.drag_items)
         clear(&editor.drag_bounds)
+    }
+}
+
+lasso_select :: proc(editor: ^state, start, finish: [2]f32, additive: bool) {
+    if !additive {
+        clear_selection(editor)
+    }
+    left := min(start[0], finish[0])
+    top := min(start[1], finish[1])
+    right := max(start[0], finish[0])
+    bottom := max(start[1], finish[1])
+    contains_mode := finish[0] >= start[0]
+    for index in 0 ..< len(editor.document.elements) {
+        element := editor.document.elements[index]
+        element_left := element.x
+        element_top := element.y
+        element_right := element.x + element.width
+        element_bottom := element.y + element.height
+        selected := false
+        if contains_mode {
+            selected = element_left >= left && element_top >= top &&
+                element_right <= right && element_bottom <= bottom
+        } else {
+            selected = element_right >= left && element_left <= right &&
+                element_bottom >= top && element_top <= bottom
+        }
+        if selected && !is_selected(editor, index) {
+            append(&editor.selected_items, index)
+            editor.selected = index
+        }
     }
 }
 

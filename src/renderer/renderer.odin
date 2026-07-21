@@ -575,7 +575,16 @@ append_selection_overlay :: proc(vertices: ^[dynamic]vertex, element: document.e
     append_handle(vertices, view, {left, bottom}, handle_size, selection_color)
 }
 
-draw :: proc(renderer: ^renderer, doc: ^document.document, view: viewport.viewport, selected: int = -1, selected_items: []int = nil) {
+draw :: proc(
+    renderer: ^renderer,
+    doc: ^document.document,
+    view: viewport.viewport,
+    selected: int = -1,
+    selected_items: []int = nil,
+    lassoing: bool = false,
+    lasso_start: [2]f32 = {},
+    lasso_current: [2]f32 = {},
+) {
     clear(&renderer.vertices)
     clear(&renderer.text_vertices)
 
@@ -595,6 +604,19 @@ draw :: proc(renderer: ^renderer, doc: ^document.document, view: viewport.viewpo
         }
     } else if selected >= 0 && selected < len(doc.elements) {
         append_selection_overlay(&renderer.vertices, doc.elements[selected], view)
+    }
+
+    if lassoing {
+        lasso_color: [4]f32 = {0.15, 0.35, 0.95, 1.0}
+        left := min(lasso_start[0], lasso_current[0])
+        top := min(lasso_start[1], lasso_current[1])
+        right := max(lasso_start[0], lasso_current[0])
+        bottom := max(lasso_start[1], lasso_current[1])
+        thickness: f32 = 1.0 / view.zoom
+        append_segment(&renderer.vertices, view, {left, top}, {right, top}, lasso_color, thickness)
+        append_segment(&renderer.vertices, view, {right, top}, {right, bottom}, lasso_color, thickness)
+        append_segment(&renderer.vertices, view, {right, bottom}, {left, bottom}, lasso_color, thickness)
+        append_segment(&renderer.vertices, view, {left, bottom}, {left, top}, lasso_color, thickness)
     }
 
     if len(renderer.vertices) > 0 {

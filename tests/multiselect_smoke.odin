@@ -14,6 +14,21 @@ main :: proc() {
     doc.add_diamond(&editor.document, 100, -50, 40, 40, {0.3, 0.4, 0.2, 1.0})
 
     input: platform.frame_input
+    input.mouse = {280, 230}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    input = {}
+    input.mouse = {450, 300}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    input = {}
+    input.mouse = {450, 300}
+    input.released[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(len(editor.selected_items) == 2, "left-to-right lasso did not contain both elements")
+
+    input = {}
     input.select_all_requested = true
     editor_pkg.update(&editor, &input)
     assert(len(editor.selected_items) == 3, "select all did not select every element")
