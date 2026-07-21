@@ -442,11 +442,36 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
     if editor.active_kind == .text && !editor.select_mode {
         if input.pressed[platform.MOUSE_BUTTON_LEFT] {
             world := viewport.screen_to_world(editor.viewport, input.mouse)
-            begin_transaction(editor)
-            editor.text_index = doc.add_text(&editor.document, world[0], world[1], "", {0.12, 0.12, 0.12, 1.0})
-            editor.text_editing = true
+            existing := hit_test(&editor.document, world)
+            if existing >= 0 && editor.document.elements[existing].kind == .text && !editor.document.elements[existing].locked {
+                begin_transaction(editor)
+                clear_selection(editor)
+                editor.selected = existing
+                append(&editor.selected_items, existing)
+                editor.text_index = existing
+                editor.text_editing = true
+            } else {
+                begin_transaction(editor)
+                editor.text_index = doc.add_text(&editor.document, world[0], world[1], "", {0.12, 0.12, 0.12, 1.0})
+                editor.text_editing = true
+            }
         }
         return
+    }
+
+    if editor.select_mode && input.pressed[platform.MOUSE_BUTTON_LEFT] && input.double_click {
+        world := viewport.screen_to_world(editor.viewport, input.mouse)
+        existing := hit_test(&editor.document, world)
+        if existing >= 0 && editor.document.elements[existing].kind == .text && !editor.document.elements[existing].locked {
+            begin_transaction(editor)
+            clear_selection(editor)
+            editor.selected = existing
+            append(&editor.selected_items, existing)
+            editor.text_index = existing
+            editor.text_editing = true
+            editor.select_mode = false
+            return
+        }
     }
 
     if editor.select_mode {

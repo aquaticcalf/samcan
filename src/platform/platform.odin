@@ -95,6 +95,7 @@ frame_input :: struct {
     buttons:        [8]bool,
     pressed:        [8]bool,
     released:       [8]bool,
+    double_click:   bool,
 }
 
 open :: proc(title: cstring, width, height: i32) -> (result: window, ok: bool) {
@@ -205,6 +206,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.toggle_grid_requested = false
     input.pressed = {}
     input.released = {}
+    input.double_click = false
 
     event: SDL.Event
     for SDL.PollEvent(&event) {
@@ -225,6 +227,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
                 input.buttons[index] = event.button.down
                 if event.button.down {
                     input.pressed[index] = true
+                    input.double_click = event.button.clicks >= 2
                 } else {
                     input.released[index] = true
                 }

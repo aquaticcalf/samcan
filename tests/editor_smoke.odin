@@ -135,6 +135,22 @@ main :: proc() {
     editor_pkg.update(&editor, &input)
     assert(!editor.text_editing, "text tool did not finish editing")
     assert(editor.document.elements[2].text == "hell\n", "text content did not persist")
+    assert(editor_pkg.hit_test(&editor.document, {55, 35}) == 2, "text hit test did not find existing text")
+
+    input = {}
+    input.mouse = {455, 335}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    input.double_click = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.text_editing && editor.text_index == 2, "text tool did not reopen existing text")
+    input = {}
+    input.text_input = "!"
+    editor_pkg.update(&editor, &input)
+    input = {}
+    input.escape_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.document.elements[2].text == "hell\n!", "reopened text did not accept input")
 
     input = {}
     input.tool_freehand_requested = true
@@ -166,7 +182,7 @@ main :: proc() {
     append(&editor.selected_items, 2)
     editor.selected = 2
     copied_text := editor_pkg.selected_text(&editor)
-    assert(copied_text == "hell\n", "selected text did not reach the clipboard adapter")
+    assert(copied_text == "hell\n!", "selected text did not reach the clipboard adapter")
     delete(copied_text)
     assert(editor_pkg.paste_text(&editor, "pasted"), "external text paste did not create an element")
     assert(editor.document.elements[4].text == "pasted", "external text paste content was wrong")
