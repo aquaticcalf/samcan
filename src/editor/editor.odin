@@ -221,6 +221,36 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
+    if len(editor.selected_items) > 1 && (
+        input.align_left_requested ||
+        input.align_center_horizontal_requested ||
+        input.align_right_requested ||
+        input.align_top_requested ||
+        input.align_center_vertical_requested ||
+        input.align_bottom_requested
+    ) {
+        if selection_has_locked(editor) {
+            return
+        }
+        finish_transaction(editor)
+        begin_transaction(editor)
+        mode := align_mode.left
+        if input.align_center_horizontal_requested {
+            mode = .center_horizontal
+        } else if input.align_right_requested {
+            mode = .right
+        } else if input.align_top_requested {
+            mode = .top
+        } else if input.align_center_vertical_requested {
+            mode = .center_vertical
+        } else if input.align_bottom_requested {
+            mode = .bottom
+        }
+        align_selection(editor, mode)
+        finish_transaction(editor)
+        return
+    }
+
     if input.delete_requested && len(editor.selected_items) > 0 {
         if selection_has_locked(editor) {
             return
@@ -897,6 +927,59 @@ selection_has_locked :: proc(editor: ^state) -> bool {
         }
     }
     return false
+}
+
+align_mode :: enum {
+    left,
+    center_horizontal,
+    right,
+    top,
+    center_vertical,
+    bottom,
+}
+
+align_selection :: proc(editor: ^state, mode: align_mode) {
+    if len(editor.selected_items) == 0 {
+        return
+    }
+    first := editor.document.elements[editor.selected_items[0]]
+    min_x := first.x
+    min_y := first.y
+    max_x := first.x + first.width
+    max_y := first.y + first.height
+    for index in editor.selected_items[1:] {
+        element := editor.document.elements[index]
+        min_x = min(min_x, element.x)
+        min_y = min(min_y, element.y)
+        max_x = max(max_x, element.x + element.width)
+        max_y = max(max_y, element.y + element.height)
+    }
+    center_x := (min_x + max_x) * 0.5
+    center_y := (min_y + max_y) * 0.5
+    for index in editor.selected_items {
+        element := editor.document.elements[index]
+        x := element.x
+        y := element.y
+        switch mode {
+        case .left:
+            x = min_x
+        case .center_horizontal:
+            x = center_x - element.width * 0.5
+        case .right:
+            x = max_x - element.width
+        case .top:
+            y = min_y
+        case .center_vertical:
+            y = center_y - element.height * 0.5
+        case .bottom:
+            y = max_y - element.height
+        }
+        if element.kind == .freehand {
+            doc.translate(&editor.document, index, x - element.x, y - element.y)
+        } else {
+            doc.set_bounds(&editor.document, index, x, y, element.width, element.height)
+        }
+    }
 }
 
 begin_transaction :: proc(editor: ^state) {

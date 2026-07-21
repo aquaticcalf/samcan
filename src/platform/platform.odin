@@ -58,6 +58,12 @@ frame_input :: struct {
     group_requested: bool,
     ungroup_requested: bool,
     toggle_lock_requested: bool,
+    align_left_requested: bool,
+    align_center_horizontal_requested: bool,
+    align_right_requested: bool,
+    align_top_requested: bool,
+    align_center_vertical_requested: bool,
+    align_bottom_requested: bool,
     select_all_requested: bool,
     bring_forward_requested: bool,
     send_backward_requested: bool,
@@ -154,6 +160,12 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.group_requested = false
     input.ungroup_requested = false
     input.toggle_lock_requested = false
+    input.align_left_requested = false
+    input.align_center_horizontal_requested = false
+    input.align_right_requested = false
+    input.align_top_requested = false
+    input.align_center_vertical_requested = false
+    input.align_bottom_requested = false
     input.select_all_requested = false
     input.bring_forward_requested = false
     input.send_backward_requested = false
@@ -259,6 +271,36 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_L && (event.key.mod & SDL.KMOD_CTRL) != {} && (event.key.mod & SDL.KMOD_SHIFT) != {} {
                 input.toggle_lock_requested = true
+            }
+            if (event.key.mod & SDL.KMOD_CTRL) != {} && (event.key.mod & SDL.KMOD_ALT) != {} {
+                if event.key.key == SDL.K_LEFT {
+                    if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                        input.align_center_horizontal_requested = true
+                    } else {
+                        input.align_left_requested = true
+                    }
+                }
+                if event.key.key == SDL.K_RIGHT {
+                    if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                        input.align_center_horizontal_requested = true
+                    } else {
+                        input.align_right_requested = true
+                    }
+                }
+                if event.key.key == SDL.K_UP {
+                    if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                        input.align_center_vertical_requested = true
+                    } else {
+                        input.align_top_requested = true
+                    }
+                }
+                if event.key.key == SDL.K_DOWN {
+                    if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                        input.align_center_vertical_requested = true
+                    } else {
+                        input.align_bottom_requested = true
+                    }
+                }
             }
             if event.key.key == SDL.K_A && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.select_all_requested = true

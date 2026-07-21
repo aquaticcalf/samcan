@@ -92,5 +92,34 @@ main :: proc() {
     editor_pkg.update(&editor, &input)
     assert(editor.document.elements[3].group_id == 0, "ungroup did not clear the group id")
 
+    clear(&editor.selected_items)
+    append(&editor.selected_items, 3)
+    editor.selected = 3
+    input = {}
+    input.toggle_lock_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.document.elements[3].locked, "lock command did not lock the selected element")
+    input = {}
+    input.duplicate_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(len(editor.document.elements) == 5, "locked element was duplicated")
+    input = {}
+    input.toggle_lock_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(!editor.document.elements[3].locked, "unlock command did not unlock the selected element")
+
+    editor.document.elements[3].x = 100
+    editor.document.elements[4].x = 160
+    editor.document.elements[3].y = 120
+    editor.document.elements[4].y = 180
+    clear(&editor.selected_items)
+    append(&editor.selected_items, 3)
+    append(&editor.selected_items, 4)
+    input = {}
+    input.align_left_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.document.elements[3].x == editor.document.elements[4].x, "align left did not align both elements")
+    assert(editor.document.elements[3].y == 120, "align left changed the wrong axis")
+
     fmt.println("commands smoke passed")
 }
