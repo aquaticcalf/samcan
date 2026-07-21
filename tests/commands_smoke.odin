@@ -125,6 +125,21 @@ main :: proc() {
     assert(editor.document.elements[3].x == editor.document.elements[4].x, "align left did not align both elements")
     assert(editor.document.elements[3].y == 120, "align left changed the wrong axis")
 
+    first_distribution := doc.add_rectangle(&editor.document, 0, 240, 20, 20, {0.1, 0.2, 0.3, 1.0})
+    middle_distribution := doc.add_rectangle(&editor.document, 80, 240, 20, 20, {0.1, 0.2, 0.3, 1.0})
+    last_distribution := doc.add_rectangle(&editor.document, 300, 240, 20, 20, {0.1, 0.2, 0.3, 1.0})
+    clear(&editor.selected_items)
+    append(&editor.selected_items, first_distribution)
+    append(&editor.selected_items, middle_distribution)
+    append(&editor.selected_items, last_distribution)
+    input = {}
+    input.distribute_horizontal_requested = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.document.elements[middle_distribution].x == 150, "horizontal distribution did not center the middle element")
+    clear(&editor.selected_items)
+    append(&editor.selected_items, 3)
+    editor.selected = 3
+
     input = {}
     input.rotate_right_requested = true
     editor_pkg.update(&editor, &input)

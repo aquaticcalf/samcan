@@ -31,7 +31,7 @@ foundation for the next one.
 - implement ids, z-order, bounds, transforms, and hit testing.
 - implement selection, lasso, groups, locks, frames, and deleted elements.
 - implement lines, arrows, bindings, and linear editing.
-- add snapping, alignment, and distribution. grid and shape endpoint snapping are done; distribution remains.
+- add snapping, alignment, and distribution. grid, shape endpoint snapping, alignment, and distribution are done.
 
 ## phase 4: renderer
 

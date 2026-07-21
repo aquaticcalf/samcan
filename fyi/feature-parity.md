@@ -35,7 +35,7 @@
 - lock and unlock
 - group and ungroup
 - bring forward, send backward, front, and back
-- align and distribute
+- align and distribute -- native alignment actions plus horizontal distribution
 - links and element links
 - arrow binding to shapes
 - bound text inside containers

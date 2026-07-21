@@ -76,6 +76,8 @@ frame_input :: struct {
     align_top_requested: bool,
     align_center_vertical_requested: bool,
     align_bottom_requested: bool,
+    distribute_horizontal_requested: bool,
+    distribute_vertical_requested: bool,
     rotate_left_requested: bool,
     rotate_right_requested: bool,
     select_all_requested: bool,
@@ -193,6 +195,8 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.align_top_requested = false
     input.align_center_vertical_requested = false
     input.align_bottom_requested = false
+    input.distribute_horizontal_requested = false
+    input.distribute_vertical_requested = false
     input.rotate_left_requested = false
     input.rotate_right_requested = false
     input.select_all_requested = false
@@ -331,6 +335,12 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
                 input.toggle_lock_requested = true
             }
             if (event.key.mod & SDL.KMOD_CTRL) != {} && (event.key.mod & SDL.KMOD_ALT) != {} {
+                if event.key.key == SDL.K_H {
+                    input.distribute_horizontal_requested = true
+                }
+                if event.key.key == SDL.K_J {
+                    input.distribute_vertical_requested = true
+                }
                 if event.key.key == SDL.K_LEFT {
                     if (event.key.mod & SDL.KMOD_SHIFT) != {} {
                         input.align_center_horizontal_requested = true

@@ -412,6 +412,18 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
+    if len(editor.selected_items) > 2 &&
+        (input.distribute_horizontal_requested || input.distribute_vertical_requested) {
+        if selection_has_locked(editor) {
+            return
+        }
+        finish_transaction(editor)
+        begin_transaction(editor)
+        distribute_selection(editor, input.distribute_horizontal_requested)
+        finish_transaction(editor)
+        return
+    }
+
     if len(editor.selected_items) > 0 && (input.rotate_left_requested || input.rotate_right_requested) {
         if selection_has_locked(editor) {
             return
@@ -1478,6 +1490,63 @@ align_selection :: proc(editor: ^state, mode: align_mode) {
             y = center_y - element.height * 0.5
         case .bottom:
             y = max_y - element.height
+        }
+        if element.kind == .freehand {
+            doc.translate(&editor.document, index, x - element.x, y - element.y)
+        } else {
+            doc.set_bounds(&editor.document, index, x, y, element.width, element.height)
+        }
+    }
+}
+
+distribute_selection :: proc(editor: ^state, horizontal: bool) {
+    ordered := make([dynamic]int, 0, len(editor.selected_items))
+    defer delete(ordered)
+    for index in editor.selected_items {
+        append(&ordered, index)
+    }
+    for left in 1 ..< len(ordered) {
+        current := ordered[left]
+        current_element := editor.document.elements[current]
+        current_position := current_element.y
+        if horizontal {
+            current_position = current_element.x
+        }
+        right := left
+        for right > 0 {
+            previous_element := editor.document.elements[ordered[right - 1]]
+            previous_position := previous_element.y
+            if horizontal {
+                previous_position = previous_element.x
+            }
+            if previous_position <= current_position {
+                break
+            }
+            ordered[right] = ordered[right - 1]
+            right -= 1
+        }
+        ordered[right] = current
+    }
+
+    first := editor.document.elements[ordered[0]]
+    last := editor.document.elements[ordered[len(ordered) - 1]]
+    first_center := first.y + first.height * 0.5
+    last_center := last.y + last.height * 0.5
+    if horizontal {
+        first_center = first.x + first.width * 0.5
+        last_center = last.x + last.width * 0.5
+    }
+    span := last_center - first_center
+    for order in 1 ..< len(ordered) - 1 {
+        index := ordered[order]
+        element := editor.document.elements[index]
+        target_center := first_center + span * f32(order) / f32(len(ordered) - 1)
+        x := element.x
+        y := element.y
+        if horizontal {
+            x = target_center - element.width * 0.5
+        } else {
+            y = target_center - element.height * 0.5
         }
         if element.kind == .freehand {
             doc.translate(&editor.document, index, x - element.x, y - element.y)
