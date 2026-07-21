@@ -1,0 +1,7 @@
+excalifont regular
+
+source: https://github.com/excalidraw/excalidraw/tree/master/packages/excalidraw/fonts/Excalifont
+license: sil open font license 1.1
+
+the bundled ttf is a native conversion of the official excalidraw woff2
+subset used for latin text. retain this notice when redistributing the font.

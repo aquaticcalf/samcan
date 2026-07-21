@@ -1,10 +1,12 @@
 package renderer
 
+import "core:c"
 import "core:fmt"
 import "core:math"
+import "core:os"
 
 import gl "vendor:OpenGL"
-import font "vendor:stb/easy_font"
+import stb "vendor:stb/truetype"
 import document "../document"
 import viewport "../viewport"
 
@@ -13,11 +15,28 @@ vertex :: struct {
     color:    [4]f32,
 }
 
+text_vertex :: struct {
+    position: [2]f32,
+    uv:       [2]f32,
+    color:    [4]f32,
+}
+
+text_font :: struct {
+    texture: u32,
+    chars:   [96]stb.bakedchar,
+    ready:   bool,
+}
+
 renderer :: struct {
-    program:  u32,
-    vao:      u32,
-    vbo:      u32,
-    vertices: [dynamic]vertex,
+    program:       u32,
+    vao:           u32,
+    vbo:           u32,
+    vertices:      [dynamic]vertex,
+    text_program:  u32,
+    text_vao:      u32,
+    text_vbo:      u32,
+    text_vertices: [dynamic]text_vertex,
+    text_font:     text_font,
 }
 
 vertex_shader :: `#version 330 core
@@ -36,8 +55,31 @@ void main() {
     color = v_color;
 }`
 
+text_vertex_shader :: `#version 330 core
+layout (location = 0) in vec2 a_position;
+layout (location = 1) in vec2 a_uv;
+layout (location = 2) in vec4 a_color;
+out vec2 v_uv;
+out vec4 v_color;
+void main() {
+    gl_Position = vec4(a_position, 0.0, 1.0);
+    v_uv = a_uv;
+    v_color = a_color;
+}`
+
+text_fragment_shader :: `#version 330 core
+in vec2 v_uv;
+in vec4 v_color;
+uniform sampler2D u_font;
+out vec4 color;
+void main() {
+    float alpha = texture(u_font, v_uv).r;
+    color = vec4(v_color.rgb, v_color.a * alpha);
+}`
+
 open :: proc() -> (result: renderer, ok: bool) {
     result.vertices = make([dynamic]vertex, 0)
+    result.text_vertices = make([dynamic]text_vertex, 0)
 
     result.program, ok = gl.load_shaders_source(vertex_shader, fragment_shader)
     if !ok {
@@ -57,11 +99,43 @@ open :: proc() -> (result: renderer, ok: bool) {
     gl.VertexAttribPointer(1, 4, gl.FLOAT, false, stride, uintptr(size_of([2]f32)))
     gl.EnableVertexAttribArray(1)
 
+    text_program, text_ok := gl.load_shaders_source(text_vertex_shader, text_fragment_shader)
+    result.text_program = text_program
+    if !text_ok {
+        compile_message, _, link_message, _ := gl.get_last_error_messages()
+        fmt.eprintf("text shader setup failed: %s %s\n", compile_message, link_message)
+    } else {
+        gl.GenVertexArrays(1, &result.text_vao)
+        gl.GenBuffers(1, &result.text_vbo)
+        gl.BindVertexArray(result.text_vao)
+        gl.BindBuffer(gl.ARRAY_BUFFER, result.text_vbo)
+        text_stride := i32(size_of(text_vertex))
+        gl.VertexAttribPointer(0, 2, gl.FLOAT, false, text_stride, 0)
+        gl.EnableVertexAttribArray(0)
+        gl.VertexAttribPointer(1, 2, gl.FLOAT, false, text_stride, uintptr(size_of([2]f32)))
+        gl.EnableVertexAttribArray(1)
+        gl.VertexAttribPointer(2, 4, gl.FLOAT, false, text_stride, uintptr(size_of([2]f32) * 2))
+        gl.EnableVertexAttribArray(2)
+        result.text_font.ready = load_text_font(&result.text_font)
+    }
+
     ok = true
     return
 }
 
 destroy :: proc(renderer: ^renderer) {
+    if renderer.text_font.texture != 0 {
+        gl.DeleteTextures(1, &renderer.text_font.texture)
+    }
+    if renderer.text_vbo != 0 {
+        gl.DeleteBuffers(1, &renderer.text_vbo)
+    }
+    if renderer.text_vao != 0 {
+        gl.DeleteVertexArrays(1, &renderer.text_vao)
+    }
+    if renderer.text_program != 0 {
+        gl.DeleteProgram(renderer.text_program)
+    }
     if renderer.vbo != 0 {
         gl.DeleteBuffers(1, &renderer.vbo)
     }
@@ -72,7 +146,68 @@ destroy :: proc(renderer: ^renderer) {
         gl.DeleteProgram(renderer.program)
     }
     delete(renderer.vertices)
+    delete(renderer.text_vertices)
     renderer^ = {}
+}
+
+load_text_font :: proc(font: ^text_font) -> bool {
+    paths := [?]string{
+        "fonts/excalifont-regular.ttf",
+        "../assets/fonts/excalifont-regular.ttf",
+        "assets/fonts/excalifont-regular.ttf",
+    }
+    data: []byte
+    for path in paths {
+        loaded, err := os.read_entire_file(path, context.allocator)
+        if err == nil {
+            data = loaded
+            break
+        }
+    }
+    if len(data) == 0 {
+        fmt.eprintf("could not load excalifont-regular.ttf\n")
+        return false
+    }
+    defer delete(data)
+
+    atlas_size :: 512
+    bitmap := make([]byte, atlas_size * atlas_size)
+    defer delete(bitmap)
+    baked := stb.BakeFontBitmap(
+        &data[0],
+        0,
+        32,
+        &bitmap[0],
+        atlas_size,
+        atlas_size,
+        32,
+        len(font.chars),
+        &font.chars[0],
+    )
+    if baked <= 0 {
+        fmt.eprintf("could not bake excalifont glyph atlas\n")
+        return false
+    }
+
+    gl.GenTextures(1, &font.texture)
+    gl.BindTexture(gl.TEXTURE_2D, font.texture)
+    gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+    gl.TexImage2D(
+        gl.TEXTURE_2D,
+        0,
+        i32(gl.RED),
+        atlas_size,
+        atlas_size,
+        0,
+        gl.RED,
+        gl.UNSIGNED_BYTE,
+        raw_data(bitmap),
+    )
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, i32(gl.LINEAR))
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, i32(gl.LINEAR))
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, i32(gl.CLAMP_TO_EDGE))
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, i32(gl.CLAMP_TO_EDGE))
+    return true
 }
 
 screen_to_clip :: proc(view: viewport.viewport, point: [2]f32) -> [2]f32 {
@@ -130,7 +265,7 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         append_segment(vertices, view, start, finish, element.fill, 3.0 / view.zoom)
         append_arrowhead(vertices, view, start, finish, element.fill)
     case .text:
-        append_text(vertices, view, element)
+        // text is rendered in the alpha-atlas pass after opaque geometry
     case .freehand:
         if len(element.points) >= 2 {
             for point_index in 1 ..< len(element.points) {
@@ -167,29 +302,47 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
     }
 }
 
-append_text :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, element: document.element) {
-    if element.text == "" {
+append_text_vertex :: proc(vertices: ^[dynamic]text_vertex, position, uv: [2]f32, color: [4]f32) {
+    append(vertices, text_vertex{position = position, uv = uv, color = color})
+}
+
+append_text :: proc(renderer: ^renderer, view: viewport.viewport, element: document.element) {
+    if !renderer.text_font.ready || element.text == "" {
         return
     }
 
-    quad_capacity := max(1, len(element.text) * 8)
-    quads := make([]font.Quad, quad_capacity)
-    defer delete(quads)
-
-    color: font.Color = {
-        u8(max(0, min(255, int(element.fill[0] * 255.0)))),
-        u8(max(0, min(255, int(element.fill[1] * 255.0)))),
-        u8(max(0, min(255, int(element.fill[2] * 255.0)))),
-        u8(max(0, min(255, int(element.fill[3] * 255.0)))),
-    }
-    count := font.print_quad_buffer(element.x, element.y, element.text, color, quads)
-    for quad in quads[:count] {
-        top_left := screen_to_clip(view, {quad.tl.v[0], quad.tl.v[1]})
-        top_right := screen_to_clip(view, {quad.tr.v[0], quad.tr.v[1]})
-        bottom_right := screen_to_clip(view, {quad.br.v[0], quad.br.v[1]})
-        bottom_left := screen_to_clip(view, {quad.bl.v[0], quad.bl.v[1]})
-        append_triangle(vertices, top_left, top_right, bottom_right, element.fill)
-        append_triangle(vertices, top_left, bottom_right, bottom_left, element.fill)
+    x := element.x
+    y := element.y + 28
+    for character in element.text {
+        if character == '\n' {
+            x = element.x
+            y += 40
+            continue
+        }
+        if character < 32 || character > 127 {
+            continue
+        }
+        quad: stb.aligned_quad
+        stb.GetBakedQuad(
+            &renderer.text_font.chars[0],
+            512,
+            512,
+            c.int(character - 32),
+            &x,
+            &y,
+            &quad,
+            true,
+        )
+        top_left := screen_to_clip(view, {quad.x0, quad.y0})
+        top_right := screen_to_clip(view, {quad.x1, quad.y0})
+        bottom_right := screen_to_clip(view, {quad.x1, quad.y1})
+        bottom_left := screen_to_clip(view, {quad.x0, quad.y1})
+        append_text_vertex(&renderer.text_vertices, top_left, {quad.s0, quad.t0}, element.fill)
+        append_text_vertex(&renderer.text_vertices, top_right, {quad.s1, quad.t0}, element.fill)
+        append_text_vertex(&renderer.text_vertices, bottom_right, {quad.s1, quad.t1}, element.fill)
+        append_text_vertex(&renderer.text_vertices, top_left, {quad.s0, quad.t0}, element.fill)
+        append_text_vertex(&renderer.text_vertices, bottom_right, {quad.s1, quad.t1}, element.fill)
+        append_text_vertex(&renderer.text_vertices, bottom_left, {quad.s0, quad.t1}, element.fill)
     }
 }
 
@@ -318,9 +471,14 @@ append_selection_overlay :: proc(vertices: ^[dynamic]vertex, element: document.e
 
 draw :: proc(renderer: ^renderer, doc: ^document.document, view: viewport.viewport, selected: int = -1, selected_items: []int = nil) {
     clear(&renderer.vertices)
+    clear(&renderer.text_vertices)
 
     for element in doc.elements {
-        append_shape(&renderer.vertices, element, view)
+        if element.kind == .text {
+            append_text(renderer, view, element)
+        } else {
+            append_shape(&renderer.vertices, element, view)
+        }
     }
 
     if len(selected_items) > 0 {
@@ -333,18 +491,34 @@ draw :: proc(renderer: ^renderer, doc: ^document.document, view: viewport.viewpo
         append_selection_overlay(&renderer.vertices, doc.elements[selected], view)
     }
 
-    if len(renderer.vertices) == 0 {
-        return
+    if len(renderer.vertices) > 0 {
+        gl.UseProgram(renderer.program)
+        gl.BindVertexArray(renderer.vao)
+        gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+        gl.BufferData(
+            gl.ARRAY_BUFFER,
+            len(renderer.vertices) * size_of(vertex),
+            raw_data(renderer.vertices),
+            gl.DYNAMIC_DRAW,
+        )
+        gl.DrawArrays(gl.TRIANGLES, 0, i32(len(renderer.vertices)))
     }
 
-    gl.UseProgram(renderer.program)
-    gl.BindVertexArray(renderer.vao)
-    gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
-    gl.BufferData(
-        gl.ARRAY_BUFFER,
-        len(renderer.vertices) * size_of(vertex),
-        raw_data(renderer.vertices),
-        gl.DYNAMIC_DRAW,
-    )
-    gl.DrawArrays(gl.TRIANGLES, 0, i32(len(renderer.vertices)))
+    if len(renderer.text_vertices) > 0 && renderer.text_font.ready {
+        gl.Enable(gl.BLEND)
+        gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+        gl.UseProgram(renderer.text_program)
+        gl.BindVertexArray(renderer.text_vao)
+        gl.BindBuffer(gl.ARRAY_BUFFER, renderer.text_vbo)
+        gl.BufferData(
+            gl.ARRAY_BUFFER,
+            len(renderer.text_vertices) * size_of(text_vertex),
+            raw_data(renderer.text_vertices),
+            gl.DYNAMIC_DRAW,
+        )
+        gl.ActiveTexture(gl.TEXTURE0)
+        gl.BindTexture(gl.TEXTURE_2D, renderer.text_font.texture)
+        gl.DrawArrays(gl.TRIANGLES, 0, i32(len(renderer.text_vertices)))
+        gl.Disable(gl.BLEND)
+    }
 }

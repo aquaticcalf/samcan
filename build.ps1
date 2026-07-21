@@ -19,4 +19,11 @@ Copy-Item `
     -Destination (Join-Path $out "SDL3.dll") `
     -Force
 
+$font_out = Join-Path $out "fonts"
+New-Item -ItemType Directory -Force -Path $font_out | Out-Null
+Copy-Item `
+    -LiteralPath (Join-Path $root "assets\fonts\excalifont-regular.ttf") `
+    -Destination (Join-Path $font_out "excalifont-regular.ttf") `
+    -Force
+
 Write-Output "built $out\samcan.exe"
