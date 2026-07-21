@@ -1,11 +1,14 @@
 package storage
 
+import "core:c"
+import base64 "core:encoding/base64"
 import "core:encoding/json"
 import "core:fmt"
 import "core:math"
 import "core:os"
 import "core:strings"
 
+import stb "vendor:stb/image"
 import document "../document"
 
 scene_file :: struct {
@@ -86,6 +89,72 @@ save :: proc(path: string, doc: ^document.document) -> bool {
         return false
     }
     return true
+}
+
+import_image :: proc(doc: ^document.document, path: string, center_x, center_y: f32) -> bool {
+    source, read_error := os.read_entire_file(path, context.allocator)
+    if read_error != nil || len(source) == 0 {
+        return false
+    }
+    defer delete(source)
+
+    width, height, channels: c.int
+    pixels := stb.load_from_memory(
+        &source[0],
+        c.int(len(source)),
+        &width,
+        &height,
+        &channels,
+        4,
+    )
+    if pixels == nil || width <= 0 || height <= 0 {
+        if pixels != nil {
+            stb.image_free(pixels)
+        }
+        return false
+    }
+    stb.image_free(pixels)
+
+    mime_type := image_mime_type(path)
+    encoded, encode_error := base64.encode(source)
+    if encode_error != nil {
+        return false
+    }
+    data_url := fmt.tprintf("data:%s;base64,%s", mime_type, encoded)
+    delete(encoded)
+
+    image_id := fmt.tprintf("file-%d", doc.next_id)
+    doc.images[strings.clone(image_id)] = document.image_asset{
+        mime_type = strings.clone(mime_type),
+        data_url = strings.clone(data_url),
+    }
+    width_f := f32(width)
+    height_f := f32(height)
+    max_size: f32 = 640.0
+    scale := min(1.0, max_size / max(width_f, height_f))
+    width_f *= scale
+    height_f *= scale
+    _ = document.add_image(doc, center_x - width_f * 0.5, center_y - height_f * 0.5, width_f, height_f, image_id)
+    return true
+}
+
+image_mime_type :: proc(path: string) -> string {
+    if strings.ends_with(path, ".jpg") || strings.ends_with(path, ".jpeg") {
+        return "image/jpeg"
+    }
+    if strings.ends_with(path, ".gif") {
+        return "image/gif"
+    }
+    if strings.ends_with(path, ".bmp") {
+        return "image/bmp"
+    }
+    if strings.ends_with(path, ".tga") {
+        return "image/x-tga"
+    }
+    if strings.ends_with(path, ".hdr") {
+        return "image/vnd.radiance"
+    }
+    return "image/png"
 }
 
 save_svg :: proc(path: string, doc: ^document.document) -> bool {
