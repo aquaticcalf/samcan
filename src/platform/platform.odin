@@ -42,6 +42,7 @@ frame_input :: struct {
     wheel:          f32,
     modifiers:      SDL.Keymod,
     shift:          bool,
+    control:        bool,
     save_requested: bool,
     open_requested: bool,
     save_as_requested: bool,
@@ -132,6 +133,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.wheel = 0
     input.modifiers = SDL.GetModState()
     input.shift = (input.modifiers & SDL.KMOD_SHIFT) != {}
+    input.control = (input.modifiers & SDL.KMOD_CTRL) != {}
     input.save_requested = false
     input.open_requested = false
     input.save_as_requested = false
@@ -291,6 +293,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     }
     input.modifiers = SDL.GetModState()
     input.shift = (input.modifiers & SDL.KMOD_SHIFT) != {}
+    input.control = (input.modifiers & SDL.KMOD_CTRL) != {}
     return
 }
 

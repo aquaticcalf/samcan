@@ -337,8 +337,19 @@ update_text :: proc(editor: ^state, input: ^platform.frame_input) {
         }
     }
 
-    if input.enter_requested || input.escape_requested {
-        finish_text(editor, input.escape_requested)
+    if input.enter_requested {
+        if input.control {
+            finish_text(editor, false)
+        } else {
+            current := editor.document.elements[editor.text_index].text
+            parts := [2]string{current, "\n"}
+            combined := strings.concatenate(parts[:])
+            doc.set_text(&editor.document, editor.text_index, combined)
+        }
+    }
+
+    if input.escape_requested {
+        finish_text(editor, false)
     }
 }
 

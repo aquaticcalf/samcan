@@ -86,8 +86,14 @@ main :: proc() {
     input = {}
     input.enter_requested = true
     editor_pkg.update(&editor, &input)
+    assert(editor.text_editing, "text tool did not keep editing after a newline")
+    assert(editor.document.elements[editor.text_index].text == "hell\n", "text tool did not insert a newline")
+
+    input = {}
+    input.escape_requested = true
+    editor_pkg.update(&editor, &input)
     assert(!editor.text_editing, "text tool did not finish editing")
-    assert(editor.document.elements[2].text == "hell", "text content did not persist")
+    assert(editor.document.elements[2].text == "hell\n", "text content did not persist")
 
     input = {}
     input.tool_freehand_requested = true
