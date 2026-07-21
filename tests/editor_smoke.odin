@@ -53,6 +53,12 @@ main :: proc() {
     assert(input.export_png_requested, "png export toolbar button did not request export")
 
     input = {}
+    input.mouse = {764, 20}
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(input.open_library_requested, "library toolbar button did not request a library")
+
+    input = {}
     input.mouse = {400, 300}
     input.buttons[platform.MOUSE_BUTTON_LEFT] = true
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true
@@ -204,6 +210,16 @@ main :: proc() {
     input.released[platform.MOUSE_BUTTON_LEFT] = true
     editor_pkg.update(&editor, &input)
     assert(len(editor.document.elements) == 4, "eraser did not remove the topmost element")
+
+    library_path := "temp/excalidraw/packages/excalidraw/tests/fixtures/fixture_library.excalidrawlib"
+    assert(editor_pkg.load_library(&editor, library_path), "editor did not load a library")
+    previous_count := len(editor.document.elements)
+    input = {}
+    input.mouse = {650, 100}
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(len(editor.document.elements) == previous_count + 1, "library panel did not insert an item")
+    assert(editor.document.elements[len(editor.document.elements) - 1].kind == .rectangle, "library item kind was wrong")
 
     fmt.println("editor smoke passed")
 }

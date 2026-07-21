@@ -191,6 +191,31 @@ library_item_from_document :: proc(doc: ^document.document, name: string = "") -
     }
 }
 
+insert_library_item :: proc(doc: ^document.document, item: library_item, center_x, center_y: f32) -> bool {
+    scene := scene_file{
+        type = "excalidraw",
+        version = 2,
+        source = "samcan-library",
+        elements = clone_scene_elements(item.elements[:]),
+        files = make(map[string]file_data),
+    }
+    defer destroy_scene(&scene)
+
+    source, source_ok := document_from_scene(&scene)
+    if !source_ok || len(source.elements) == 0 {
+        document.destroy(&source)
+        return false
+    }
+    defer document.destroy(&source)
+
+    min_x, min_y, max_x, max_y := document_bounds(&source)
+    delta_x := center_x - (min_x + max_x) * 0.5
+    delta_y := center_y - (min_y + max_y) * 0.5
+    indices := document.append_document(doc, &source, delta_x, delta_y)
+    defer delete(indices)
+    return len(indices) > 0
+}
+
 destroy_library_items :: proc(items: ^[dynamic]library_item) {
     for &item in items {
         destroy_library_item(&item)
@@ -496,6 +521,13 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
     }
     defer destroy_scene(&file)
 
+    loaded, loaded_ok := document_from_scene(&file)
+    doc = loaded
+    ok = loaded_ok
+    return
+}
+
+document_from_scene :: proc(file: ^scene_file) -> (doc: document.document, ok: bool) {
     doc = document.new()
     for image_id, file_data in file.files {
         if file_data.dataURL != "" {
@@ -503,6 +535,16 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
                 mime_type = strings.clone(file_data.mimeType),
                 data_url = strings.clone(file_data.dataURL),
             }
+        }
+    }
+    source_ids := make(map[u64]u64)
+    defer delete(source_ids)
+    next_id := doc.next_id
+    for source_element in file.elements {
+        _, known := element_kind_from_name(source_element.type)
+        if known {
+            source_ids[group_id_from_string(source_element.id)] = next_id
+            next_id += 1
         }
     }
     for element in file.elements {
@@ -602,13 +644,19 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
         if kind == .image && element.fileId != "" {
             doc.elements[index].image_id = strings.clone(element.fileId)
         }
-        doc.elements[index].start_binding_id = group_id_from_string(element.startBindingId)
-        doc.elements[index].end_binding_id = group_id_from_string(element.endBindingId)
-        if element.startBindingId == "" {
-            doc.elements[index].start_binding_id = 0
+        doc.elements[index].start_binding_id = 0
+        if element.startBindingId != "" {
+            source_id := group_id_from_string(element.startBindingId)
+            if target_id, found := source_ids[source_id]; found {
+                doc.elements[index].start_binding_id = target_id
+            }
         }
-        if element.endBindingId == "" {
-            doc.elements[index].end_binding_id = 0
+        doc.elements[index].end_binding_id = 0
+        if element.endBindingId != "" {
+            source_id := group_id_from_string(element.endBindingId)
+            if target_id, found := source_ids[source_id]; found {
+                doc.elements[index].end_binding_id = target_id
+            }
         }
     }
 

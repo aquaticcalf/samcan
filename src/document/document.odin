@@ -1,5 +1,6 @@
 package document
 
+import "core:fmt"
 import "core:strings"
 
 color :: [4]f32
@@ -363,6 +364,67 @@ append_element_copy :: proc(doc: ^document, source: element, delta_x, delta_y: f
     }
     append(&doc.elements, copy)
     return len(doc.elements) - 1
+}
+
+append_document :: proc(doc: ^document, source: ^document, delta_x, delta_y: f32) -> [dynamic]int {
+    indices := make([dynamic]int, 0, len(source.elements))
+    id_map := make(map[u64]u64)
+    group_map := make(map[u64]u64)
+    image_map := make(map[string]string)
+    defer delete(id_map)
+    defer delete(group_map)
+    defer delete(image_map)
+
+    for image_id, image in source.images {
+        target_id := image_id
+        if _, exists := doc.images[target_id]; exists {
+            target_id = strings.clone(fmt.tprintf("%s-%d", image_id, doc.next_id))
+        } else {
+            target_id = strings.clone(target_id)
+        }
+        doc.images[target_id] = image_asset{
+            mime_type = strings.clone(image.mime_type),
+            data_url = strings.clone(image.data_url),
+        }
+        image_map[image_id] = target_id
+    }
+
+    for source_element in source.elements {
+        index := append_element_copy(doc, source_element, delta_x, delta_y)
+        append(&indices, index)
+        id_map[source_element.id] = doc.elements[index].id
+        if source_element.group_id != 0 {
+            target_group, found := group_map[source_element.group_id]
+            if !found {
+                target_group = doc.next_group_id
+                doc.next_group_id += 1
+                group_map[source_element.group_id] = target_group
+            }
+            doc.elements[index].group_id = target_group
+        }
+        if source_element.image_id != "" {
+            if target_image, found := image_map[source_element.image_id]; found {
+                delete(doc.elements[index].image_id)
+                doc.elements[index].image_id = strings.clone(target_image)
+            }
+        }
+    }
+
+    for source_index in 0 ..< len(source.elements) {
+        target_index := indices[source_index]
+        source_element := source.elements[source_index]
+        if target_id, found := id_map[source_element.start_binding_id]; found {
+            doc.elements[target_index].start_binding_id = target_id
+        } else {
+            doc.elements[target_index].start_binding_id = 0
+        }
+        if target_id, found := id_map[source_element.end_binding_id]; found {
+            doc.elements[target_index].end_binding_id = target_id
+        } else {
+            doc.elements[target_index].end_binding_id = 0
+        }
+    }
+    return indices
 }
 
 group :: proc(doc: ^document, indices: []int) -> u64 {

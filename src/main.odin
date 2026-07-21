@@ -101,6 +101,12 @@ main :: proc() {
         if input.export_png_requested {
             platform.show_png_dialog(&app_window)
         }
+        if input.open_library_requested {
+            platform.show_library_open_dialog(&app_window)
+        }
+        if input.save_library_requested {
+            platform.show_library_save_dialog(&app_window)
+        }
 
         dialog_kind, dialog_path, dialog_ready := platform.take_dialog_result(&app_window)
         if dialog_ready && dialog_path != "" {
@@ -152,6 +158,20 @@ main :: proc() {
                     fmt.printf("png export failed: %s\n", dialog_path)
                 }
                 delete(dialog_path)
+            case .OPEN_LIBRARY:
+                if editor.load_library(&app_editor, dialog_path) {
+                    fmt.printf("loaded library %s\n", dialog_path)
+                } else {
+                    fmt.printf("library load failed: %s\n", dialog_path)
+                }
+                delete(dialog_path)
+            case .SAVE_LIBRARY:
+                if editor.save_library(&app_editor, dialog_path) {
+                    fmt.printf("saved library %s\n", dialog_path)
+                } else {
+                    fmt.printf("library save failed: %s\n", dialog_path)
+                }
+                delete(dialog_path)
             }
         }
 
@@ -180,6 +200,8 @@ main :: proc() {
             app_editor.show_grid,
             app_editor.dark_mode,
             app_editor.erasing,
+            app_editor.library_open,
+            len(app_editor.library_items),
         )
         platform.end_frame(&app_window)
     }

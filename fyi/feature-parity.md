@@ -57,9 +57,9 @@
 
 ### libraries and data
 
-- local shape library
-- import and export `.excalidrawlib`
-- library item preview and insertion
+- local shape library -- native panel with local item insertion
+- import and export `.excalidrawlib` -- legacy v1 read and current v2 read/write
+- library item preview and insertion -- numbered native previews and click placement
 - image attachments
 - document title and metadata
 - recent documents
@@ -73,8 +73,8 @@
 - copy as png
 - copy as svg
 - copy as text/json where applicable
-- image import
-- drag/drop import
+- image import -- embedded native image assets
+- drag/drop import -- sdl file-drop placement
 - clipboard image import
 
 ## local replacements

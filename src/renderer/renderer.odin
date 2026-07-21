@@ -745,13 +745,13 @@ append_ui_text :: proc(renderer: ^renderer, view: viewport.viewport, text: strin
 }
 
 append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid, dark_mode, eraser_mode: bool) {
-    toolbar_width: f32 = 18.0 * 38.0 + 17.0 * 4.0
+    toolbar_width: f32 = 19.0 * 38.0 + 18.0 * 4.0
     toolbar_background: [4]f32 = {0.86, 0.86, 0.86, 1.0}
     if dark_mode {
         toolbar_background = {0.16, 0.16, 0.18, 1.0}
     }
     append_ui_rect(&renderer.vertices, view, 4, 4, 4 + toolbar_width, 44, toolbar_background)
-    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "k", "u", "y", "o", "s", "#", "x", "i", "m", "p"}
+    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "k", "u", "y", "o", "s", "#", "x", "i", "m", "p", "c"}
     for index in 0 ..< len(labels) {
         left: f32 = 8.0 + f32(index) * (38.0 + 4.0)
         active := index == 0 && select_mode
@@ -784,6 +784,30 @@ append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode
         }
         append_ui_rect(&renderer.vertices, view, left, 8, left + 38, 40, background)
         append_ui_text(renderer, view, labels[index], left + 7, 8, text_color)
+    }
+}
+
+append_library_panel :: proc(renderer: ^renderer, view: viewport.viewport, item_count: int, dark_mode: bool) {
+    if item_count <= 0 {
+        return
+    }
+    left := view.width - 232.0
+    background: [4]f32 = {0.86, 0.86, 0.86, 1.0}
+    text_color: [4]f32 = {0.10, 0.10, 0.10, 1.0}
+    item_background: [4]f32 = {0.96, 0.96, 0.96, 1.0}
+    if dark_mode {
+        background = {0.16, 0.16, 0.18, 1.0}
+        text_color = {0.92, 0.92, 0.94, 1.0}
+        item_background = {0.24, 0.24, 0.27, 1.0}
+    }
+    append_ui_rect(&renderer.vertices, view, left, 48, view.width - 4, view.height - 84, background)
+    append_ui_text(renderer, view, "library", left + 10, 54, text_color)
+    visible_count := min(item_count, 12)
+    for index in 0 ..< visible_count {
+        top := 76.0 + f32(index) * 54.0
+        append_ui_rect(&renderer.vertices, view, left + 8, top, view.width - 12, top + 46, item_background)
+        append_ui_text(renderer, view, fmt.tprintf("item %d", index + 1), left + 18, top + 10, text_color)
+        append_ui_text(renderer, view, "click to insert", left + 18, top + 27, text_color)
     }
 }
 
@@ -1056,6 +1080,8 @@ draw :: proc(
     show_grid: bool = false,
     dark_mode: bool = false,
     eraser_mode: bool = false,
+    library_open: bool = false,
+    library_count: int = 0,
 ) {
     clear(&renderer.vertices)
     clear(&renderer.text_vertices)
@@ -1100,6 +1126,9 @@ draw :: proc(
 
     append_toolbar(renderer, view, toolbar_select_mode, toolbar_kind, show_grid, dark_mode, eraser_mode)
     append_properties_panel(renderer, view, len(selected_items) > 0 || selected >= 0, dark_mode)
+    if library_open {
+        append_library_panel(renderer, view, library_count, dark_mode)
+    }
 
     if len(renderer.vertices) > 0 {
         gl.UseProgram(renderer.program)

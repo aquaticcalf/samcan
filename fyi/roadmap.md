@@ -15,14 +15,14 @@ foundation for the next one.
 - create the odin project and build script.
 - open an sdl3 window.
 - initialize opengl.
-- implement resize, dpi, keyboard, mouse, text input, clipboard, and drag/drop.
+- implement resize, dpi, keyboard, mouse, text input, clipboard, and drag/drop. done.
 - draw a clearable canvas with a camera.
 
 ## phase 2: data and persistence
 
 - define document and element structs.
 - parse and serialize `.excalidraw`.
-- parse and serialize `.excalidrawlib`.
+- parse and serialize `.excalidrawlib`. done for legacy v1 and current v2.
 - add atomic save, autosave, settings, recent files, and recovery.
 - prove round-trip compatibility before adding more tools.
 
@@ -53,14 +53,14 @@ foundation for the next one.
 - build the toolbar and properties panel.
 - build menus, dialogs, context menus, and command palette.
 - add keyboard shortcuts and localization.
-- add library browsing and insertion.
+- add library browsing and insertion. done for local files and click placement.
 
 ## phase 7: import and export
 
 - open/save dialogs.
 - png and svg export.
 - clipboard png/svg/text support.
-- image import and drag/drop.
+- image import and drag/drop. done for native file dialogs and sdl file drops.
 - export options for scale, padding, background, and embedded scene data.
 
 ## phase 8: advanced parity

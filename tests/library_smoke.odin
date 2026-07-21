@@ -32,6 +32,13 @@ main :: proc() {
     assert(saved_items[0].name == "test item", "saved library item name was unexpected")
     assert(saved_items[0].elements[0].type == "rectangle", "saved library element type was unexpected")
     assert(saved_items[0].elements[0].strokeWidth == 4, "saved library stroke width was unexpected")
+
+    inserted := document.new()
+    defer document.destroy(&inserted)
+    assert(storage.insert_library_item(&inserted, saved_items[0], 100, 120), "could not insert a library item")
+    assert(len(inserted.elements) == 1, "inserted library element count was unexpected")
+    assert(inserted.elements[0].x == 40, "inserted library x was not centered")
+    assert(inserted.elements[0].y == 80, "inserted library y was not centered")
     storage.destroy_library_items(&saved_items)
     _ = os.remove(path)
 

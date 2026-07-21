@@ -15,6 +15,8 @@ dialog_kind :: enum {
     EXPORT_SVG,
     IMPORT_IMAGE,
     EXPORT_PNG,
+    OPEN_LIBRARY,
+    SAVE_LIBRARY,
 }
 
 dialog_state :: struct {
@@ -52,6 +54,8 @@ frame_input :: struct {
     export_svg_requested: bool,
     import_image_requested: bool,
     export_png_requested: bool,
+    open_library_requested: bool,
+    save_library_requested: bool,
     toggle_theme_requested: bool,
     zoom_reset_requested: bool,
     zoom_to_content_requested: bool,
@@ -166,6 +170,8 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.export_svg_requested = false
     input.import_image_requested = false
     input.export_png_requested = false
+    input.open_library_requested = false
+    input.save_library_requested = false
     input.toggle_theme_requested = false
     input.zoom_reset_requested = false
     input.zoom_to_content_requested = false
@@ -261,6 +267,9 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_I && (event.key.mod & SDL.KMOD_CTRL) != {} && (event.key.mod & SDL.KMOD_SHIFT) != {} {
                 input.import_image_requested = true
+            }
+            if event.key.key == SDL.K_L && (event.key.mod & SDL.KMOD_CTRL) != {} && (event.key.mod & SDL.KMOD_ALT) != {} {
+                input.open_library_requested = true
             }
             if event.key.key == SDL.K_0 && event.key.mod == {} {
                 input.zoom_reset_requested = true
@@ -508,6 +517,14 @@ show_png_dialog :: proc(window: ^window) -> bool {
     return show_dialog(window, .EXPORT_PNG)
 }
 
+show_library_open_dialog :: proc(window: ^window) -> bool {
+    return show_dialog(window, .OPEN_LIBRARY)
+}
+
+show_library_save_dialog :: proc(window: ^window) -> bool {
+    return show_dialog(window, .SAVE_LIBRARY)
+}
+
 show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
     if window.dialog.pending {
         return false
@@ -528,6 +545,9 @@ show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
     } else if kind == .EXPORT_PNG {
         window.dialog.filter_name = cstring("png")
         window.dialog.filter_pattern = cstring("*.png")
+    } else if kind == .OPEN_LIBRARY || kind == .SAVE_LIBRARY {
+        window.dialog.filter_name = cstring("excalidraw library")
+        window.dialog.filter_pattern = cstring("*.excalidrawlib")
     } else {
         window.dialog.filter_name = cstring("excalidraw")
         window.dialog.filter_pattern = cstring("*.excalidraw")
@@ -540,7 +560,7 @@ show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
     switch kind {
     case .NONE:
         return false
-    case .OPEN:
+    case .OPEN, .OPEN_LIBRARY:
         SDL.ShowOpenFileDialog(
             file_dialog_callback,
             rawptr(window),
@@ -550,7 +570,7 @@ show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
             nil,
             false,
         )
-    case .SAVE, .EXPORT_SVG:
+    case .SAVE, .EXPORT_SVG, .SAVE_LIBRARY:
         SDL.ShowSaveFileDialog(
             file_dialog_callback,
             rawptr(window),

@@ -38,6 +38,7 @@ toolbar_action :: enum {
     import_image,
     theme,
     export_png,
+    library,
 }
 
 toolbar_button_width :: f32(38.0)
@@ -45,6 +46,9 @@ toolbar_button_gap :: f32(4.0)
 toolbar_x :: f32(8.0)
 toolbar_y :: f32(8.0)
 toolbar_height :: f32(32.0)
+library_panel_width :: f32(232.0)
+library_panel_top :: f32(52.0)
+library_item_height :: f32(54.0)
 
 state :: struct {
     document:        doc.document,
@@ -52,6 +56,8 @@ state :: struct {
     viewport:        viewport.viewport,
     show_grid:       bool,
     dark_mode:       bool,
+    library_open:    bool,
+    library_items:   [dynamic]storage.library_item,
     drawing:         bool,
     erasing:         bool,
     eraser_last:     [2]f32,
@@ -83,6 +89,8 @@ new :: proc(width, height: f32) -> state {
         viewport = viewport.new(width, height),
         show_grid = false,
         dark_mode = false,
+        library_open = false,
+        library_items = make([dynamic]storage.library_item, 0),
         erasing = false,
         active_rect = -1,
         active_kind = .rectangle,
@@ -105,6 +113,7 @@ destroy :: proc(editor: ^state) {
     delete(editor.selected_items)
     delete(editor.drag_items)
     delete(editor.drag_bounds)
+    storage.destroy_library_items(&editor.library_items)
     doc.destroy(&editor.document)
     doc.destroy(&editor.clipboard)
 }
@@ -137,6 +146,43 @@ save :: proc(editor: ^state, path: string) -> bool {
 
 save_svg :: proc(editor: ^state, path: string) -> bool {
     return storage.save_svg(path, &editor.document)
+}
+
+load_library :: proc(editor: ^state, path: string) -> bool {
+    loaded, ok := storage.load_library(path)
+    if !ok {
+        return false
+    }
+    storage.destroy_library_items(&editor.library_items)
+    editor.library_items = loaded
+    editor.library_open = len(editor.library_items) > 0
+    return true
+}
+
+save_library :: proc(editor: ^state, path: string) -> bool {
+    return storage.save_library(path, editor.library_items[:])
+}
+
+insert_library_item :: proc(editor: ^state, index: int, screen_point: [2]f32) -> bool {
+    if index < 0 || index >= len(editor.library_items) {
+        return false
+    }
+    center := viewport.screen_to_world(editor.viewport, screen_point)
+    finish_transaction(editor)
+    begin_transaction(editor)
+    previous_count := len(editor.document.elements)
+    if !storage.insert_library_item(&editor.document, editor.library_items[index], center[0], center[1]) {
+        doc.destroy(&editor.before)
+        editor.before_valid = false
+        return false
+    }
+    clear_selection(editor)
+    for element_index in previous_count ..< len(editor.document.elements) {
+        append(&editor.selected_items, element_index)
+        editor.selected = element_index
+    }
+    finish_transaction(editor)
+    return true
 }
 
 import_image :: proc(editor: ^state, path: string) -> bool {
@@ -229,6 +275,14 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         action := toolbar_action_at(input.mouse)
         if action != .none {
             handle_toolbar_action(editor, input, action)
+            return
+        }
+    }
+
+    if input.pressed[platform.MOUSE_BUTTON_LEFT] && editor.library_open {
+        library_index := library_item_at(editor, input.mouse)
+        if library_index >= 0 {
+            _ = insert_library_item(editor, library_index, input.mouse)
             return
         }
     }
@@ -756,7 +810,7 @@ toolbar_action_at :: proc(point: [2]f32) -> toolbar_action {
     }
     actions := [?]toolbar_action{
         .select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand, .eraser,
-        .undo, .redo, .open, .save, .grid, .export_svg, .import_image, .theme, .export_png,
+        .undo, .redo, .open, .save, .grid, .export_svg, .import_image, .theme, .export_png, .library,
     }
     if index >= len(actions) {
         return .none
@@ -814,11 +868,31 @@ handle_toolbar_action :: proc(editor: ^state, input: ^platform.frame_input, acti
         editor.dark_mode = !editor.dark_mode
     case .export_png:
         input.export_png_requested = true
+    case .library:
+        if input.control && len(editor.library_items) > 0 {
+            input.save_library_requested = true
+        } else if input.shift || len(editor.library_items) == 0 {
+            input.open_library_requested = true
+        } else {
+            editor.library_open = !editor.library_open
+        }
     case .grid:
         editor.show_grid = !editor.show_grid
     case .none:
         return
     }
+}
+
+library_item_at :: proc(editor: ^state, point: [2]f32) -> int {
+    left := editor.viewport.width - library_panel_width
+    if point[0] < left || point[1] < library_panel_top {
+        return -1
+    }
+    index := int((point[1] - library_panel_top) / library_item_height)
+    if index < 0 || index >= len(editor.library_items) {
+        return -1
+    }
+    return index
 }
 
 update_text :: proc(editor: ^state, input: ^platform.frame_input) {
