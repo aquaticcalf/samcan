@@ -66,6 +66,8 @@ main :: proc() {
     assert(len(svg_data) > 0, "svg smoke fixture was empty")
     assert(strings.contains(string(svg_data), "<svg"), "svg fixture did not contain a root element")
     assert(strings.contains(string(svg_data), "&amp;"), "svg text was not escaped")
+    assert(strings.contains(string(svg_data), "stroke-dasharray"), "svg did not preserve dashed strokes")
+    assert(strings.contains(string(svg_data), "rotate("), "svg did not preserve rotation")
     delete(svg_data)
 
     loaded, ok := storage.load(path)

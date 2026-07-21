@@ -235,6 +235,9 @@ document_bounds :: proc(doc: ^document.document) -> (min_x, min_y, max_x, max_y:
 append_svg_element :: proc(builder: ^strings.Builder, element: document.element, image_data: string = "") {
     stroke := format_color(element.stroke)
     fill := format_color(element.fill)
+    if element.fill_style == .none {
+        fill = "none"
+    }
     if fill == "transparent" {
         fill = "none"
     }
@@ -242,17 +245,30 @@ append_svg_element :: proc(builder: ^strings.Builder, element: document.element,
         stroke = "none"
     }
     opacity := max(0.0, min(1.0, element.opacity))
+    dash_attribute := ""
+    if element.stroke_style == .dashed {
+        dash_attribute = " stroke-dasharray=\"12,8\""
+    } else if element.stroke_style == .dotted {
+        dash_attribute = " stroke-dasharray=\"3,5\""
+    }
+    rotated := element.angle != 0
+    if rotated {
+        degrees := element.angle * 57.2957795
+        center_x := element.x + element.width * 0.5
+        center_y := element.y + element.height * 0.5
+        fmt.sbprintf(builder, "<g transform=\"rotate(%f %f %f)\">\n", degrees, center_x, center_y)
+    }
     switch element.kind {
     case .rectangle:
         fmt.sbprintf(
             builder,
-            "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\" />\n",
-            element.x, element.y, element.width, element.height, fill, stroke, element.stroke_width, opacity,
+            "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\"%s />\n",
+            element.x, element.y, element.width, element.height, fill, stroke, element.stroke_width, opacity, dash_attribute,
         )
     case .ellipse:
         fmt.sbprintf(
             builder,
-            "<ellipse cx=\"%f\" cy=\"%f\" rx=\"%f\" ry=\"%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\" />\n",
+            "<ellipse cx=\"%f\" cy=\"%f\" rx=\"%f\" ry=\"%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\"%s />\n",
             element.x + element.width * 0.5,
             element.y + element.height * 0.5,
             element.width * 0.5,
@@ -261,23 +277,25 @@ append_svg_element :: proc(builder: ^strings.Builder, element: document.element,
             stroke,
             element.stroke_width,
             opacity,
+            dash_attribute,
         )
     case .diamond:
         fmt.sbprintf(
             builder,
-            "<polygon points=\"%f,%f %f,%f %f,%f %f,%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\" />\n",
+            "<polygon points=\"%f,%f %f,%f %f,%f %f,%f\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%f\" opacity=\"%f\"%s />\n",
             element.x + element.width * 0.5, element.y,
             element.x + element.width, element.y + element.height * 0.5,
             element.x + element.width * 0.5, element.y + element.height,
             element.x, element.y + element.height * 0.5,
             fill, stroke, element.stroke_width, opacity,
+            dash_attribute,
         )
     case .line, .arrow:
         fmt.sbprintf(
             builder,
-            "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" stroke=\"%s\" stroke-width=\"%f\" stroke-linecap=\"round\" opacity=\"%f\" />\n",
+            "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" stroke=\"%s\" stroke-width=\"%f\" stroke-linecap=\"round\" opacity=\"%f\"%s />\n",
             element.x, element.y, element.x + element.width, element.y + element.height,
-            stroke, element.stroke_width, opacity,
+            stroke, element.stroke_width, opacity, dash_attribute,
         )
         if element.kind == .arrow {
             append_svg_arrowhead(builder, element, stroke, opacity)
@@ -290,8 +308,8 @@ append_svg_element :: proc(builder: ^strings.Builder, element: document.element,
             }
             fmt.sbprintf(
                 builder,
-                "\" fill=\"none\" stroke=\"%s\" stroke-width=\"%f\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"%f\" />\n",
-                stroke, element.stroke_width, opacity,
+                "\" fill=\"none\" stroke=\"%s\" stroke-width=\"%f\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"%f\"%s />\n",
+                stroke, element.stroke_width, opacity, dash_attribute,
             )
         }
     case .text:
@@ -310,6 +328,9 @@ append_svg_element :: proc(builder: ^strings.Builder, element: document.element,
                 image_data, element.x, element.y, element.width, element.height, opacity,
             )
         }
+    }
+    if rotated {
+        strings.write_string(builder, "</g>\n")
     }
 }
 
