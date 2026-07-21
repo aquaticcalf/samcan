@@ -14,3 +14,9 @@ rules on how to speak to me -
     - there is no need to show emotions when things go wrong, be clear on what went wrong and propose a fix.
     - no "great question", "you are absolutely right", "let me know if you need anything else"
     - after each turn state what matters like a good little robot you are, no need to share pleasantries
+
+before working check for these two things 
+
+1. if odin is not available, install version - dev-2026-07-nightly:ab0131c
+
+2. if temp/excalidraw/ is not available, create one and git clone https://github.com/excalidraw/excalidraw.git with depth 1, treat it as a reference repository to understand how things work
