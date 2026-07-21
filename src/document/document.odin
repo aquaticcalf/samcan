@@ -6,6 +6,8 @@ element_kind :: enum {
     rectangle,
     ellipse,
     diamond,
+    line,
+    arrow,
 }
 
 element :: struct {
@@ -82,6 +84,14 @@ add_ellipse :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> in
 
 add_diamond :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> int {
     return add(doc, .diamond, x, y, width, height, fill)
+}
+
+add_line :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> int {
+    return add(doc, .line, x, y, width, height, fill)
+}
+
+add_arrow :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> int {
+    return add(doc, .arrow, x, y, width, height, fill)
 }
 
 set_bounds :: proc(doc: ^document, index: int, x, y, width, height: f32) {

@@ -155,6 +155,10 @@ element_type_name :: proc(kind: document.element_kind) -> string {
         return "ellipse"
     case .diamond:
         return "diamond"
+    case .line:
+        return "line"
+    case .arrow:
+        return "arrow"
     }
     return "rectangle"
 }
@@ -167,6 +171,10 @@ element_kind_from_name :: proc(name: string) -> (document.element_kind, bool) {
         return .ellipse, true
     case "diamond":
         return .diamond, true
+    case "line":
+        return .line, true
+    case "arrow":
+        return .arrow, true
     }
     return .rectangle, false
 }

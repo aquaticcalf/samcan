@@ -114,6 +114,20 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         append_triangle(vertices, center, right_point, bottom_point, element.fill)
         append_triangle(vertices, center, bottom_point, left_point, element.fill)
         append_triangle(vertices, center, left_point, top_point, element.fill)
+    case .line:
+        append_segment(
+            vertices,
+            view,
+            {left, top},
+            {right, bottom},
+            element.fill,
+            3.0 / view.zoom,
+        )
+    case .arrow:
+        start := [2]f32{left, top}
+        finish := [2]f32{right, bottom}
+        append_segment(vertices, view, start, finish, element.fill, 3.0 / view.zoom)
+        append_arrowhead(vertices, view, start, finish, element.fill)
     case .ellipse:
         center := screen_to_clip(view, {(left + right) * 0.5, (top + bottom) * 0.5})
         radius_x := element.width * 0.5
@@ -152,6 +166,26 @@ append_segment :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, a, b
     append_triangle(vertices, a_left, b_right, a_right, color)
 }
 
+append_arrowhead :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, start, finish: [2]f32, color: [4]f32) {
+    delta := finish - start
+    length := math.sqrt(delta[0] * delta[0] + delta[1] * delta[1])
+    if length <= 0 {
+        return
+    }
+    direction := delta / length
+    normal: [2]f32 = {-direction[1], direction[0]}
+    base := finish - direction * (14.0 / view.zoom)
+    left := base + normal * (7.0 / view.zoom)
+    right := base - normal * (7.0 / view.zoom)
+    append_triangle(
+        vertices,
+        screen_to_clip(view, finish),
+        screen_to_clip(view, left),
+        screen_to_clip(view, right),
+        color,
+    )
+}
+
 append_handle :: proc(vertices: ^[dynamic]vertex, view: viewport.viewport, center: [2]f32, size: f32, color: [4]f32) {
     half := size * 0.5
     top_left := screen_to_clip(view, {center[0] - half, center[1] - half})
@@ -187,6 +221,13 @@ append_selection_overlay :: proc(vertices: ^[dynamic]vertex, element: document.e
         append_segment(vertices, view, right_point, bottom_point, selection_color, thickness)
         append_segment(vertices, view, bottom_point, left_point, selection_color, thickness)
         append_segment(vertices, view, left_point, top_point, selection_color, thickness)
+    case .line:
+        append_segment(vertices, view, {left, top}, {right, bottom}, selection_color, thickness)
+    case .arrow:
+        start := [2]f32{left, top}
+        finish := [2]f32{right, bottom}
+        append_segment(vertices, view, start, finish, selection_color, thickness)
+        append_arrowhead(vertices, view, start, finish, selection_color)
     case .ellipse:
         center := [(2)]f32{(left + right) * 0.5, (top + bottom) * 0.5}
         radius_x := element.width * 0.5

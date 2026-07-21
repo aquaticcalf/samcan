@@ -136,6 +136,14 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.select_mode = false
         editor.active_kind = .diamond
     }
+    if input.tool_line_requested {
+        editor.select_mode = false
+        editor.active_kind = .line
+    }
+    if input.tool_arrow_requested {
+        editor.select_mode = false
+        editor.active_kind = .arrow
+    }
 
     if input.wheel != 0 {
         factor: f32 = 1.1
@@ -265,6 +273,19 @@ contains :: proc(element: doc.element, point: [2]f32) -> bool {
         return normalized[0] * normalized[0] + normalized[1] * normalized[1] <= 1.0
     case .diamond:
         return math.abs(normalized[0]) + math.abs(normalized[1]) <= 1.0
+    case .line, .arrow:
+        endpoint: [2]f32 = {element.x + element.width, element.y + element.height}
+        segment := endpoint - [2]f32{element.x, element.y}
+        length_squared := segment[0] * segment[0] + segment[1] * segment[1]
+        if length_squared <= 0 {
+            return false
+        }
+        relative := point - [2]f32{element.x, element.y}
+        amount := (relative[0] * segment[0] + relative[1] * segment[1]) / length_squared
+        amount = max(0.0, min(1.0, amount))
+        closest := [2]f32{element.x, element.y} + segment * amount
+        distance := point - closest
+        return distance[0] * distance[0] + distance[1] * distance[1] <= 64.0
     case .rectangle:
         return point[0] >= element.x && point[0] <= element.x + element.width &&
             point[1] >= element.y && point[1] <= element.y + element.height
