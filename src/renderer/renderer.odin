@@ -787,6 +787,30 @@ append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode
     }
 }
 
+append_properties_panel :: proc(renderer: ^renderer, view: viewport.viewport, has_selection, dark_mode: bool) {
+    if !has_selection {
+        return
+    }
+    top := view.height - 76.0
+    background: [4]f32 = {0.86, 0.86, 0.86, 1.0}
+    text_color: [4]f32 = {0.10, 0.10, 0.10, 1.0}
+    if dark_mode {
+        background = {0.16, 0.16, 0.18, 1.0}
+        text_color = {0.92, 0.92, 0.94, 1.0}
+    }
+    append_ui_rect(&renderer.vertices, view, 4, top, 248, view.height - 4, background)
+    append_ui_text(renderer, view, "fill", 10, top + 4, text_color)
+    append_ui_text(renderer, view, "stroke", 10, top + 38, text_color)
+    palette := document.palette_colors
+    for row in 0 ..< 2 {
+        for color_index in 0 ..< len(document.palette_colors) {
+            left := 52.0 + f32(color_index) * 34.0
+            swatch_top := top + 4.0 + f32(row) * 34.0
+            append_ui_rect(&renderer.vertices, view, left, swatch_top, left + 28, swatch_top + 28, palette[color_index])
+        }
+    }
+}
+
 save_png :: proc(path: string, width, height: i32) -> bool {
     if width <= 0 || height <= 0 {
         return false
@@ -1075,6 +1099,7 @@ draw :: proc(
     }
 
     append_toolbar(renderer, view, toolbar_select_mode, toolbar_kind, show_grid, dark_mode, eraser_mode)
+    append_properties_panel(renderer, view, len(selected_items) > 0 || selected >= 0, dark_mode)
 
     if len(renderer.vertices) > 0 {
         gl.UseProgram(renderer.program)

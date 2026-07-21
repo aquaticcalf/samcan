@@ -4,6 +4,14 @@ import "core:strings"
 
 color :: [4]f32
 
+palette_colors :: [5]color{
+    {0.12, 0.12, 0.12, 1.0},
+    {0.90, 0.25, 0.25, 1.0},
+    {0.25, 0.55, 0.95, 1.0},
+    {0.25, 0.75, 0.45, 1.0},
+    {0.95, 0.70, 0.20, 1.0},
+}
+
 element_kind :: enum {
     rectangle,
     ellipse,

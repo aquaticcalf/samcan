@@ -60,6 +60,12 @@ main :: proc() {
     assert(editor.selected == 0, "selection did not hit the rectangle")
 
     input = {}
+    input.mouse = {90, 540}
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(editor.document.elements[0].fill[0] > 0.89, "fill property swatch did not update the selection")
+
+    input = {}
     input.mouse = {420, 320}
     input.buttons[platform.MOUSE_BUTTON_LEFT] = true
     editor_pkg.update(&editor, &input)

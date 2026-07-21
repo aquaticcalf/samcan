@@ -233,6 +233,38 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         append(&editor.selected_items, editor.selected)
     }
 
+    if input.pressed[platform.MOUSE_BUTTON_LEFT] {
+        row, color_index, property_hit := property_action_at(editor.viewport, input.mouse)
+        if property_hit && len(editor.selected_items) > 0 {
+            if selection_has_locked(editor) {
+                return
+            }
+            finish_transaction(editor)
+            begin_transaction(editor)
+            palette := doc.palette_colors
+            for index in editor.selected_items {
+                if index < 0 || index >= len(editor.document.elements) {
+                    continue
+                }
+                element := &editor.document.elements[index]
+                if row == 0 {
+                    element.fill = palette[color_index]
+                    element.fill_style = .solid
+                    if element.kind == .text {
+                        element.stroke = element.fill
+                    }
+                } else {
+                    element.stroke = palette[color_index]
+                    if element.kind == .text {
+                        element.fill = element.stroke
+                    }
+                }
+            }
+            finish_transaction(editor)
+            return
+        }
+    }
+
     if input.select_all_requested {
         select_all(editor)
         return
@@ -562,6 +594,28 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.active_rect = -1
         finish_transaction(editor)
     }
+}
+
+property_action_at :: proc(view: viewport.viewport, point: [2]f32) -> (row, color_index: int, hit: bool) {
+    top := view.height - 76.0
+    if point[0] < 52 || point[0] > 52 + 5 * 34 || point[1] < top + 4 || point[1] > top + 72 {
+        return
+    }
+    if point[1] < top + 34 {
+        row = 0
+    } else {
+        row = 1
+    }
+    color_index = int((point[0] - 52) / 34)
+    if color_index < 0 || color_index >= len(doc.palette_colors) {
+        return 0, 0, false
+    }
+    swatch_left := 52.0 + f32(color_index) * 34.0
+    swatch_top := top + 4.0 + f32(row) * 34.0
+    if point[0] < swatch_left || point[0] > swatch_left + 28 || point[1] < swatch_top || point[1] > swatch_top + 28 {
+        return 0, 0, false
+    }
+    return row, color_index, true
 }
 
 erase_at :: proc(editor: ^state, point: [2]f32) {
