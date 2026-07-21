@@ -13,6 +13,19 @@ window :: struct {
     height:  i32,
 }
 
+MOUSE_BUTTON_LEFT   :: 1
+MOUSE_BUTTON_MIDDLE :: 2
+MOUSE_BUTTON_RIGHT  :: 3
+
+frame_input :: struct {
+    mouse:       [2]f32,
+    mouse_delta: [2]f32,
+    wheel:       f32,
+    buttons:     [8]bool,
+    pressed:     [8]bool,
+    released:    [8]bool,
+}
+
 open :: proc(title: cstring, width, height: i32) -> (result: window, ok: bool) {
     result = {}
 
@@ -60,7 +73,12 @@ open :: proc(title: cstring, width, height: i32) -> (result: window, ok: bool) {
     return
 }
 
-poll :: proc(window: ^window) -> (quit: bool) {
+poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
+    input.mouse_delta = {}
+    input.wheel = 0
+    input.pressed = {}
+    input.released = {}
+
     event: SDL.Event
     for SDL.PollEvent(&event) {
         #partial switch event.type {
@@ -70,6 +88,26 @@ poll :: proc(window: ^window) -> (quit: bool) {
             if event.window.windowID == SDL.GetWindowID(window.handle) {
                 window.width = i32(event.window.data1)
                 window.height = i32(event.window.data2)
+            }
+        case .MOUSE_MOTION:
+            input.mouse = {event.motion.x, event.motion.y}
+            input.mouse_delta += {event.motion.xrel, event.motion.yrel}
+        case .MOUSE_BUTTON_DOWN, .MOUSE_BUTTON_UP:
+            index := int(event.button.button)
+            if index >= 0 && index < len(input.buttons) {
+                input.buttons[index] = event.button.down
+                if event.button.down {
+                    input.pressed[index] = true
+                } else {
+                    input.released[index] = true
+                }
+            }
+        case .MOUSE_WHEEL:
+            input.wheel += event.wheel.y
+            input.mouse = {event.wheel.mouse_x, event.wheel.mouse_y}
+        case .KEY_DOWN:
+            if event.key.key == SDL.K_ESCAPE {
+                quit = true
             }
         }
     }
