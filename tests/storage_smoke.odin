@@ -19,8 +19,9 @@ main :: proc() {
     assert(ok, "could not load storage smoke fixture")
     defer document.destroy(&loaded)
 
-    assert(len(loaded.rectangles) == 1, "rectangle count did not round-trip")
-    rect := loaded.rectangles[0]
+    assert(len(loaded.elements) == 1, "rectangle count did not round-trip")
+    rect := loaded.elements[0]
+    assert(rect.kind == .rectangle, "rectangle kind did not round-trip")
     assert(rect.x == -40, "rectangle x did not round-trip")
     assert(rect.y == -20, "rectangle y did not round-trip")
     assert(rect.width == 120, "rectangle width did not round-trip")

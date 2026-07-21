@@ -2,8 +2,15 @@ package document
 
 color :: [4]f32
 
-rectangle :: struct {
+element_kind :: enum {
+    rectangle,
+    ellipse,
+    diamond,
+}
+
+element :: struct {
     id:     u64,
+    kind:   element_kind,
     x:      f32,
     y:      f32,
     width:  f32,
@@ -12,50 +19,63 @@ rectangle :: struct {
 }
 
 document :: struct {
-    rectangles: [dynamic]rectangle,
-    next_id:    u64,
+    elements: [dynamic]element,
+    next_id:  u64,
 }
 
 new :: proc() -> document {
     return document{
-        rectangles = make([dynamic]rectangle, 0),
+        elements = make([dynamic]element, 0),
         next_id = 1,
     }
 }
 
 destroy :: proc(doc: ^document) {
-    delete(doc.rectangles)
+    delete(doc.elements)
     doc.next_id = 1
 }
 
-add_rectangle :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> int {
+add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: color) -> int {
     id := doc.next_id
     doc.next_id += 1
 
-    append(&doc.rectangles, rectangle{
+    append(&doc.elements, element{
         id = id,
+        kind = kind,
         x = x,
         y = y,
         width = width,
         height = height,
         fill = fill,
     })
-    return len(doc.rectangles) - 1
+    return len(doc.elements) - 1
 }
 
-set_rectangle_bounds :: proc(doc: ^document, index: int, x, y, width, height: f32) {
-    if index < 0 || index >= len(doc.rectangles) {
-        return
-    }
-    doc.rectangles[index].x = x
-    doc.rectangles[index].y = y
-    doc.rectangles[index].width = width
-    doc.rectangles[index].height = height
+add_rectangle :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> int {
+    return add(doc, .rectangle, x, y, width, height, fill)
 }
 
-remove_rectangle :: proc(doc: ^document, index: int) {
-    if index < 0 || index >= len(doc.rectangles) {
+add_ellipse :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> int {
+    return add(doc, .ellipse, x, y, width, height, fill)
+}
+
+add_diamond :: proc(doc: ^document, x, y, width, height: f32, fill: color) -> int {
+    return add(doc, .diamond, x, y, width, height, fill)
+}
+
+set_bounds :: proc(doc: ^document, index: int, x, y, width, height: f32) {
+    if index < 0 || index >= len(doc.elements) {
         return
     }
-    ordered_remove(&doc.rectangles, index)
+    doc.elements[index].x = x
+    doc.elements[index].y = y
+    doc.elements[index].width = width
+    doc.elements[index].height = height
+}
+
+remove :: proc(doc: ^document, index: int) {
+    if index < 0 || index >= len(doc.elements) {
+        return
+    }
+    ordered_remove(&doc.elements, index)
 }

@@ -89,11 +89,13 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
 
     doc = document.new()
     for element in file.elements {
-        if element.type != "rectangle" {
+        kind, known := element_kind_from_name(element.type)
+        if !known {
             continue
         }
-        document.add_rectangle(
+        document.add(
             &doc,
+            kind,
             f32(element.x),
             f32(element.y),
             f32(element.width),
@@ -111,7 +113,7 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
         type = "excalidraw",
         version = 2,
         source = "samcan",
-        elements = make([dynamic]scene_element, len(doc.rectangles)),
+        elements = make([dynamic]scene_element, len(doc.elements)),
         appState = app_state{
             viewBackgroundColor = "#f7f7f7",
             zoom = 1.0,
@@ -121,28 +123,52 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
         files = make(map[string]file_data),
     }
 
-    for rect in doc.rectangles {
+    for element in doc.elements {
         append(&file.elements, scene_element{
-            id = fmt.tprintf("%d", rect.id),
-            type = "rectangle",
-            x = f64(rect.x),
-            y = f64(rect.y),
-            width = f64(rect.width),
-            height = f64(rect.height),
+            id = fmt.tprintf("%d", element.id),
+            type = element_type_name(element.kind),
+            x = f64(element.x),
+            y = f64(element.y),
+            width = f64(element.width),
+            height = f64(element.height),
             angle = 0,
             strokeColor = "#1e1e1e",
-            backgroundColor = format_color(rect.fill),
+            backgroundColor = format_color(element.fill),
             fillStyle = "solid",
             strokeWidth = 1,
             roughness = 1,
             opacity = 100,
-            seed = i64(rect.id),
+            seed = i64(element.id),
             version = 1,
-            versionNonce = i64(rect.id),
+            versionNonce = i64(element.id),
             isDeleted = false,
         })
     }
     return file
+}
+
+element_type_name :: proc(kind: document.element_kind) -> string {
+    switch kind {
+    case .rectangle:
+        return "rectangle"
+    case .ellipse:
+        return "ellipse"
+    case .diamond:
+        return "diamond"
+    }
+    return "rectangle"
+}
+
+element_kind_from_name :: proc(name: string) -> (document.element_kind, bool) {
+    switch name {
+    case "rectangle":
+        return .rectangle, true
+    case "ellipse":
+        return .ellipse, true
+    case "diamond":
+        return .diamond, true
+    }
+    return .rectangle, false
 }
 
 destroy_scene :: proc(file: ^scene_file) {
