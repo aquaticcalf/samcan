@@ -42,5 +42,27 @@ main :: proc() {
     assert(editor.document.elements[0].x == -30, "redo did not restore x")
     assert(editor.document.elements[0].y == -20, "redo did not restore y")
 
+    input = {}
+    input.tool_rectangle_requested = true
+    input.mouse = {500, 350}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+
+    input = {}
+    input.mouse = {400, 300}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+
+    input = {}
+    input.mouse = {400, 300}
+    input.released[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    reverse := editor.document.elements[1]
+    assert(reverse.x == 0, "right-to-left draw did not preserve the left edge")
+    assert(reverse.y == 0, "right-to-left draw did not preserve the top edge")
+    assert(reverse.width == 100, "right-to-left draw did not preserve width")
+    assert(reverse.height == 50, "right-to-left draw did not preserve height")
+
     fmt.println("editor smoke passed")
 }

@@ -28,6 +28,7 @@ state :: struct {
     interaction:     interaction_kind,
     drag_start:      [2]f32,
     start_bounds:    [4]f32,
+    draw_start:      [2]f32,
     history:         history_pkg.state,
     before:          doc.document,
     before_valid:    bool,
@@ -174,16 +175,17 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
             0,
             {0.98, 0.80, 0.42, 1.0},
         )
+        editor.draw_start = world
         editor.drawing = true
     }
 
     if editor.drawing && editor.active_rect >= 0 {
         world := viewport.screen_to_world(editor.viewport, input.mouse)
         element := editor.document.elements[editor.active_rect]
-        x := min(element.x, world[0])
-        y := min(element.y, world[1])
-        width := math.abs(world[0] - element.x)
-        height := math.abs(world[1] - element.y)
+        x := min(editor.draw_start[0], world[0])
+        y := min(editor.draw_start[1], world[1])
+        width := math.abs(world[0] - editor.draw_start[0])
+        height := math.abs(world[1] - editor.draw_start[1])
         doc.set_bounds(&editor.document, editor.active_rect, x, y, width, height)
     }
 
