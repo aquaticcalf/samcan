@@ -30,6 +30,27 @@ new :: proc() -> document {
     }
 }
 
+clone :: proc(source: ^document) -> document {
+    result := new()
+    for element in source.elements {
+        append(&result.elements, element)
+    }
+    result.next_id = source.next_id
+    return result
+}
+
+same :: proc(left, right: ^document) -> bool {
+    if left.next_id != right.next_id || len(left.elements) != len(right.elements) {
+        return false
+    }
+    for index in 0 ..< len(left.elements) {
+        if left.elements[index] != right.elements[index] {
+            return false
+        }
+    }
+    return true
+}
+
 destroy :: proc(doc: ^document) {
     delete(doc.elements)
     doc.next_id = 1

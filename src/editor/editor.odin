@@ -3,6 +3,7 @@ package editor
 import "core:math"
 
 import doc "../document"
+import history_pkg "../history"
 import platform "../platform"
 import storage "../storage"
 import viewport "../viewport"
@@ -13,6 +14,9 @@ state :: struct {
     drawing:     bool,
     active_rect: int,
     active_kind: doc.element_kind,
+    history:     history_pkg.state,
+    before:      doc.document,
+    before_valid: bool,
 }
 
 new :: proc(width, height: f32) -> state {
@@ -21,10 +25,15 @@ new :: proc(width, height: f32) -> state {
         viewport = viewport.new(width, height),
         active_rect = -1,
         active_kind = .rectangle,
+        history = history_pkg.new(),
     }
 }
 
 destroy :: proc(editor: ^state) {
+    if editor.before_valid {
+        doc.destroy(&editor.before)
+    }
+    history_pkg.destroy(&editor.history)
     doc.destroy(&editor.document)
 }
 
@@ -37,6 +46,11 @@ load :: proc(editor: ^state, path: string) -> bool {
     editor.document = loaded
     editor.drawing = false
     editor.active_rect = -1
+    if editor.before_valid {
+        doc.destroy(&editor.before)
+        editor.before_valid = false
+    }
+    history_pkg.reset(&editor.history)
     return true
 }
 
@@ -49,6 +63,18 @@ resize :: proc(editor: ^state, width, height: f32) {
 }
 
 update :: proc(editor: ^state, input: ^platform.frame_input) {
+    if input.undo_requested || input.redo_requested {
+        finish_transaction(editor)
+        editor.drawing = false
+        editor.active_rect = -1
+        if input.undo_requested {
+            _ = history_pkg.undo(&editor.history, &editor.document)
+        } else {
+            _ = history_pkg.redo(&editor.history, &editor.document)
+        }
+        return
+    }
+
     if input.tool_rectangle_requested {
         editor.active_kind = .rectangle
     }
@@ -73,6 +99,7 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
 
     if input.pressed[platform.MOUSE_BUTTON_LEFT] {
         world := viewport.screen_to_world(editor.viewport, input.mouse)
+        begin_transaction(editor)
         editor.active_rect = doc.add(
             &editor.document,
             editor.active_kind,
@@ -104,5 +131,23 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
             }
         }
         editor.active_rect = -1
+        finish_transaction(editor)
     }
+}
+
+begin_transaction :: proc(editor: ^state) {
+    if editor.before_valid {
+        doc.destroy(&editor.before)
+    }
+    editor.before = doc.clone(&editor.document)
+    editor.before_valid = true
+}
+
+finish_transaction :: proc(editor: ^state) {
+    if !editor.before_valid {
+        return
+    }
+    history_pkg.record(&editor.history, &editor.before, &editor.document)
+    doc.destroy(&editor.before)
+    editor.before_valid = false
 }

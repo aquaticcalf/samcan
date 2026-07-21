@@ -43,6 +43,8 @@ frame_input :: struct {
     save_requested: bool,
     open_requested: bool,
     save_as_requested: bool,
+    undo_requested: bool,
+    redo_requested: bool,
     tool_rectangle_requested: bool,
     tool_ellipse_requested: bool,
     tool_diamond_requested: bool,
@@ -110,6 +112,8 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.save_requested = false
     input.open_requested = false
     input.save_as_requested = false
+    input.undo_requested = false
+    input.redo_requested = false
     input.tool_rectangle_requested = false
     input.tool_ellipse_requested = false
     input.tool_diamond_requested = false
@@ -155,6 +159,16 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_O && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.open_requested = true
+            }
+            if event.key.key == SDL.K_Z && (event.key.mod & SDL.KMOD_CTRL) != {} {
+                if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                    input.redo_requested = true
+                } else {
+                    input.undo_requested = true
+                }
+            }
+            if event.key.key == SDL.K_Y && (event.key.mod & SDL.KMOD_CTRL) != {} {
+                input.redo_requested = true
             }
             if event.key.key == SDL.K_R && event.key.mod == {} {
                 input.tool_rectangle_requested = true
