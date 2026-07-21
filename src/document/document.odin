@@ -26,6 +26,17 @@ vertical_align :: enum {
     bottom,
 }
 
+stroke_style :: enum {
+    solid,
+    dashed,
+    dotted,
+}
+
+fill_style :: enum {
+    solid,
+    none,
+}
+
 default_font_size :: f32(20.0)
 default_font_family :: i32(5)
 default_line_height :: f32(1.25)
@@ -42,6 +53,9 @@ element :: struct {
     angle:  f32,
     fill:   color,
     stroke: color,
+    stroke_style: stroke_style,
+    fill_style: fill_style,
+    roughness: f32,
     stroke_width: f32,
     opacity: f32,
     text:   string,
@@ -110,6 +124,9 @@ same :: proc(left, right: ^document) -> bool {
             left_element.angle != right_element.angle ||
             left_element.fill != right_element.fill ||
             left_element.stroke != right_element.stroke ||
+            left_element.stroke_style != right_element.stroke_style ||
+            left_element.fill_style != right_element.fill_style ||
+            left_element.roughness != right_element.roughness ||
             left_element.stroke_width != right_element.stroke_width ||
             left_element.opacity != right_element.opacity ||
             left_element.text != right_element.text ||
@@ -166,6 +183,9 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
         angle = 0,
         fill = background,
         stroke = stroke,
+        stroke_style = .solid,
+        fill_style = .solid,
+        roughness = 1.0,
         stroke_width = 2.0,
         opacity = 1.0,
         text = "",

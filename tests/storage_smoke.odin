@@ -16,7 +16,9 @@ main :: proc() {
     original.elements[0].stroke = {0.9, 0.1, 0.2, 1.0}
     original.elements[0].stroke_width = 4
     original.elements[0].opacity = 0.5
+    original.elements[0].stroke_style = .dashed
     document.add_ellipse(&original, 10, 20, 80, 40, {0.75, 0.50, 0.25, 1.0})
+    original.elements[1].fill_style = .none
     document.add_diamond(&original, 30, 40, 60, 60, {0.25, 0.75, 0.50, 1.0})
     original.elements[2].locked = true
     original.elements[2].angle = 0.5
@@ -68,6 +70,8 @@ main :: proc() {
     assert(rect.stroke[0] > 0.89 && rect.stroke[0] < 0.91, "stroke color did not round-trip")
     assert(rect.stroke_width == 4, "stroke width did not round-trip")
     assert(rect.opacity > 0.49 && rect.opacity < 0.51, "opacity did not round-trip")
+    assert(rect.stroke_style == .dashed, "stroke style did not round-trip")
+    assert(loaded.elements[1].fill_style == .none, "fill style did not round-trip")
     assert(loaded.elements[1].kind == .ellipse, "ellipse kind did not round-trip")
     assert(loaded.elements[0].group_id == group_id, "group id did not round-trip")
     assert(loaded.elements[1].group_id == group_id, "group membership did not round-trip")

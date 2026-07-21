@@ -39,6 +39,7 @@ scene_element :: struct {
     strokeColor:    string,
     backgroundColor:string,
     fillStyle:      string,
+    strokeStyle:    string,
     strokeWidth:    f64,
     roughness:      f64,
     opacity:        f64,
@@ -316,6 +317,9 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
                 line_height,
             )
             doc.elements[index].stroke = parse_color(element.strokeColor)
+            doc.elements[index].stroke_style = stroke_style_from_name(element.strokeStyle)
+            doc.elements[index].fill_style = fill_style_from_name(element.fillStyle)
+            doc.elements[index].roughness = f32(element.roughness)
             doc.elements[index].angle = f32(element.angle)
             doc.elements[index].opacity = f32(element.opacity) / 100.0
             if element.opacity <= 0 {
@@ -346,6 +350,9 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
                     document.append_point(&doc, index, {f32(point[0]), f32(point[1])})
                 }
             }
+            doc.elements[index].stroke_style = stroke_style_from_name(element.strokeStyle)
+            doc.elements[index].fill_style = fill_style_from_name(element.fillStyle)
+            doc.elements[index].roughness = f32(element.roughness)
             continue
         }
         index := document.add(
@@ -358,6 +365,9 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
             parse_color(element.backgroundColor),
         )
         doc.elements[index].stroke = parse_color(element.strokeColor)
+        doc.elements[index].stroke_style = stroke_style_from_name(element.strokeStyle)
+        doc.elements[index].fill_style = fill_style_from_name(element.fillStyle)
+        doc.elements[index].roughness = f32(element.roughness)
         doc.elements[index].angle = f32(element.angle)
         if element.strokeWidth > 0 {
             doc.elements[index].stroke_width = f32(element.strokeWidth)
@@ -412,9 +422,10 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             angle = f64(element.angle),
             strokeColor = format_color(element.stroke),
             backgroundColor = format_color(element.fill),
-            fillStyle = "solid",
+            fillStyle = fill_style_name(element.fill_style),
             strokeWidth = f64(element.stroke_width),
-            roughness = 1,
+            strokeStyle = stroke_style_name(element.stroke_style),
+            roughness = f64(element.roughness),
             opacity = f64(element.opacity * 100.0),
             seed = i64(element.id),
             version = 1,
@@ -469,6 +480,45 @@ element_kind_from_name :: proc(name: string) -> (document.element_kind, bool) {
         return .freehand, true
     }
     return .rectangle, false
+}
+
+stroke_style_name :: proc(value: document.stroke_style) -> string {
+    switch value {
+    case .dashed:
+        return "dashed"
+    case .dotted:
+        return "dotted"
+    case .solid:
+        return "solid"
+    }
+    return "solid"
+}
+
+stroke_style_from_name :: proc(value: string) -> document.stroke_style {
+    switch value {
+    case "dashed":
+        return .dashed
+    case "dotted":
+        return .dotted
+    }
+    return .solid
+}
+
+fill_style_name :: proc(value: document.fill_style) -> string {
+    switch value {
+    case .none:
+        return "none"
+    case .solid:
+        return "solid"
+    }
+    return "solid"
+}
+
+fill_style_from_name :: proc(value: string) -> document.fill_style {
+    if value == "none" {
+        return .none
+    }
+    return .solid
 }
 
 text_align_name :: proc(value: document.text_align) -> string {
