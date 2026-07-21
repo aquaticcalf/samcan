@@ -80,6 +80,8 @@ frame_input :: struct {
     bring_to_front_requested: bool,
     send_to_back_requested: bool,
     text_input: string,
+    dropped_file: string,
+    drop_position: [2]f32,
     backspace_requested: bool,
     enter_requested: bool,
     escape_requested: bool,
@@ -193,6 +195,8 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.send_to_back_requested = false
     delete(input.text_input)
     input.text_input = ""
+    delete(input.dropped_file)
+    input.dropped_file = ""
     input.backspace_requested = false
     input.enter_requested = false
     input.escape_requested = false
@@ -410,6 +414,12 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
                     input.text_input = combined
                 }
             }
+        case .DROP_FILE:
+            if event.drop.data != nil {
+                delete(input.dropped_file)
+                input.dropped_file = strings.clone(string(event.drop.data))
+                input.drop_position = input.mouse
+            }
         }
     }
     input.modifiers = SDL.GetModState()
@@ -447,6 +457,8 @@ get_clipboard_text :: proc() -> string {
 destroy_input :: proc(input: ^frame_input) {
     delete(input.text_input)
     input.text_input = ""
+    delete(input.dropped_file)
+    input.dropped_file = ""
 }
 
 begin_frame :: proc(window: ^window, dark_mode: bool = false) {

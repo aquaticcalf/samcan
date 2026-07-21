@@ -54,6 +54,14 @@ main :: proc() {
         editor.resize(&app_editor, f32(app_window.width), f32(app_window.height))
         editor.update(&app_editor, &input)
 
+        if input.dropped_file != "" {
+            if editor.import_image_at(&app_editor, input.dropped_file, input.drop_position) {
+                fmt.printf("imported %s\n", input.dropped_file)
+            } else {
+                fmt.printf("drop import failed: %s\n", input.dropped_file)
+            }
+        }
+
         if input.copy_requested {
             copied_text := editor.selected_text(&app_editor)
             if copied_text != "" {

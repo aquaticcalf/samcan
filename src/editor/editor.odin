@@ -140,7 +140,11 @@ save_svg :: proc(editor: ^state, path: string) -> bool {
 }
 
 import_image :: proc(editor: ^state, path: string) -> bool {
-    center := viewport.screen_to_world(editor.viewport, {editor.viewport.width * 0.5, editor.viewport.height * 0.5})
+    return import_image_at(editor, path, {editor.viewport.width * 0.5, editor.viewport.height * 0.5})
+}
+
+import_image_at :: proc(editor: ^state, path: string, screen_point: [2]f32) -> bool {
+    center := viewport.screen_to_world(editor.viewport, screen_point)
     finish_transaction(editor)
     begin_transaction(editor)
     if !storage.import_image(&editor.document, path, center[0], center[1]) {
