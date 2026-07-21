@@ -90,6 +90,7 @@ frame_input :: struct {
     tool_arrow_requested: bool,
     tool_text_requested: bool,
     tool_freehand_requested: bool,
+    tool_eraser_requested: bool,
     tool_select_requested: bool,
     toggle_grid_requested: bool,
     buttons:        [8]bool,
@@ -202,6 +203,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.tool_arrow_requested = false
     input.tool_text_requested = false
     input.tool_freehand_requested = false
+    input.tool_eraser_requested = false
     input.tool_select_requested = false
     input.toggle_grid_requested = false
     input.pressed = {}
@@ -371,6 +373,9 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_E && event.key.mod == {} {
                 input.tool_ellipse_requested = true
+            }
+            if event.key.key == SDL.K_E && event.key.mod == SDL.KMOD_SHIFT {
+                input.tool_eraser_requested = true
             }
             if event.key.key == SDL.K_D && event.key.mod == {} {
                 input.tool_diamond_requested = true

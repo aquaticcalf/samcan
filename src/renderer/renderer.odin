@@ -744,14 +744,14 @@ append_ui_text :: proc(renderer: ^renderer, view: viewport.viewport, text: strin
     }
 }
 
-append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid, dark_mode: bool) {
-    toolbar_width: f32 = 17.0 * 38.0 + 16.0 * 4.0
+append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid, dark_mode, eraser_mode: bool) {
+    toolbar_width: f32 = 18.0 * 38.0 + 17.0 * 4.0
     toolbar_background: [4]f32 = {0.86, 0.86, 0.86, 1.0}
     if dark_mode {
         toolbar_background = {0.16, 0.16, 0.18, 1.0}
     }
     append_ui_rect(&renderer.vertices, view, 4, 4, 4 + toolbar_width, 44, toolbar_background)
-    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s", "#", "x", "i", "m", "p"}
+    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "k", "u", "y", "o", "s", "#", "x", "i", "m", "p"}
     for index in 0 ..< len(labels) {
         left: f32 = 8.0 + f32(index) * (38.0 + 4.0)
         active := index == 0 && select_mode
@@ -764,10 +764,13 @@ append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode
                 (index == 6 && active_kind == .text) ||
                 (index == 7 && active_kind == .freehand)
         }
-        if index == 12 {
+        if index == 8 {
+            active = eraser_mode
+        }
+        if index == 13 {
             active = show_grid
         }
-        if index == 15 {
+        if index == 16 {
             active = dark_mode
         }
         background: [4]f32 = {0.96, 0.96, 0.96, 1.0}
@@ -1028,6 +1031,7 @@ draw :: proc(
     toolbar_kind: document.element_kind = .rectangle,
     show_grid: bool = false,
     dark_mode: bool = false,
+    eraser_mode: bool = false,
 ) {
     clear(&renderer.vertices)
     clear(&renderer.text_vertices)
@@ -1070,7 +1074,7 @@ draw :: proc(
         append_segment(&renderer.vertices, view, {left, bottom}, {left, top}, lasso_color, thickness)
     }
 
-    append_toolbar(renderer, view, toolbar_select_mode, toolbar_kind, show_grid, dark_mode)
+    append_toolbar(renderer, view, toolbar_select_mode, toolbar_kind, show_grid, dark_mode, eraser_mode)
 
     if len(renderer.vertices) > 0 {
         gl.UseProgram(renderer.program)

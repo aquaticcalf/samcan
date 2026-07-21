@@ -28,6 +28,7 @@ toolbar_action :: enum {
     arrow,
     text,
     freehand,
+    eraser,
     undo,
     redo,
     open,
@@ -52,6 +53,8 @@ state :: struct {
     show_grid:       bool,
     dark_mode:       bool,
     drawing:         bool,
+    erasing:         bool,
+    eraser_last:     [2]f32,
     active_rect:     int,
     active_kind:     doc.element_kind,
     select_mode:     bool,
@@ -80,6 +83,7 @@ new :: proc(width, height: f32) -> state {
         viewport = viewport.new(width, height),
         show_grid = false,
         dark_mode = false,
+        erasing = false,
         active_rect = -1,
         active_kind = .rectangle,
         select_mode = true,
@@ -398,30 +402,41 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
     if input.tool_rectangle_requested {
         editor.select_mode = false
         editor.active_kind = .rectangle
+        editor.erasing = false
     }
     if input.tool_ellipse_requested {
         editor.select_mode = false
         editor.active_kind = .ellipse
+        editor.erasing = false
     }
     if input.tool_diamond_requested {
         editor.select_mode = false
         editor.active_kind = .diamond
+        editor.erasing = false
     }
     if input.tool_line_requested {
         editor.select_mode = false
         editor.active_kind = .line
+        editor.erasing = false
     }
     if input.tool_arrow_requested {
         editor.select_mode = false
         editor.active_kind = .arrow
+        editor.erasing = false
     }
     if input.tool_text_requested {
         editor.select_mode = false
         editor.active_kind = .text
+        editor.erasing = false
     }
     if input.tool_freehand_requested {
         editor.select_mode = false
         editor.active_kind = .freehand
+        editor.erasing = false
+    }
+    if input.tool_eraser_requested {
+        editor.select_mode = false
+        editor.erasing = true
     }
     if input.toggle_grid_requested {
         editor.show_grid = !editor.show_grid
@@ -455,6 +470,24 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
                 editor.text_index = doc.add_text(&editor.document, world[0], world[1], "", {0.12, 0.12, 0.12, 1.0})
                 editor.text_editing = true
             }
+        }
+        return
+    }
+
+    if editor.erasing {
+        if input.pressed[platform.MOUSE_BUTTON_LEFT] {
+            world := viewport.screen_to_world(editor.viewport, input.mouse)
+            begin_transaction(editor)
+            erase_at(editor, world)
+            editor.eraser_last = world
+        } else if input.buttons[platform.MOUSE_BUTTON_LEFT] {
+            world := viewport.screen_to_world(editor.viewport, input.mouse)
+            erase_at(editor, world)
+            editor.eraser_last = world
+        }
+        if input.released[platform.MOUSE_BUTTON_LEFT] {
+            editor.erasing = false
+            finish_transaction(editor)
         }
         return
     }
@@ -529,6 +562,15 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         editor.active_rect = -1
         finish_transaction(editor)
     }
+}
+
+erase_at :: proc(editor: ^state, point: [2]f32) {
+    hit := hit_test(&editor.document, point)
+    if hit < 0 || editor.document.elements[hit].locked {
+        return
+    }
+    doc.remove(&editor.document, hit)
+    clear_selection(editor)
 }
 
 bind_arrow :: proc(editor: ^state, arrow_index: int) {
@@ -655,7 +697,7 @@ toolbar_action_at :: proc(point: [2]f32) -> toolbar_action {
         return .none
     }
     actions := [?]toolbar_action{
-        .select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand,
+        .select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand, .eraser,
         .undo, .redo, .open, .save, .grid, .export_svg, .import_image, .theme, .export_png,
     }
     if index >= len(actions) {
@@ -693,6 +735,9 @@ handle_toolbar_action :: proc(editor: ^state, input: ^platform.frame_input, acti
     case .freehand:
         editor.select_mode = false
         editor.active_kind = .freehand
+    case .eraser:
+        editor.select_mode = false
+        editor.erasing = true
     case .undo:
         finish_transaction(editor)
         _ = history_pkg.undo(&editor.history, &editor.document)

@@ -47,7 +47,7 @@ main :: proc() {
     assert(!editor.dark_mode, "theme toggle did not restore light mode")
 
     input = {}
-    input.mouse = {680, 20}
+    input.mouse = {722, 20}
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true
     editor_pkg.update(&editor, &input)
     assert(input.export_png_requested, "png export toolbar button did not request export")
@@ -186,6 +186,18 @@ main :: proc() {
     delete(copied_text)
     assert(editor_pkg.paste_text(&editor, "pasted"), "external text paste did not create an element")
     assert(editor.document.elements[4].text == "pasted", "external text paste content was wrong")
+
+    input = {}
+    input.tool_eraser_requested = true
+    input.mouse = {400, 300}
+    input.buttons[platform.MOUSE_BUTTON_LEFT] = true
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    input = {}
+    input.mouse = {400, 300}
+    input.released[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(len(editor.document.elements) == 4, "eraser did not remove the topmost element")
 
     fmt.println("editor smoke passed")
 }
