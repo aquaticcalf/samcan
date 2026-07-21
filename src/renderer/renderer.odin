@@ -93,6 +93,18 @@ void main() {
     color = vec4(v_color.rgb, v_color.a * alpha);
 }`
 
+image_vertex_shader :: `#version 330 core
+layout (location = 0) in vec2 a_position;
+layout (location = 1) in vec2 a_uv;
+layout (location = 2) in vec4 a_color;
+out vec2 v_uv;
+out vec4 v_color;
+void main() {
+    gl_Position = vec4(a_position, 0.0, 1.0);
+    v_uv = a_uv;
+    v_color = a_color;
+}`
+
 image_fragment_shader :: `#version 330 core
 in vec2 v_uv;
 in vec4 v_color;
@@ -146,7 +158,7 @@ open :: proc() -> (result: renderer, ok: bool) {
         result.text_font.ready = load_text_font(&result.text_font)
     }
 
-    image_program, image_ok := gl.load_shaders_source(vertex_shader, image_fragment_shader)
+    image_program, image_ok := gl.load_shaders_source(image_vertex_shader, image_fragment_shader)
     result.image_program = image_program
     if !image_ok {
         compile_message, _, link_message, _ := gl.get_last_error_messages()
