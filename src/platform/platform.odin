@@ -40,6 +40,8 @@ frame_input :: struct {
     mouse:          [2]f32,
     mouse_delta:    [2]f32,
     wheel:          f32,
+    modifiers:      SDL.Keymod,
+    shift:          bool,
     save_requested: bool,
     open_requested: bool,
     save_as_requested: bool,
@@ -47,6 +49,7 @@ frame_input :: struct {
     redo_requested: bool,
     delete_requested: bool,
     duplicate_requested: bool,
+    select_all_requested: bool,
     text_input: string,
     backspace_requested: bool,
     enter_requested: bool,
@@ -120,6 +123,8 @@ open :: proc(title: cstring, width, height: i32) -> (result: window, ok: bool) {
 poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.mouse_delta = {}
     input.wheel = 0
+    input.modifiers = SDL.GetModState()
+    input.shift = (input.modifiers & SDL.KMOD_SHIFT) != {}
     input.save_requested = false
     input.open_requested = false
     input.save_as_requested = false
@@ -127,6 +132,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.redo_requested = false
     input.delete_requested = false
     input.duplicate_requested = false
+    input.select_all_requested = false
     delete(input.text_input)
     input.text_input = ""
     input.backspace_requested = false
@@ -205,6 +211,9 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             if event.key.key == SDL.K_D && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.duplicate_requested = true
             }
+            if event.key.key == SDL.K_A && (event.key.mod & SDL.KMOD_CTRL) != {} {
+                input.select_all_requested = true
+            }
             if event.key.key == SDL.K_R && event.key.mod == {} {
                 input.tool_rectangle_requested = true
             }
@@ -243,6 +252,8 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
         }
     }
+    input.modifiers = SDL.GetModState()
+    input.shift = (input.modifiers & SDL.KMOD_SHIFT) != {}
     return
 }
 

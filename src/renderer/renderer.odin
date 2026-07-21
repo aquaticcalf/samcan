@@ -316,14 +316,20 @@ append_selection_overlay :: proc(vertices: ^[dynamic]vertex, element: document.e
     append_handle(vertices, view, {left, bottom}, handle_size, selection_color)
 }
 
-draw :: proc(renderer: ^renderer, doc: ^document.document, view: viewport.viewport, selected: int = -1) {
+draw :: proc(renderer: ^renderer, doc: ^document.document, view: viewport.viewport, selected: int = -1, selected_items: []int = nil) {
     clear(&renderer.vertices)
 
     for element in doc.elements {
         append_shape(&renderer.vertices, element, view)
     }
 
-    if selected >= 0 && selected < len(doc.elements) {
+    if len(selected_items) > 0 {
+        for selected_index in selected_items {
+            if selected_index >= 0 && selected_index < len(doc.elements) {
+                append_selection_overlay(&renderer.vertices, doc.elements[selected_index], view)
+            }
+        }
+    } else if selected >= 0 && selected < len(doc.elements) {
         append_selection_overlay(&renderer.vertices, doc.elements[selected], view)
     }
 

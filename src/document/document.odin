@@ -144,6 +144,30 @@ add_freehand :: proc(doc: ^document, x, y: f32, fill: color) -> int {
     return index
 }
 
+duplicate :: proc(doc: ^document, index: int, delta_x, delta_y: f32) -> int {
+    if index < 0 || index >= len(doc.elements) {
+        return -1
+    }
+
+    source := doc.elements[index]
+    copy := source
+    copy.id = doc.next_id
+    doc.next_id += 1
+    copy.x += delta_x
+    copy.y += delta_y
+    if source.text != "" {
+        copy.text = strings.clone(source.text)
+    }
+    if len(source.points) > 0 {
+        copy.points = make([dynamic][2]f32, 0)
+        for point in source.points {
+            append(&copy.points, [2]f32{point[0] + delta_x, point[1] + delta_y})
+        }
+    }
+    append(&doc.elements, copy)
+    return len(doc.elements) - 1
+}
+
 append_point :: proc(doc: ^document, index: int, point: [2]f32) {
     if index < 0 || index >= len(doc.elements) || doc.elements[index].kind != .freehand {
         return

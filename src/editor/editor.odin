@@ -26,9 +26,12 @@ state :: struct {
     active_kind:     doc.element_kind,
     select_mode:     bool,
     selected:        int,
+    selected_items:  [dynamic]int,
     interaction:     interaction_kind,
     drag_start:      [2]f32,
     start_bounds:    [4]f32,
+    drag_items:      [dynamic]int,
+    drag_bounds:     [dynamic][4]f32,
     draw_start:      [2]f32,
     text_editing:    bool,
     text_index:      int,
@@ -45,7 +48,10 @@ new :: proc(width, height: f32) -> state {
         active_kind = .rectangle,
         select_mode = true,
         selected = -1,
+        selected_items = make([dynamic]int, 0),
         interaction = .none,
+        drag_items = make([dynamic]int, 0),
+        drag_bounds = make([dynamic][4]f32, 0),
         text_index = -1,
         history = history_pkg.new(),
     }
@@ -56,6 +62,9 @@ destroy :: proc(editor: ^state) {
         doc.destroy(&editor.before)
     }
     history_pkg.destroy(&editor.history)
+    delete(editor.selected_items)
+    delete(editor.drag_items)
+    delete(editor.drag_bounds)
     doc.destroy(&editor.document)
 }
 
@@ -69,6 +78,7 @@ load :: proc(editor: ^state, path: string) -> bool {
     editor.drawing = false
     editor.active_rect = -1
     editor.selected = -1
+    clear_selection(editor)
     editor.interaction = .none
     editor.text_editing = false
     editor.text_index = -1
@@ -106,29 +116,38 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
-    if input.delete_requested && editor.selected >= 0 && editor.selected < len(editor.document.elements) {
+    if editor.selected >= 0 && len(editor.selected_items) == 0 {
+        append(&editor.selected_items, editor.selected)
+    }
+
+    if input.select_all_requested {
+        select_all(editor)
+        return
+    }
+
+    if input.delete_requested && len(editor.selected_items) > 0 {
         finish_transaction(editor)
         begin_transaction(editor)
-        doc.remove(&editor.document, editor.selected)
-        editor.selected = -1
+        remove_selected_elements(editor)
         editor.interaction = .none
         finish_transaction(editor)
         return
     }
 
-    if input.duplicate_requested && editor.selected >= 0 && editor.selected < len(editor.document.elements) {
+    if input.duplicate_requested && len(editor.selected_items) > 0 {
         finish_transaction(editor)
         begin_transaction(editor)
-        source := editor.document.elements[editor.selected]
-        editor.selected = doc.add(
-            &editor.document,
-            source.kind,
-            source.x + 20,
-            source.y + 20,
-            source.width,
-            source.height,
-            source.fill,
-        )
+        originals := make([dynamic]int, 0)
+        for index in editor.selected_items {
+            append(&originals, index)
+        }
+        clear_selection(editor)
+        for index in originals {
+            duplicate := doc.duplicate(&editor.document, index, 20, 20)
+            append(&editor.selected_items, duplicate)
+            editor.selected = duplicate
+        }
+        delete(originals)
         finish_transaction(editor)
         return
     }
@@ -293,8 +312,9 @@ update_selection :: proc(editor: ^state, input: ^platform.frame_input) {
         world := viewport.screen_to_world(editor.viewport, input.mouse)
         hit := -1
         action := interaction_kind.none
+        shift := input.shift
 
-        if editor.selected >= 0 && editor.selected < len(editor.document.elements) {
+        if !shift && editor.selected >= 0 && editor.selected < len(editor.document.elements) {
             action = hit_handle(editor.document.elements[editor.selected], world, editor.viewport.zoom)
             if action != .none {
                 hit = editor.selected
@@ -308,14 +328,37 @@ update_selection :: proc(editor: ^state, input: ^platform.frame_input) {
         }
 
         if hit >= 0 {
+            if shift && is_selected(editor, hit) && action == .none {
+                remove_from_selection(editor, hit)
+                editor.interaction = .none
+                return
+            }
+            if !shift {
+                clear_selection(editor)
+            }
+            if !is_selected(editor, hit) {
+                append(&editor.selected_items, hit)
+            }
             editor.selected = hit
             editor.interaction = action
+            if editor.interaction == .none {
+                editor.interaction = .move
+            }
             element := editor.document.elements[hit]
             editor.drag_start = world
             editor.start_bounds = {element.x, element.y, element.width, element.height}
+            clear(&editor.drag_items)
+            clear(&editor.drag_bounds)
+            for index in editor.selected_items {
+                append(&editor.drag_items, index)
+                selected_element := editor.document.elements[index]
+                append(&editor.drag_bounds, [4]f32{selected_element.x, selected_element.y, selected_element.width, selected_element.height})
+            }
             begin_transaction(editor)
         } else {
-            editor.selected = -1
+            if !shift {
+                clear_selection(editor)
+            }
             editor.interaction = .none
         }
     }
@@ -330,7 +373,63 @@ update_selection :: proc(editor: ^state, input: ^platform.frame_input) {
             finish_transaction(editor)
         }
         editor.interaction = .none
+        clear(&editor.drag_items)
+        clear(&editor.drag_bounds)
     }
+}
+
+is_selected :: proc(editor: ^state, index: int) -> bool {
+    for selected_index in editor.selected_items {
+        if selected_index == index {
+            return true
+        }
+    }
+    return false
+}
+
+clear_selection :: proc(editor: ^state) {
+    clear(&editor.selected_items)
+    editor.selected = -1
+}
+
+remove_from_selection :: proc(editor: ^state, index: int) {
+    for selected_position in 0 ..< len(editor.selected_items) {
+        if editor.selected_items[selected_position] == index {
+            ordered_remove(&editor.selected_items, selected_position)
+            break
+        }
+    }
+    if len(editor.selected_items) == 0 {
+        editor.selected = -1
+    } else if !is_selected(editor, editor.selected) {
+        editor.selected = editor.selected_items[len(editor.selected_items) - 1]
+    }
+}
+
+select_all :: proc(editor: ^state) {
+    clear_selection(editor)
+    for index in 0 ..< len(editor.document.elements) {
+        append(&editor.selected_items, index)
+        editor.selected = index
+    }
+}
+
+remove_selected_elements :: proc(editor: ^state) {
+    for len(editor.selected_items) > 0 {
+        max_position := 0
+        max_index := editor.selected_items[0]
+        for position in 1 ..< len(editor.selected_items) {
+            if editor.selected_items[position] > max_index {
+                max_index = editor.selected_items[position]
+                max_position = position
+            }
+        }
+        if max_index >= 0 && max_index < len(editor.document.elements) {
+            doc.remove(&editor.document, max_index)
+        }
+        ordered_remove(&editor.selected_items, max_position)
+    }
+    editor.selected = -1
 }
 
 hit_test :: proc(doc: ^doc.document, point: [2]f32) -> int {
@@ -456,8 +555,22 @@ apply_interaction :: proc(editor: ^state, point: [2]f32) {
         return
     }
 
-    if editor.interaction == .move && editor.document.elements[editor.selected].kind == .freehand {
-        doc.translate(&editor.document, editor.selected, delta[0], delta[1])
+    if editor.interaction == .move {
+        for position in 0 ..< len(editor.drag_items) {
+            index := editor.drag_items[position]
+            if index < 0 || index >= len(editor.document.elements) {
+                continue
+            }
+            bounds := editor.drag_bounds[position]
+            target_x := bounds[0] + delta[0]
+            target_y := bounds[1] + delta[1]
+            if editor.document.elements[index].kind == .freehand {
+                current := editor.document.elements[index]
+                doc.translate(&editor.document, index, target_x - current.x, target_y - current.y)
+            } else {
+                doc.set_bounds(&editor.document, index, target_x, target_y, bounds[2], bounds[3])
+            }
+        }
         return
     }
     doc.set_bounds(&editor.document, editor.selected, x, y, width, height)
