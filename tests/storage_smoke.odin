@@ -20,6 +20,8 @@ main :: proc() {
     document.add_diamond(&original, 30, 40, 60, 60, {0.25, 0.75, 0.50, 1.0})
     document.add_line(&original, -80, 60, 120, 50, {0.50, 0.25, 0.75, 1.0})
     document.add_arrow(&original, -100, -80, 140, 30, {0.75, 0.25, 0.50, 1.0})
+    group_indices := [?]int{0, 1}
+    group_id := document.group(&original, group_indices[:])
     text_index := document.add_text_styled(
         &original,
         5,
@@ -65,6 +67,8 @@ main :: proc() {
     assert(rect.stroke_width == 4, "stroke width did not round-trip")
     assert(rect.opacity > 0.49 && rect.opacity < 0.51, "opacity did not round-trip")
     assert(loaded.elements[1].kind == .ellipse, "ellipse kind did not round-trip")
+    assert(loaded.elements[0].group_id == group_id, "group id did not round-trip")
+    assert(loaded.elements[1].group_id == group_id, "group membership did not round-trip")
     assert(loaded.elements[2].kind == .diamond, "diamond kind did not round-trip")
     assert(loaded.elements[3].kind == .line, "line kind did not round-trip")
     assert(loaded.elements[4].kind == .arrow, "arrow kind did not round-trip")

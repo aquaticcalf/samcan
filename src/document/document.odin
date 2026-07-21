@@ -32,6 +32,7 @@ default_line_height :: f32(1.25)
 
 element :: struct {
     id:     u64,
+    group_id: u64,
     kind:   element_kind,
     x:      f32,
     y:      f32,
@@ -55,12 +56,14 @@ element :: struct {
 document :: struct {
     elements: [dynamic]element,
     next_id:  u64,
+    next_group_id: u64,
 }
 
 new :: proc() -> document {
     return document{
         elements = make([dynamic]element, 0),
         next_id = 1,
+        next_group_id = 1,
     }
 }
 
@@ -83,17 +86,19 @@ clone :: proc(source: ^document) -> document {
         append(&result.elements, element)
     }
     result.next_id = source.next_id
+    result.next_group_id = source.next_group_id
     return result
 }
 
 same :: proc(left, right: ^document) -> bool {
-    if left.next_id != right.next_id || len(left.elements) != len(right.elements) {
+    if left.next_id != right.next_id || left.next_group_id != right.next_group_id || len(left.elements) != len(right.elements) {
         return false
     }
     for index in 0 ..< len(left.elements) {
         left_element := left.elements[index]
         right_element := right.elements[index]
         if left_element.id != right_element.id ||
+            left_element.group_id != right_element.group_id ||
             left_element.kind != right_element.kind ||
             left_element.x != right_element.x ||
             left_element.y != right_element.y ||
@@ -131,6 +136,7 @@ destroy :: proc(doc: ^document) {
     }
     delete(doc.elements)
     doc.next_id = 1
+    doc.next_group_id = 1
 }
 
 add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: color) -> int {
@@ -146,6 +152,7 @@ add :: proc(doc: ^document, kind: element_kind, x, y, width, height: f32, fill: 
 
     append(&doc.elements, element{
         id = id,
+        group_id = 0,
         kind = kind,
         x = x,
         y = y,
@@ -272,6 +279,28 @@ append_element_copy :: proc(doc: ^document, source: element, delta_x, delta_y: f
     }
     append(&doc.elements, copy)
     return len(doc.elements) - 1
+}
+
+group :: proc(doc: ^document, indices: []int) -> u64 {
+    if len(indices) == 0 {
+        return 0
+    }
+    group_id := doc.next_group_id
+    doc.next_group_id += 1
+    for index in indices {
+        if index >= 0 && index < len(doc.elements) {
+            doc.elements[index].group_id = group_id
+        }
+    }
+    return group_id
+}
+
+ungroup :: proc(doc: ^document, indices: []int) {
+    for index in indices {
+        if index >= 0 && index < len(doc.elements) {
+            doc.elements[index].group_id = 0
+        }
+    }
 }
 
 swap_elements :: proc(doc: ^document, left, right: int) {

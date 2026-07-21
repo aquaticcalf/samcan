@@ -196,6 +196,22 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
+    if len(editor.selected_items) > 1 && input.group_requested {
+        finish_transaction(editor)
+        begin_transaction(editor)
+        _ = doc.group(&editor.document, editor.selected_items[:])
+        finish_transaction(editor)
+        return
+    }
+
+    if len(editor.selected_items) > 0 && input.ungroup_requested {
+        finish_transaction(editor)
+        begin_transaction(editor)
+        doc.ungroup(&editor.document, editor.selected_items[:])
+        finish_transaction(editor)
+        return
+    }
+
     if input.delete_requested && len(editor.selected_items) > 0 {
         finish_transaction(editor)
         begin_transaction(editor)
@@ -510,6 +526,16 @@ update_selection :: proc(editor: ^state, input: ^platform.frame_input) {
             }
             if !is_selected(editor, hit) {
                 append(&editor.selected_items, hit)
+            }
+            if editor.document.elements[hit].group_id != 0 {
+                group_id := editor.document.elements[hit].group_id
+                clear_selection(editor)
+                for group_index in 0 ..< len(editor.document.elements) {
+                    group_element := editor.document.elements[group_index]
+                    if group_element.group_id == group_id {
+                        append(&editor.selected_items, group_index)
+                    }
+                }
             }
             editor.selected = hit
             editor.interaction = action

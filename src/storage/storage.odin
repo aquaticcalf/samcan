@@ -26,6 +26,7 @@ scene_element :: struct {
     height:         f64,
     text:           string,
     originalText:   string,
+    groupIds:       [dynamic]string,
     fontSize:       f64,
     fontFamily:     i32,
     textAlign:      string,
@@ -325,6 +326,9 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
             if !auto_resize && element.width > 0 {
                 doc.elements[index].width = f32(element.width)
             }
+            if len(element.groupIds) > 0 {
+                doc.elements[index].group_id = group_id_from_string(element.groupIds[0])
+            }
             continue
         }
         if kind == .freehand {
@@ -355,6 +359,9 @@ load :: proc(path: string) -> (doc: document.document, ok: bool) {
         }
         if element.opacity > 0 {
             doc.elements[index].opacity = f32(element.opacity) / 100.0
+        }
+        if len(element.groupIds) > 0 {
+            doc.elements[index].group_id = group_id_from_string(element.groupIds[0])
         }
     }
 
@@ -387,6 +394,7 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             height = f64(element.height),
             text = strings.clone(element.text),
             originalText = strings.clone(element.original_text),
+            groupIds = make([dynamic]string, 0),
             fontSize = f64(element.font_size),
             fontFamily = element.font_family,
             textAlign = text_align_name(element.text_align),
@@ -406,6 +414,9 @@ scene_from_document :: proc(doc: ^document.document) -> scene_file {
             versionNonce = i64(element.id),
             isDeleted = false,
         })
+        if element.group_id != 0 {
+            append(&file.elements[len(file.elements) - 1].groupIds, fmt.tprintf("%d", element.group_id))
+        }
         for point in element.points {
             append(&file.elements[len(file.elements) - 1].points, [2]f64{f64(point[0]), f64(point[1])})
         }
@@ -501,10 +512,35 @@ destroy_scene :: proc(file: ^scene_file) {
     for &element in file.elements {
         delete(element.text)
         delete(element.originalText)
+        delete(element.groupIds)
         delete(element.points)
     }
     delete(file.elements)
     delete(file.files)
+}
+
+group_id_from_string :: proc(value: string) -> u64 {
+    number: u64 = 0
+    numeric := len(value) > 0
+    for byte in value {
+        if byte < '0' || byte > '9' {
+            numeric = false
+            break
+        }
+        number = number * 10 + u64(byte - '0')
+    }
+    if numeric && number != 0 {
+        return number
+    }
+
+    hash: u64 = 17
+    for byte in value {
+        hash = hash * 131 + u64(byte)
+    }
+    if hash == 0 {
+        return 1
+    }
+    return hash
 }
 
 format_color :: proc(value: document.color) -> string {

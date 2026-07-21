@@ -55,6 +55,8 @@ frame_input :: struct {
     copy_requested: bool,
     cut_requested: bool,
     paste_requested: bool,
+    group_requested: bool,
+    ungroup_requested: bool,
     select_all_requested: bool,
     bring_forward_requested: bool,
     send_backward_requested: bool,
@@ -148,6 +150,8 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.copy_requested = false
     input.cut_requested = false
     input.paste_requested = false
+    input.group_requested = false
+    input.ungroup_requested = false
     input.select_all_requested = false
     input.bring_forward_requested = false
     input.send_backward_requested = false
@@ -243,6 +247,13 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_V && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.paste_requested = true
+            }
+            if event.key.key == SDL.K_G && (event.key.mod & SDL.KMOD_CTRL) != {} {
+                if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                    input.ungroup_requested = true
+                } else {
+                    input.group_requested = true
+                }
             }
             if event.key.key == SDL.K_A && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.select_all_requested = true
