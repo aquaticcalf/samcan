@@ -94,6 +94,33 @@ update :: proc(editor: ^state, input: ^platform.frame_input) {
         return
     }
 
+    if input.delete_requested && editor.selected >= 0 && editor.selected < len(editor.document.elements) {
+        finish_transaction(editor)
+        begin_transaction(editor)
+        doc.remove(&editor.document, editor.selected)
+        editor.selected = -1
+        editor.interaction = .none
+        finish_transaction(editor)
+        return
+    }
+
+    if input.duplicate_requested && editor.selected >= 0 && editor.selected < len(editor.document.elements) {
+        finish_transaction(editor)
+        begin_transaction(editor)
+        source := editor.document.elements[editor.selected]
+        editor.selected = doc.add(
+            &editor.document,
+            source.kind,
+            source.x + 20,
+            source.y + 20,
+            source.width,
+            source.height,
+            source.fill,
+        )
+        finish_transaction(editor)
+        return
+    }
+
     if input.tool_select_requested {
         editor.select_mode = true
     }
