@@ -69,6 +69,9 @@ main :: proc() {
         if input.export_svg_requested {
             platform.show_svg_dialog(&app_window)
         }
+        if input.import_image_requested {
+            platform.show_image_dialog(&app_window)
+        }
 
         dialog_kind, dialog_path, dialog_ready := platform.take_dialog_result(&app_window)
         if dialog_ready && dialog_path != "" {
@@ -104,6 +107,13 @@ main :: proc() {
                     fmt.printf("exported %s\n", dialog_path)
                 } else {
                     fmt.printf("svg export failed: %s\n", dialog_path)
+                }
+                delete(dialog_path)
+            case .IMPORT_IMAGE:
+                if editor.import_image(&app_editor, dialog_path) {
+                    fmt.printf("imported %s\n", dialog_path)
+                } else {
+                    fmt.printf("image import failed: %s\n", dialog_path)
                 }
                 delete(dialog_path)
             }

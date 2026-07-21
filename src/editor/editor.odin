@@ -34,6 +34,7 @@ toolbar_action :: enum {
     save,
     grid,
     export_svg,
+    import_image,
 }
 
 toolbar_button_width :: f32(38.0)
@@ -128,6 +129,22 @@ save :: proc(editor: ^state, path: string) -> bool {
 
 save_svg :: proc(editor: ^state, path: string) -> bool {
     return storage.save_svg(path, &editor.document)
+}
+
+import_image :: proc(editor: ^state, path: string) -> bool {
+    center := viewport.screen_to_world(editor.viewport, {editor.viewport.width * 0.5, editor.viewport.height * 0.5})
+    finish_transaction(editor)
+    begin_transaction(editor)
+    if !storage.import_image(&editor.document, path, center[0], center[1]) {
+        doc.destroy(&editor.before)
+        editor.before_valid = false
+        return false
+    }
+    clear_selection(editor)
+    editor.selected = len(editor.document.elements) - 1
+    append(&editor.selected_items, editor.selected)
+    finish_transaction(editor)
+    return true
 }
 
 resize :: proc(editor: ^state, width, height: f32) {
@@ -446,7 +463,7 @@ toolbar_action_at :: proc(point: [2]f32) -> toolbar_action {
     }
     actions := [?]toolbar_action{
         .select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand,
-        .undo, .redo, .open, .save, .grid,
+        .undo, .redo, .open, .save, .grid, .export_svg, .import_image,
     }
     if index >= len(actions) {
         return .none
@@ -495,6 +512,8 @@ handle_toolbar_action :: proc(editor: ^state, input: ^platform.frame_input, acti
         input.save_requested = true
     case .export_svg:
         input.export_svg_requested = true
+    case .import_image:
+        input.import_image_requested = true
     case .grid:
         editor.show_grid = !editor.show_grid
     case .none:
@@ -856,7 +875,7 @@ contains :: proc(element: doc.element, point: [2]f32) -> bool {
             }
         }
         return false
-    case .rectangle, .text:
+    case .rectangle, .text, .image:
         return local_point[0] >= element.x && local_point[0] <= element.x + element.width &&
             local_point[1] >= element.y && local_point[1] <= element.y + element.height
     }

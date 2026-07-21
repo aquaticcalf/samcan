@@ -13,6 +13,7 @@ dialog_kind :: enum {
     OPEN,
     SAVE,
     EXPORT_SVG,
+    IMPORT_IMAGE,
 }
 
 dialog_state :: struct {
@@ -48,6 +49,7 @@ frame_input :: struct {
     open_requested: bool,
     save_as_requested: bool,
     export_svg_requested: bool,
+    import_image_requested: bool,
     undo_requested: bool,
     redo_requested: bool,
     delete_requested: bool,
@@ -152,6 +154,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.open_requested = false
     input.save_as_requested = false
     input.export_svg_requested = false
+    input.import_image_requested = false
     input.undo_requested = false
     input.redo_requested = false
     input.delete_requested = false
@@ -231,6 +234,9 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
             }
             if event.key.key == SDL.K_E && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.export_svg_requested = true
+            }
+            if event.key.key == SDL.K_I && (event.key.mod & SDL.KMOD_CTRL) != {} && (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                input.import_image_requested = true
             }
             if event.key.key == SDL.K_O && (event.key.mod & SDL.KMOD_CTRL) != {} {
                 input.open_requested = true
@@ -424,6 +430,10 @@ show_svg_dialog :: proc(window: ^window) -> bool {
     return show_dialog(window, .EXPORT_SVG)
 }
 
+show_image_dialog :: proc(window: ^window) -> bool {
+    return show_dialog(window, .IMPORT_IMAGE)
+}
+
 show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
     if window.dialog.pending {
         return false
@@ -438,6 +448,9 @@ show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
     if kind == .EXPORT_SVG {
         window.dialog.filter_name = cstring("svg")
         window.dialog.filter_pattern = cstring("*.svg")
+    } else if kind == .IMPORT_IMAGE {
+        window.dialog.filter_name = cstring("images")
+        window.dialog.filter_pattern = cstring("*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tga;*.hdr")
     } else {
         window.dialog.filter_name = cstring("excalidraw")
         window.dialog.filter_pattern = cstring("*.excalidraw")
@@ -468,6 +481,16 @@ show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
             &window.dialog.filter,
             1,
             nil,
+        )
+    case .IMPORT_IMAGE:
+        SDL.ShowOpenFileDialog(
+            file_dialog_callback,
+            rawptr(window),
+            window.handle,
+            &window.dialog.filter,
+            1,
+            nil,
+            false,
         )
     }
     return true

@@ -1,11 +1,14 @@
 package renderer
 
 import "core:c"
+import base64 "core:encoding/base64"
 import "core:fmt"
 import "core:math"
 import "core:os"
+import "core:strings"
 
 import gl "vendor:OpenGL"
+import stb_image "vendor:stb/image"
 import stb "vendor:stb/truetype"
 import document "../document"
 import viewport "../viewport"
@@ -29,6 +32,12 @@ text_font :: struct {
     ready:   bool,
 }
 
+image_texture :: struct {
+    image_id: string,
+    data_url: string,
+    texture:  u32,
+}
+
 renderer :: struct {
     program:       u32,
     vao:           u32,
@@ -39,6 +48,11 @@ renderer :: struct {
     text_vbo:      u32,
     text_vertices: [dynamic]text_vertex,
     text_font:     text_font,
+    image_program: u32,
+    image_vao:     u32,
+    image_vbo:     u32,
+    image_vertices: [dynamic]text_vertex,
+    image_textures: [dynamic]image_texture,
 }
 
 vertex_shader :: `#version 330 core
@@ -79,9 +93,20 @@ void main() {
     color = vec4(v_color.rgb, v_color.a * alpha);
 }`
 
+image_fragment_shader :: `#version 330 core
+in vec2 v_uv;
+in vec4 v_color;
+uniform sampler2D u_image;
+out vec4 color;
+void main() {
+    color = texture(u_image, v_uv) * v_color;
+}`
+
 open :: proc() -> (result: renderer, ok: bool) {
     result.vertices = make([dynamic]vertex, 0)
     result.text_vertices = make([dynamic]text_vertex, 0)
+    result.image_vertices = make([dynamic]text_vertex, 0)
+    result.image_textures = make([dynamic]image_texture, 0)
 
     result.program, ok = gl.load_shaders_source(vertex_shader, fragment_shader)
     if !ok {
@@ -121,6 +146,25 @@ open :: proc() -> (result: renderer, ok: bool) {
         result.text_font.ready = load_text_font(&result.text_font)
     }
 
+    image_program, image_ok := gl.load_shaders_source(vertex_shader, image_fragment_shader)
+    result.image_program = image_program
+    if !image_ok {
+        compile_message, _, link_message, _ := gl.get_last_error_messages()
+        fmt.eprintf("image shader setup failed: %s %s\n", compile_message, link_message)
+    } else {
+        gl.GenVertexArrays(1, &result.image_vao)
+        gl.GenBuffers(1, &result.image_vbo)
+        gl.BindVertexArray(result.image_vao)
+        gl.BindBuffer(gl.ARRAY_BUFFER, result.image_vbo)
+        image_stride := i32(size_of(text_vertex))
+        gl.VertexAttribPointer(0, 2, gl.FLOAT, false, image_stride, 0)
+        gl.EnableVertexAttribArray(0)
+        gl.VertexAttribPointer(1, 2, gl.FLOAT, false, image_stride, uintptr(size_of([2]f32)))
+        gl.EnableVertexAttribArray(1)
+        gl.VertexAttribPointer(2, 4, gl.FLOAT, false, image_stride, uintptr(size_of([2]f32) * 2))
+        gl.EnableVertexAttribArray(2)
+    }
+
     ok = true
     return
 }
@@ -128,6 +172,24 @@ open :: proc() -> (result: renderer, ok: bool) {
 destroy :: proc(renderer: ^renderer) {
     if renderer.text_font.texture != 0 {
         gl.DeleteTextures(1, &renderer.text_font.texture)
+    }
+    for &image in renderer.image_textures {
+        if image.texture != 0 {
+            gl.DeleteTextures(1, &image.texture)
+        }
+        delete(image.image_id)
+        delete(image.data_url)
+    }
+    delete(renderer.image_textures)
+    delete(renderer.image_vertices)
+    if renderer.image_vbo != 0 {
+        gl.DeleteBuffers(1, &renderer.image_vbo)
+    }
+    if renderer.image_vao != 0 {
+        gl.DeleteVertexArrays(1, &renderer.image_vao)
+    }
+    if renderer.image_program != 0 {
+        gl.DeleteProgram(renderer.image_program)
     }
     if renderer.text_vbo != 0 {
         gl.DeleteBuffers(1, &renderer.text_vbo)
@@ -243,6 +305,123 @@ rotate_point :: proc(element: document.element, point: [2]f32) -> [2]f32 {
     }
 }
 
+ensure_image_texture :: proc(renderer: ^renderer, image_id, data_url: string) -> u32 {
+    for &cached in renderer.image_textures {
+        if cached.image_id != image_id {
+            continue
+        }
+        if cached.data_url == data_url && cached.texture != 0 {
+            return cached.texture
+        }
+        if cached.texture != 0 {
+            gl.DeleteTextures(1, &cached.texture)
+            cached.texture = 0
+        }
+        delete(cached.data_url)
+        cached.data_url = strings.clone(data_url)
+        upload_image_texture(&cached, data_url)
+        return cached.texture
+    }
+
+    append(&renderer.image_textures, image_texture{
+        image_id = strings.clone(image_id),
+        data_url = strings.clone(data_url),
+    })
+    cached := &renderer.image_textures[len(renderer.image_textures) - 1]
+    upload_image_texture(cached, data_url)
+    return cached.texture
+}
+
+upload_image_texture :: proc(cached: ^image_texture, data_url: string) -> bool {
+    comma := -1
+    for index in 0 ..< len(data_url) {
+        if data_url[index] == ',' {
+            comma = index
+            break
+        }
+    }
+    if comma < 0 || comma + 1 >= len(data_url) {
+        return false
+    }
+    encoded := data_url[comma + 1:]
+    decoded, decode_error := base64.decode(encoded)
+    if decode_error != nil || len(decoded) == 0 {
+        return false
+    }
+    defer delete(decoded)
+
+    width, height, channels: c.int
+    pixels := stb_image.load_from_memory(
+        &decoded[0],
+        c.int(len(decoded)),
+        &width,
+        &height,
+        &channels,
+        4,
+    )
+    if pixels == nil || width <= 0 || height <= 0 {
+        if pixels != nil {
+            stb_image.image_free(pixels)
+        }
+        return false
+    }
+
+    gl.GenTextures(1, &cached.texture)
+    gl.BindTexture(gl.TEXTURE_2D, cached.texture)
+    gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+    gl.TexImage2D(
+        gl.TEXTURE_2D,
+        0,
+        i32(gl.RGBA),
+        width,
+        height,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        rawptr(pixels),
+    )
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, i32(gl.LINEAR))
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, i32(gl.LINEAR))
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, i32(gl.CLAMP_TO_EDGE))
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, i32(gl.CLAMP_TO_EDGE))
+    stb_image.image_free(pixels)
+    return true
+}
+
+append_image_vertex :: proc(vertices: ^[dynamic]text_vertex, position, uv: [2]f32, color: [4]f32) {
+    append(vertices, text_vertex{position = position, uv = uv, color = color})
+}
+
+append_image :: proc(renderer: ^renderer, doc: ^document.document, view: viewport.viewport, element: document.element) {
+    if element.image_id == "" {
+        return
+    }
+    image, found := doc.images[element.image_id]
+    if !found || image.data_url == "" {
+        return
+    }
+    texture := ensure_image_texture(renderer, element.image_id, image.data_url)
+    if texture == 0 {
+        return
+    }
+
+    left := element.x
+    top := element.y
+    right := element.x + element.width
+    bottom := element.y + element.height
+    top_left := screen_to_clip(view, rotate_point(element, {left, top}))
+    top_right := screen_to_clip(view, rotate_point(element, {right, top}))
+    bottom_right := screen_to_clip(view, rotate_point(element, {right, bottom}))
+    bottom_left := screen_to_clip(view, rotate_point(element, {left, bottom}))
+    color: [4]f32 = {1, 1, 1, max(0.0, min(1.0, element.opacity))}
+    append_image_vertex(&renderer.image_vertices, top_left, {0, 1}, color)
+    append_image_vertex(&renderer.image_vertices, top_right, {1, 1}, color)
+    append_image_vertex(&renderer.image_vertices, bottom_right, {1, 0}, color)
+    append_image_vertex(&renderer.image_vertices, top_left, {0, 1}, color)
+    append_image_vertex(&renderer.image_vertices, bottom_right, {1, 0}, color)
+    append_image_vertex(&renderer.image_vertices, bottom_left, {0, 0}, color)
+}
+
 append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view: viewport.viewport) {
     left := element.x
     top := element.y
@@ -312,6 +491,8 @@ append_shape :: proc(vertices: ^[dynamic]vertex, element: document.element, view
         append_arrowhead(vertices, view, start, finish, stroke)
     case .text:
         // text is rendered in the alpha-atlas pass after opaque geometry
+    case .image:
+        // images are rendered in the texture pass
     case .freehand:
         if len(element.points) >= 2 {
             for point_index in 1 ..< len(element.points) {
@@ -560,9 +741,9 @@ append_ui_text :: proc(renderer: ^renderer, view: viewport.viewport, text: strin
 }
 
 append_toolbar :: proc(renderer: ^renderer, view: viewport.viewport, select_mode: bool, active_kind: document.element_kind, show_grid: bool) {
-    toolbar_width: f32 = 14.0 * 38.0 + 13.0 * 4.0
+    toolbar_width: f32 = 15.0 * 38.0 + 14.0 * 4.0
     append_ui_rect(&renderer.vertices, view, 4, 4, 4 + toolbar_width, 44, {0.86, 0.86, 0.86, 1.0})
-    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s", "#", "x"}
+    labels := [?]string{"v", "r", "e", "d", "l", "a", "t", "f", "u", "y", "o", "s", "#", "x", "i"}
     for index in 0 ..< len(labels) {
         left: f32 = 8.0 + f32(index) * (38.0 + 4.0)
         active := index == 0 && select_mode
@@ -689,6 +870,15 @@ append_selection_overlay :: proc(vertices: ^[dynamic]vertex, element: document.e
         append_segment(vertices, view, top_right, bottom_right, selection_color, thickness)
         append_segment(vertices, view, bottom_right, bottom_left, selection_color, thickness)
         append_segment(vertices, view, bottom_left, top_left, selection_color, thickness)
+    case .image:
+        top_left := rotate_point(element, {left, top})
+        top_right := rotate_point(element, {right, top})
+        bottom_right := rotate_point(element, {right, bottom})
+        bottom_left := rotate_point(element, {left, bottom})
+        append_segment(vertices, view, top_left, top_right, selection_color, thickness)
+        append_segment(vertices, view, top_right, bottom_right, selection_color, thickness)
+        append_segment(vertices, view, bottom_right, bottom_left, selection_color, thickness)
+        append_segment(vertices, view, bottom_left, top_left, selection_color, thickness)
     case .diamond:
         center_x := (left + right) * 0.5
         center_y := (top + bottom) * 0.5
@@ -772,6 +962,7 @@ draw :: proc(
 ) {
     clear(&renderer.vertices)
     clear(&renderer.text_vertices)
+    clear(&renderer.image_vertices)
 
     if show_grid {
         append_grid(&renderer.vertices, view)
@@ -780,6 +971,8 @@ draw :: proc(
     for element in doc.elements {
         if element.kind == .text {
             append_text(renderer, view, element)
+        } else if element.kind == .image {
+            append_image(renderer, doc, view, element)
         } else {
             append_shape(&renderer.vertices, element, view)
         }
@@ -821,6 +1014,38 @@ draw :: proc(
             gl.DYNAMIC_DRAW,
         )
         gl.DrawArrays(gl.TRIANGLES, 0, i32(len(renderer.vertices)))
+    }
+
+    if len(renderer.image_vertices) > 0 && renderer.image_program != 0 {
+        gl.Enable(gl.BLEND)
+        gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+        gl.UseProgram(renderer.image_program)
+        gl.BindVertexArray(renderer.image_vao)
+        gl.BindBuffer(gl.ARRAY_BUFFER, renderer.image_vbo)
+        gl.BufferData(
+            gl.ARRAY_BUFFER,
+            len(renderer.image_vertices) * size_of(text_vertex),
+            raw_data(renderer.image_vertices),
+            gl.DYNAMIC_DRAW,
+        )
+        gl.ActiveTexture(gl.TEXTURE0)
+        image_sampler := gl.GetUniformLocation(renderer.image_program, cstring("u_image"))
+        gl.Uniform1i(image_sampler, 0)
+        image_offset := 0
+        for element in doc.elements {
+            if element.kind != .image || element.image_id == "" {
+                continue
+            }
+            if image, found := doc.images[element.image_id]; found {
+                texture := ensure_image_texture(renderer, element.image_id, image.data_url)
+                if texture != 0 {
+                    gl.BindTexture(gl.TEXTURE_2D, texture)
+                    gl.DrawArrays(gl.TRIANGLES, i32(image_offset), 6)
+                    image_offset += 6
+                }
+            }
+        }
+        gl.Disable(gl.BLEND)
     }
 
     if len(renderer.text_vertices) > 0 && renderer.text_font.ready {
