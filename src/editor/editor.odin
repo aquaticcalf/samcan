@@ -36,6 +36,7 @@ toolbar_action :: enum {
     export_svg,
     import_image,
     theme,
+    export_png,
 }
 
 toolbar_button_width :: f32(38.0)
@@ -585,7 +586,7 @@ toolbar_action_at :: proc(point: [2]f32) -> toolbar_action {
     }
     actions := [?]toolbar_action{
         .select, .rectangle, .ellipse, .diamond, .line, .arrow, .text, .freehand,
-        .undo, .redo, .open, .save, .grid, .export_svg, .import_image, .theme,
+        .undo, .redo, .open, .save, .grid, .export_svg, .import_image, .theme, .export_png,
     }
     if index >= len(actions) {
         return .none
@@ -638,6 +639,8 @@ handle_toolbar_action :: proc(editor: ^state, input: ^platform.frame_input, acti
         input.import_image_requested = true
     case .theme:
         editor.dark_mode = !editor.dark_mode
+    case .export_png:
+        input.export_png_requested = true
     case .grid:
         editor.show_grid = !editor.show_grid
     case .none:

@@ -90,6 +90,9 @@ main :: proc() {
         if input.import_image_requested {
             platform.show_image_dialog(&app_window)
         }
+        if input.export_png_requested {
+            platform.show_png_dialog(&app_window)
+        }
 
         dialog_kind, dialog_path, dialog_ready := platform.take_dialog_result(&app_window)
         if dialog_ready && dialog_path != "" {
@@ -132,6 +135,13 @@ main :: proc() {
                     fmt.printf("imported %s\n", dialog_path)
                 } else {
                     fmt.printf("image import failed: %s\n", dialog_path)
+                }
+                delete(dialog_path)
+            case .EXPORT_PNG:
+                if renderer.save_png(dialog_path, app_window.width, app_window.height) {
+                    fmt.printf("exported %s\n", dialog_path)
+                } else {
+                    fmt.printf("png export failed: %s\n", dialog_path)
                 }
                 delete(dialog_path)
             }

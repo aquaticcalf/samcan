@@ -14,6 +14,7 @@ dialog_kind :: enum {
     SAVE,
     EXPORT_SVG,
     IMPORT_IMAGE,
+    EXPORT_PNG,
 }
 
 dialog_state :: struct {
@@ -50,6 +51,7 @@ frame_input :: struct {
     save_as_requested: bool,
     export_svg_requested: bool,
     import_image_requested: bool,
+    export_png_requested: bool,
     toggle_theme_requested: bool,
     zoom_reset_requested: bool,
     zoom_to_content_requested: bool,
@@ -159,6 +161,7 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
     input.save_as_requested = false
     input.export_svg_requested = false
     input.import_image_requested = false
+    input.export_png_requested = false
     input.toggle_theme_requested = false
     input.zoom_reset_requested = false
     input.zoom_to_content_requested = false
@@ -241,7 +244,11 @@ poll :: proc(window: ^window, input: ^frame_input) -> (quit: bool) {
                 }
             }
             if event.key.key == SDL.K_E && (event.key.mod & SDL.KMOD_CTRL) != {} {
-                input.export_svg_requested = true
+                if (event.key.mod & SDL.KMOD_SHIFT) != {} {
+                    input.export_png_requested = true
+                } else {
+                    input.export_svg_requested = true
+                }
             }
             if event.key.key == SDL.K_I && (event.key.mod & SDL.KMOD_CTRL) != {} && (event.key.mod & SDL.KMOD_SHIFT) != {} {
                 input.import_image_requested = true
@@ -477,6 +484,10 @@ show_image_dialog :: proc(window: ^window) -> bool {
     return show_dialog(window, .IMPORT_IMAGE)
 }
 
+show_png_dialog :: proc(window: ^window) -> bool {
+    return show_dialog(window, .EXPORT_PNG)
+}
+
 show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
     if window.dialog.pending {
         return false
@@ -494,6 +505,9 @@ show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
     } else if kind == .IMPORT_IMAGE {
         window.dialog.filter_name = cstring("images")
         window.dialog.filter_pattern = cstring("*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tga;*.hdr")
+    } else if kind == .EXPORT_PNG {
+        window.dialog.filter_name = cstring("png")
+        window.dialog.filter_pattern = cstring("*.png")
     } else {
         window.dialog.filter_name = cstring("excalidraw")
         window.dialog.filter_pattern = cstring("*.excalidraw")
@@ -534,6 +548,15 @@ show_dialog :: proc(window: ^window, kind: dialog_kind) -> bool {
             1,
             nil,
             false,
+        )
+    case .EXPORT_PNG:
+        SDL.ShowSaveFileDialog(
+            file_dialog_callback,
+            rawptr(window),
+            window.handle,
+            &window.dialog.filter,
+            1,
+            nil,
         )
     }
     return true

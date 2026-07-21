@@ -47,6 +47,12 @@ main :: proc() {
     assert(!editor.dark_mode, "theme toggle did not restore light mode")
 
     input = {}
+    input.mouse = {680, 20}
+    input.pressed[platform.MOUSE_BUTTON_LEFT] = true
+    editor_pkg.update(&editor, &input)
+    assert(input.export_png_requested, "png export toolbar button did not request export")
+
+    input = {}
     input.mouse = {400, 300}
     input.buttons[platform.MOUSE_BUTTON_LEFT] = true
     input.pressed[platform.MOUSE_BUTTON_LEFT] = true
